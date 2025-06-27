@@ -344,7 +344,8 @@ public class GameSession
 }
 
 [System.Serializable]
-public class SongData
+[CreateAssetMenu(fileName = "New Song", menuName = "Piano Game/Song Data", order = 1)]
+public class SongData : ScriptableObject
 {
     public string songName;
     public string artist;
