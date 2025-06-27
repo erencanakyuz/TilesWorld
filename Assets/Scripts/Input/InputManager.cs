@@ -268,30 +268,18 @@ public class InputManager : MonoBehaviour
     {
         if (mainCamera == null || laneWorldPositions == null) return 0;
 
-        // Convert screen position to world space (at Z=0 where lanes are)
-        Vector3 worldPoint = mainCamera.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, mainCamera.nearClipPlane));
+        // Simple screen division approach for reliability
+        float normalizedX = screenPosition.x / Screen.width; // 0 to 1
+        int lane = Mathf.FloorToInt(normalizedX * laneCount);
 
-        // Find closest lane based on world X position
-        int closestLane = 0;
-        float closestDistance = Mathf.Abs(worldPoint.x - laneWorldPositions[0].x);
+        // Clamp to valid range
+        lane = Mathf.Clamp(lane, 0, laneCount - 1);
 
-        for (int i = 1; i < laneCount; i++)
-        {
-            float distance = Mathf.Abs(worldPoint.x - laneWorldPositions[i].x);
-            if (distance < closestDistance)
-            {
-                closestDistance = distance;
-                closestLane = i;
-            }
-        }
-
-        // Debug the mapping
+        // Debug the mapping with more detail (only when debug enabled)
         if (showDebugInfo)
-        {
-            Debug.Log($"🎯 Input mapping: Screen {screenPosition.x:F0}px → World {worldPoint.x:F2} → Lane {closestLane} (distance: {closestDistance:F2})");
-        }
+            Debug.Log($"🎯 Input mapping: Screen {screenPosition.x:F0}px ({normalizedX:F2}) → Lane {lane} (lanes 0-{laneCount - 1})");
 
-        return closestLane;
+        return lane;
     }
 
     Vector2 LaneToScreenPosition(int lane)
@@ -410,27 +398,37 @@ public class InputManager : MonoBehaviour
 
     void CreateInputVisualization(int lane, Vector2 screenPosition)
     {
-        if (!enableTouchVisualization || lane < 0 || lane >= laneCount) return;
+        if (lane < 0 || lane >= laneCount) return;
 
-        // Create visual feedback for input (temporary sphere)
+        // Create visual feedback for input (temporary sphere for hit effect)
         GameObject feedback = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        feedback.name = "InputFeedback";
+        feedback.name = "HitEffect";
 
         // Position at exact lane center in world space
         Vector3 worldPosition = laneWorldPositions[lane];
-        worldPosition.y = 1f; // Above ground level
+        worldPosition.y = 0.5f; // Slightly above ground level
         worldPosition.z = 3f; // At hit zone
 
         feedback.transform.position = worldPosition;
-        feedback.transform.localScale = Vector3.one * 0.5f;
+        feedback.transform.localScale = Vector3.one * 1.5f; // Larger for visibility
 
-        // Color coding by lane
+        // Bright color for hit effect
         Renderer renderer = feedback.GetComponent<Renderer>();
-        Color laneColor = Color.HSVToRGB((float)lane / laneCount, 0.8f, 1.0f);
-        renderer.material.color = laneColor;
+        renderer.material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        renderer.material.color = Color.yellow; // Bright yellow for visibility
 
-        // Auto cleanup after 1 second
-        Destroy(feedback, 1.0f);
+        // Remove collider to avoid physics
+        var collider = feedback.GetComponent<Collider>();
+        if (collider != null)
+        {
+            DestroyImmediate(collider);
+        }
+
+        // Auto cleanup after 0.5 seconds
+        Destroy(feedback, 0.5f);
+
+        if (showDebugInfo)
+            Debug.Log($"🎯 Hit effect created for lane {lane} at {worldPosition}");
     }
 }
 

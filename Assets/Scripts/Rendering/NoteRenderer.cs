@@ -27,8 +27,8 @@ public class NoteRenderer : MonoBehaviour
 
     [Header("🎯 Hit Zone Configuration")]
     [SerializeField] private float hitZoneZ = 3.0f;            // Original: 3.0F
-    [SerializeField] private float hitZoneWidth = 10f;
-    [SerializeField] private float noteDestroyZ = -5f;         // When to destroy missed notes
+    [SerializeField] private float hitZoneWidth = 2f;          // Reduced for better precision
+    [SerializeField] private float noteDestroyZ = -2f;         // Closer destruction for better performance
 
     [Header("📊 Performance & Debug")]
     [SerializeField] private bool enableObjectPooling = true;
@@ -137,10 +137,21 @@ public class NoteRenderer : MonoBehaviour
 
         if (mainCamera != null)
         {
-            mainCamera.orthographic = false;
-            mainCamera.fieldOfView = 60f;
-            mainCamera.transform.position = new Vector3(0, 12, -10);
-            mainCamera.transform.rotation = Quaternion.Euler(35, 0, 0);
+            // Minimal camera adjustments - keep original table/ground appearance
+            if (mainCamera.orthographic)
+            {
+                mainCamera.orthographic = false; // Enable perspective for 3D depth
+                mainCamera.fieldOfView = 60f;
+            }
+
+            // Only adjust if camera is at default position (don't override custom setups)
+            if (mainCamera.transform.position == Vector3.zero || mainCamera.transform.position.z >= 0)
+            {
+                mainCamera.transform.position = new Vector3(0, 8, -8); // Less aggressive positioning
+                mainCamera.transform.rotation = Quaternion.Euler(25, 0, 0); // Gentler angle
+            }
+
+            Debug.Log($"🎥 Camera setup: Position {mainCamera.transform.position}, Rotation {mainCamera.transform.rotation.eulerAngles}");
         }
         else
         {
@@ -204,22 +215,27 @@ public class NoteRenderer : MonoBehaviour
             var activeNote = activeNotes[i];
             if (activeNote == null || activeNote.gameObject == null || !activeNote.gameObject.activeInHierarchy) continue;
 
+            // Move note towards player (positive Z to negative Z)
             activeNote.currentPosition.z -= baseNoteSpeed * speedMultiplier * deltaTime;
+
+            // Keep note stable in X and Y (no drifting or falling)
+            Vector3 stablePosition = activeNote.currentPosition;
+            stablePosition.y = 0f; // Always at ground level
+            activeNote.currentPosition = stablePosition;
+
+            // Apply position to GameObject
             activeNote.gameObject.transform.position = activeNote.currentPosition;
 
-            if (activeNote.currentPosition.z <= 2f)
+            // Remove notes that have passed the hit zone
+            if (activeNote.currentPosition.z <= noteDestroyZ)
             {
                 ReturnNoteToPool(activeNote.gameObject);
                 activeNotes.RemoveAt(i);
+                continue;
             }
-        }
 
-        if (activeNotes.Count > 0)
-        {
-            foreach (var activeNote in activeNotes)
-            {
-                ApplyPerspectiveEffects(activeNote, activeNote.currentPosition.z);
-            }
+            // Apply perspective effects while moving
+            ApplyPerspectiveEffects(activeNote, activeNote.currentPosition.z);
         }
     }
 
@@ -235,31 +251,37 @@ public class NoteRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Original Java: glTranslatef + glRotatef - Perspective transformation
+    /// Simplified perspective effects - keep notes as stable rectangular tiles
     /// </summary>
     void ApplyPerspectiveEffects(RenderingNote activeNote, float zPosition)
     {
         var transform = activeNote.gameObject.transform;
 
-        // Original perspective scaling
+        // Subtle perspective scaling only (closer notes slightly larger)
         if (enablePerspectiveScaling)
         {
-            float perspective = 1.0f + zPosition * 0.1f; // Closer notes appear larger
-            transform.localScale = Vector3.one * Mathf.Max(0.1f, perspective);
+            float distanceFromPlayer = Mathf.Abs(zPosition - hitZoneZ);
+            float scale = Mathf.Lerp(2.5f, 2.0f, distanceFromPlayer / worldDepth);
+            transform.localScale = new Vector3(scale, 1.0f, scale);
         }
 
-        // Original rotation calculation: -(90.0F - 90.0F * Math.abs(invader.position.z) / 25.0F)
+        // Keep rotation minimal - notes should stay as flat tiles
         if (enablePerspectiveRotation)
         {
-            float rotationX = -(90f - 90f * Mathf.Abs(zPosition) / worldDepth);
+            // Very slight rotation for visual depth (much less than original)
+            float rotationX = Mathf.Lerp(0f, -10f, Mathf.Abs(zPosition) / worldDepth);
             transform.rotation = Quaternion.Euler(rotationX, 0, 0);
         }
+        else
+        {
+            // Keep notes completely flat (no rotation)
+            transform.rotation = Quaternion.identity;
+        }
 
-        // DISABLED: This was making notes fly upward!
-        // Original Y offset accumulation for layering
-        // Vector3 position = activeNote.currentPosition;
-        // position.y += accInvaderY;
-        // activeNote.currentPosition = position;
+        // Keep Y position stable at ground level - no accumulation
+        Vector3 position = transform.position;
+        position.y = 0f;
+        transform.position = position;
     }
 
     void ApplyNoteHighlight(GameObject noteObject, bool highlight)
@@ -277,6 +299,8 @@ public class NoteRenderer : MonoBehaviour
 
     void HandleNotesGenerated(List<GameNoteInfo> notes)
     {
+        // Processing notes (debug removed for performance)
+
         foreach (var note in notes)
         {
             SpawnNote(note);
@@ -285,19 +309,35 @@ public class NoteRenderer : MonoBehaviour
 
     void SpawnNote(GameNoteInfo noteInfo)
     {
+        // Spawning note (debug removed)
+
         GameObject noteObject = GetPooledNote();
         if (noteObject == null)
         {
-            Debug.LogWarning("🎨 No pooled note available!");
-            return;
+            Debug.LogWarning("🎨 No pooled note available! Creating fallback cube...");
+            // Create a fallback cube note if no prefab is available
+            noteObject = CreateFallbackNote();
+            if (noteObject == null)
+            {
+                Debug.LogError("🎨 Failed to create fallback note!");
+                return;
+            }
         }
 
+        // Set up note renderer
         Renderer noteRenderer = noteObject.GetComponent<Renderer>();
         if (noteRenderer != null && noteMaterial != null)
         {
             noteRenderer.material = noteMaterial;
         }
+        else if (noteRenderer != null)
+        {
+            // Fallback material
+            noteRenderer.material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+            noteRenderer.material.color = Color.cyan;
+        }
 
+        // Calculate spawn position
         Vector3 spawnPosition;
         if (lanePositions != null && noteInfo.idx >= 0 && noteInfo.idx < lanePositions.Length)
         {
@@ -310,13 +350,16 @@ public class NoteRenderer : MonoBehaviour
             spawnPosition = new Vector3(xOffset, 0, 0);
         }
 
+        // Position note at back of world (far from camera)
         spawnPosition.z = worldDepth;
         spawnPosition.y = 0;
 
+        // Set note properties
         noteObject.transform.localScale = new Vector3(2.0f, 1.0f, 2.0f);
         noteObject.transform.position = spawnPosition;
         noteObject.SetActive(true);
 
+        // Create active note tracking
         var activeNote = new RenderingNote
         {
             gameObject = noteObject,
@@ -327,6 +370,30 @@ public class NoteRenderer : MonoBehaviour
 
         activeNotes.Add(activeNote);
         totalNotesRendered++;
+
+        // Note spawned successfully
+    }
+
+    GameObject CreateFallbackNote()
+    {
+        // Create a simple cube as fallback note
+        GameObject fallbackNote = GameObject.CreatePrimitive(PrimitiveType.Cube);
+
+        // Set up parent if available
+        if (noteParent != null)
+        {
+            fallbackNote.transform.SetParent(noteParent);
+        }
+
+        // Remove collider to avoid physics issues
+        var collider = fallbackNote.GetComponent<Collider>();
+        if (collider != null)
+        {
+            DestroyImmediate(collider);
+        }
+
+        fallbackNote.name = "FallbackNote";
+        return fallbackNote;
     }
 
     GameObject GetPooledNote()

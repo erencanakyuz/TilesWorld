@@ -9,7 +9,7 @@ public class AudioManager : MonoBehaviour
 
     [Header("🎵 Audio Configuration")]
     [SerializeField] private AudioMixer mainMixer;
-    [SerializeField] private int audioSourcePoolSize = 20;
+    [SerializeField] private int audioSourcePoolSize = 100; // Increased for high-frequency note playing
 
     [Header("🎼 Instrument Audio Clips")]
     [SerializeField] private InstrumentAudioData[] instruments;
@@ -163,8 +163,114 @@ public class AudioManager : MonoBehaviour
 
     public AudioClip GetNoteClip(InstrumentType instrument, int pitch)
     {
-        // Placeholder - would load from instrument audio banks
+        // Try to get from instrument arrays first
+        if (instruments != null && instruments.Length > 0)
+        {
+            foreach (var instrumentData in instruments)
+            {
+                if (instrumentData.instrumentType == instrument &&
+                    instrumentData.noteClips != null &&
+                    pitch >= 0 && pitch < instrumentData.noteClips.Length)
+                {
+                    return instrumentData.noteClips[pitch];
+                }
+            }
+        }
+
+        // Try to load from Assets/Audio directory structure
+        AudioClip audioClip = LoadAudioFromAssets(instrument, pitch);
+        if (audioClip != null)
+        {
+            return audioClip;
+        }
+
+        // Fallback: Generate a temporary audio clip for testing
+        return GenerateTestTone(pitch);
+    }
+
+    AudioClip LoadAudioFromAssets(InstrumentType instrument, int pitch)
+    {
+        // Match original game's audio file structure: Assets/Audio/[Instrument]/[file_snd000-044].ogg
+        string instrumentFolder = instrument.ToString(); // Piano, Harp, Guitar
+        string fileName = "";
+
+        // Map instrument to original file naming convention
+        switch (instrument)
+        {
+            case InstrumentType.Piano:
+                fileName = $"piano_snd{pitch:D3}"; // piano_snd000, piano_snd001, etc.
+                break;
+            case InstrumentType.Harp:
+                fileName = $"harp_snd{pitch:D3}"; // harp_snd000, harp_snd001, etc.
+                break;
+            case InstrumentType.Guitar:
+                // Original had both acustic and classic - try acustic first
+                fileName = $"acustic_guitar_snd{pitch:D3}"; // acustic_guitar_snd000, etc.
+                break;
+        }
+
+        // Try multiple loading paths
+        string[] possiblePaths = {
+            $"Audio/{instrumentFolder}/{fileName}",  // Resources/Audio/Piano/piano_snd000
+            $"{instrumentFolder}/{fileName}",        // Resources/Piano/piano_snd000
+            fileName                                 // Resources/piano_snd000
+        };
+
+        foreach (string path in possiblePaths)
+        {
+            AudioClip clip = Resources.Load<AudioClip>(path);
+            if (clip != null)
+            {
+                // Audio loaded successfully
+                return clip;
+            }
+        }
+
+        // Fallback path for Guitar - try classic variant
+        if (instrument == InstrumentType.Guitar)
+        {
+            fileName = $"classic_guitar_snd{pitch:D3}";
+            string[] guitarPaths = {
+                $"Audio/{instrumentFolder}/{fileName}",
+                $"{instrumentFolder}/{fileName}",
+                fileName
+            };
+
+            foreach (string path in guitarPaths)
+            {
+                AudioClip clip = Resources.Load<AudioClip>(path);
+                if (clip != null)
+                {
+                    // Guitar audio loaded successfully
+                    return clip;
+                }
+            }
+        }
+
+        Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch}. " +
+                        $"Make sure audio files are in Resources folder!");
         return null;
+    }
+
+    AudioClip GenerateTestTone(int pitch)
+    {
+        // Generate a simple sine wave tone for testing
+        float frequency = 440f * Mathf.Pow(2f, (pitch - 69) / 12f); // A4 = 440Hz
+        int sampleRate = 44100;
+        float duration = 0.2f; // Short note
+        int samples = Mathf.RoundToInt(duration * sampleRate);
+
+        AudioClip clip = AudioClip.Create($"TestTone_{pitch}", samples, 1, sampleRate, false);
+        float[] data = new float[samples];
+
+        for (int i = 0; i < samples; i++)
+        {
+            float time = (float)i / sampleRate;
+            data[i] = Mathf.Sin(2 * Mathf.PI * frequency * time) * 0.3f; // 30% volume
+        }
+
+        clip.SetData(data, 0);
+        return clip;
     }
     #endregion
 
@@ -274,12 +380,29 @@ public class AudioManager : MonoBehaviour
 
     void Update()
     {
+        // Recycle finished audio sources back to pool
+        RecycleFinishedAudioSources();
+
         // Monitor audio performance in real-time
         if (enableLatencyMonitoring && Time.frameCount % 60 == 0) // Check every second
         {
             if (averageLatency > 25f) // Above our comfort zone
             {
                 Debug.LogWarning($"⚠️ Audio performance warning - Avg latency: {averageLatency:F2}ms");
+            }
+        }
+    }
+
+    void RecycleFinishedAudioSources()
+    {
+        // Check active audio sources and return finished ones to pool
+        for (int i = activeAudioSources.Count - 1; i >= 0; i--)
+        {
+            AudioSource source = activeAudioSources[i];
+            if (source != null && !source.isPlaying)
+            {
+                activeAudioSources.RemoveAt(i);
+                audioSourcePool.Enqueue(source);
             }
         }
     }

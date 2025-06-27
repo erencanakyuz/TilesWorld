@@ -57,8 +57,7 @@ public class GameNoteCreator : MonoBehaviour
         if (showDebugInfo)
             Debug.Log("🎵 GameNoteCreator initialized with original algorithms");
 
-        // Force enable debug for initial testing
-        showDebugInfo = true;
+        // Debug can be enabled in inspector if needed
     }
 
     void InitializeNoteCreator()
@@ -115,6 +114,9 @@ public class GameNoteCreator : MonoBehaviour
             }
 
             var notesToReturn = ProcessNotePackage(packageToProcess);
+
+            // OnNotesGenerated event working correctly
+
             OnNotesGenerated?.Invoke(notesToReturn);
 
             totalNotesGenerated += notesToReturn.Count;
@@ -227,8 +229,7 @@ public class GameNoteCreator : MonoBehaviour
                 }
             }
 
-            if (showDebugInfo && originalIdx != note.idx)
-                Debug.Log($"🎯 Complex rule applied: Note {originalIdx} → {note.idx}, Direction: {(isRightDirection ? "→" : "←")}");
+            // Complex rule applied successfully (debug removed)
         }
     }
 

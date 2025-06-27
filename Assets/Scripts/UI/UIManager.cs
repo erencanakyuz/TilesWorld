@@ -42,7 +42,7 @@ public class UIManager : MonoBehaviour
     [Header("⚙️ UI Configuration")]
     [SerializeField] private float effectDuration = 1.0f;
     [SerializeField] private AnimationCurve fadeAnimation;
-    [SerializeField] private bool adaptiveUISize = true;
+    // Removed unused field adaptiveUISize
 
     // UI State Management
     private Dictionary<GameState, GameObject> statePanels;
@@ -78,8 +78,43 @@ public class UIManager : MonoBehaviour
 
     void Start()
     {
+        ConfigureMobileLandscapeCanvas();
         SetupEventListeners();
         AdaptToScreenSize();
+        InitializeUISystem();
+    }
+
+    void ConfigureMobileLandscapeCanvas()
+    {
+        // Force landscape configuration for mobile rhythm game
+        if (mainCanvas != null)
+        {
+            CanvasScaler scaler = mainCanvas.GetComponent<CanvasScaler>();
+            if (scaler == null)
+                scaler = mainCanvas.gameObject.AddComponent<CanvasScaler>();
+
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080); // Force landscape
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.0f; // Match width for landscape
+
+            // Canvas configured for landscape
+
+            // Hint: Make sure Project Settings > Player > Resolution > Default Orientation = Landscape Left/Right
+        }
+
+        // Also configure HUD canvas
+        if (hudCanvas != null)
+        {
+            CanvasScaler hudScaler = hudCanvas.GetComponent<CanvasScaler>();
+            if (hudScaler == null)
+                hudScaler = hudCanvas.gameObject.AddComponent<CanvasScaler>();
+
+            hudScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            hudScaler.referenceResolution = new Vector2(1920, 1080);
+            hudScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            hudScaler.matchWidthOrHeight = 0.0f;
+        }
     }
 
     void InitializeUISystem()
@@ -142,17 +177,32 @@ public class UIManager : MonoBehaviour
     {
         float aspectRatio = (float)Screen.width / Screen.height;
 
-        // Adapt UI to different screen sizes
-        bool isTablet = aspectRatio > 1.5f;
+        // Force landscape orientation for mobile piano game
+        bool isLandscape = aspectRatio > 1.0f;
 
         if (mainCanvas != null)
         {
             CanvasScaler scaler = mainCanvas.GetComponent<CanvasScaler>();
             if (scaler != null)
             {
-                scaler.referenceResolution = isTablet ?
-                    new Vector2(1920, 1080) :
-                    new Vector2(1080, 1920);
+                // Always use landscape resolution for mobile rhythm game
+                scaler.referenceResolution = new Vector2(1920, 1080);
+                scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+                scaler.matchWidthOrHeight = isLandscape ? 0.0f : 1.0f; // Match width in landscape
+
+                // Canvas orientation adapted
+            }
+        }
+
+        // Also adapt HUD canvas if available
+        if (hudCanvas != null)
+        {
+            CanvasScaler hudScaler = hudCanvas.GetComponent<CanvasScaler>();
+            if (hudScaler != null)
+            {
+                hudScaler.referenceResolution = new Vector2(1920, 1080);
+                hudScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+                hudScaler.matchWidthOrHeight = 0.0f; // Match width for HUD elements
             }
         }
     }
@@ -185,7 +235,91 @@ public class UIManager : MonoBehaviour
         if (mobileControls != null)
             mobileControls.SetActive(true);
 
+        // Setup landscape-optimized HUD layout
+        SetupLandscapeHUDLayout();
+        SetupMobileLandscapeControls();
+
         ResetGameplayUI();
+    }
+
+    void SetupLandscapeHUDLayout()
+    {
+        // Position HUD elements for landscape mobile layout
+
+        // Score - Top Left
+        if (scoreText != null)
+        {
+            RectTransform scoreRect = scoreText.GetComponent<RectTransform>();
+            scoreRect.anchorMin = new Vector2(0f, 1f);
+            scoreRect.anchorMax = new Vector2(0f, 1f);
+            scoreRect.anchoredPosition = new Vector2(100f, -60f); // Top-left corner
+            scoreRect.sizeDelta = new Vector2(300f, 80f);
+            scoreText.fontSize = 36;
+            scoreText.alignment = TMPro.TextAlignmentOptions.Left;
+        }
+
+        // Combo - Top Center
+        if (comboText != null)
+        {
+            RectTransform comboRect = comboText.GetComponent<RectTransform>();
+            comboRect.anchorMin = new Vector2(0.5f, 1f);
+            comboRect.anchorMax = new Vector2(0.5f, 1f);
+            comboRect.anchoredPosition = new Vector2(0f, -60f); // Top-center
+            comboRect.sizeDelta = new Vector2(400f, 80f);
+            comboText.fontSize = 32;
+            comboText.alignment = TMPro.TextAlignmentOptions.Center;
+        }
+
+        // Health Bar - Top Right
+        if (healthBar != null)
+        {
+            RectTransform healthRect = healthBar.GetComponent<RectTransform>();
+            healthRect.anchorMin = new Vector2(1f, 1f);
+            healthRect.anchorMax = new Vector2(1f, 1f);
+            healthRect.anchoredPosition = new Vector2(-200f, -60f); // Top-right
+            healthRect.sizeDelta = new Vector2(300f, 30f);
+        }
+
+        // Multiplier - Near score
+        if (multiplierText != null)
+        {
+            RectTransform multiplierRect = multiplierText.GetComponent<RectTransform>();
+            multiplierRect.anchorMin = new Vector2(0f, 1f);
+            multiplierRect.anchorMax = new Vector2(0f, 1f);
+            multiplierRect.anchoredPosition = new Vector2(100f, -120f); // Below score
+            multiplierRect.sizeDelta = new Vector2(150f, 60f);
+            multiplierText.fontSize = 28;
+            multiplierText.alignment = TMPro.TextAlignmentOptions.Left;
+        }
+
+        // Landscape HUD configured
+    }
+
+    void SetupMobileLandscapeControls()
+    {
+        // Create or setup mobile control buttons for landscape orientation
+
+        // Pause button - Top Right Corner (easily reachable)
+        if (pauseButton != null)
+        {
+            RectTransform pauseRect = pauseButton.GetComponent<RectTransform>();
+            pauseRect.anchorMin = new Vector2(1f, 1f);
+            pauseRect.anchorMax = new Vector2(1f, 1f);
+            pauseRect.anchoredPosition = new Vector2(-80f, -80f); // Top-right
+            pauseRect.sizeDelta = new Vector2(60f, 60f);
+        }
+
+        // Settings button - Top Right, below pause
+        if (settingsButton != null)
+        {
+            RectTransform settingsRect = settingsButton.GetComponent<RectTransform>();
+            settingsRect.anchorMin = new Vector2(1f, 1f);
+            settingsRect.anchorMax = new Vector2(1f, 1f);
+            settingsRect.anchoredPosition = new Vector2(-80f, -160f); // Below pause
+            settingsRect.sizeDelta = new Vector2(60f, 60f);
+        }
+
+        // Mobile controls configured
     }
 
     void ShowPauseUI()

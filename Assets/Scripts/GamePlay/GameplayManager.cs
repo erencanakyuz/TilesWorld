@@ -787,9 +787,7 @@ public class GameplayManager : MonoBehaviour
 
     void OnApplicationFocus(bool hasFocus)
     {
-#if UNITY_EDITOR
-        Debug.Log($"🎮 GameplayManager focus change ignored: {hasFocus}");
-#else
+#if !UNITY_EDITOR
         if (enablePauseOnFocusLoss && !hasFocus && isGameActive && !isGamePaused)
         {
             PauseGameplay();
