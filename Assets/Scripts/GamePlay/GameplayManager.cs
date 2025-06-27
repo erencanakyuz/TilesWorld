@@ -81,7 +81,7 @@ public class GameplayManager : MonoBehaviour
 
         if (autoStartOnLoad && currentSong != null)
         {
-            StartCoroutine(DelayedGameStart(1f));
+            StartCoroutine(DelayedGameStartCoroutine(1f));
         }
 
         if (showDebugInfo)
@@ -142,6 +142,20 @@ public class GameplayManager : MonoBehaviour
 
         // Subscribe to game manager events
         GameManager.OnGameStateChanged += HandleGameStateChange;
+    }
+
+    IEnumerator DelayedGameStartCoroutine(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        if (currentSong != null)
+        {
+            StartGameplay(currentSong);
+        }
+        else
+        {
+            Debug.LogWarning("🎮 No song available for auto-start");
+        }
     }
 
     #region Main Game Loop (Original World.java update logic)
@@ -521,7 +535,8 @@ public class GameplayManager : MonoBehaviour
         // Show hit effect
         if (UIManager.Instance != null)
         {
-            UIManager.Instance.ShowHitEffect(accuracy, screenPosition);
+            Vector2 hitPosition = new Vector2(lane * Screen.width / 6f, Screen.height * 0.8f);
+            UIManager.Instance.ShowHitEffect(accuracy, hitPosition);
         }
 
         if (showDebugInfo)

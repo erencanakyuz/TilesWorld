@@ -2,9 +2,12 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
 using System;
+using TouchPhase = UnityEngine.TouchPhase; // Use legacy TouchPhase for Input.GetTouch()
 
 public class InputManager : MonoBehaviour
 {
+    public static InputManager Instance { get; private set; }
+
     [Header("🎮 Input Configuration")]
     [SerializeField] private int maxSimultaneousTouches = 6; // 6 lanes support
     [SerializeField] private bool enableTouchVisualization = false;
@@ -37,8 +40,16 @@ public class InputManager : MonoBehaviour
 
     void Awake()
     {
-        InitializeInputSystem();
-        DontDestroyOnLoad(gameObject);
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+            InitializeInputSystem();
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     void Start()

@@ -6,6 +6,8 @@ using TMPro;
 
 public class UIManager : MonoBehaviour
 {
+    public static UIManager Instance { get; private set; }
+
     [Header("🎨 UI References")]
     [SerializeField] private Canvas mainCanvas;
     [SerializeField] private Canvas overlayCanvas;
@@ -62,8 +64,16 @@ public class UIManager : MonoBehaviour
 
     void Awake()
     {
-        InitializeUISystem();
-        DontDestroyOnLoad(gameObject);
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+            InitializeUISystem();
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     void Start()
