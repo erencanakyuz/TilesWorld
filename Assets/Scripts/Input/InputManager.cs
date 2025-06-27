@@ -9,7 +9,7 @@ public class InputManager : MonoBehaviour
 
     [Header("🎮 Input Configuration")]
     [SerializeField] private int maxSimultaneousTouches = 6; // 6 lanes support
-    [SerializeField] private bool enableTouchVisualization = false;
+    [SerializeField] private bool enableTouchVisualization = true; // Enable for debugging
 
     [Header("📱 Mobile Settings")]
     [SerializeField] private float touchSensitivity = 1.0f;
@@ -18,10 +18,10 @@ public class InputManager : MonoBehaviour
     [Header("🎯 Lane Configuration")]
     [SerializeField] private float screenWidth = 1080f; // Reference width
     [SerializeField] private int laneCount = 6;
-    [SerializeField] private float laneWidth;
+    private float laneWidth = 1.8f; // Match NoteRenderer laneWidth - don't serialize, get from NoteRenderer
 
     [Header("📊 Debug Info")]
-    [SerializeField] private bool showDebugInfo = false;
+    [SerializeField] private bool showDebugInfo = false; // Disable debug spam
     [SerializeField] private int activeTouchCount = 0;
 
     // Input Events
@@ -36,6 +36,7 @@ public class InputManager : MonoBehaviour
     // Screen to lane conversion
     private Camera mainCamera;
     private Vector2 screenBounds;
+    private Vector3[] laneWorldPositions; // Match NoteRenderer lanes
 
     void Awake()
     {
@@ -53,6 +54,8 @@ public class InputManager : MonoBehaviour
 
     void Start()
     {
+        // Setup lane positions after SerializeField values are loaded
+        SetupLanePositions();
         SetupScreenConfiguration();
     }
 
@@ -63,23 +66,38 @@ public class InputManager : MonoBehaviour
         if (mainCamera == null)
             mainCamera = FindFirstObjectByType<Camera>();
 
-        // Calculate lane configuration
-        laneWidth = screenWidth / laneCount;
+        Debug.Log($"InputManager initialized - {laneCount} lanes");
+    }
 
-        Debug.Log($"InputManager initialized - {laneCount} lanes, {laneWidth:F0}px wide each");
+    void SetupLanePositions()
+    {
+        laneWorldPositions = new Vector3[laneCount];
+
+        for (int i = 0; i < laneCount; i++)
+        {
+            // EXACT same algorithm as NoteRenderer
+            float xOffset = (i - (laneCount - 1) * 0.5f) * laneWidth;
+            laneWorldPositions[i] = new Vector3(xOffset, 0, 0);
+        }
+
+        if (showDebugInfo)
+        {
+            Debug.Log($"🎯 Input lanes configured: {laneCount} lanes, {laneWidth:F1}f width each");
+        }
     }
 
     void SetupScreenConfiguration()
     {
-        // Calculate screen bounds in world space
         if (mainCamera != null)
         {
-            Vector3 screenBottomLeft = mainCamera.ScreenToWorldPoint(new Vector3(0, 0, mainCamera.nearClipPlane));
-            Vector3 screenTopRight = mainCamera.ScreenToWorldPoint(new Vector3(Screen.width, Screen.height, mainCamera.nearClipPlane));
-            screenBounds = new Vector2(screenTopRight.x - screenBottomLeft.x, screenTopRight.y - screenBottomLeft.y);
-        }
+            // Get screen bounds for UI positioning
+            Vector3 screenBounds = mainCamera.ScreenToWorldPoint(new Vector3(Screen.width, Screen.height, mainCamera.nearClipPlane));
 
-        Debug.Log($"Screen configuration: {Screen.width}x{Screen.height}, bounds: {screenBounds}");
+            if (showDebugInfo)
+            {
+                Debug.Log($"Screen: {Screen.width}x{Screen.height}, bounds: ({screenBounds.x:F2}, {screenBounds.y:F2})");
+            }
+        }
     }
 
     void Update()
@@ -108,8 +126,6 @@ public class InputManager : MonoBehaviour
         // Handle mouse input for testing on PC
         HandleMouseInput();
     }
-
-
 
     void HandleTouchBegan(int touchId, Vector2 screenPosition, int lane)
     {
@@ -223,10 +239,8 @@ public class InputManager : MonoBehaviour
                 OnLaneTapped?.Invoke(lane, mousePosition);
 
                 // Visual feedback for input
-                CreateInputVisualization(lane, mousePosition);
-
-                if (showDebugInfo)
-                    Debug.Log($"Mouse click: Lane {lane}, Position {mousePosition}");
+                if (enableTouchVisualization)
+                    CreateInputVisualization(lane, mousePosition);
             }
         }
     }
@@ -265,12 +279,32 @@ public class InputManager : MonoBehaviour
 
     int ScreenPositionToLane(Vector2 screenPosition)
     {
-        // Convert screen position to lane index
-        float normalizedX = screenPosition.x / Screen.width;
-        int lane = Mathf.FloorToInt(normalizedX * laneCount);
+        if (mainCamera == null || laneWorldPositions == null) return 0;
 
-        // Clamp to valid range
-        return Mathf.Clamp(lane, 0, laneCount - 1);
+        // Convert screen position to world space (at Z=0 where lanes are)
+        Vector3 worldPoint = mainCamera.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, mainCamera.nearClipPlane));
+
+        // Find closest lane based on world X position
+        int closestLane = 0;
+        float closestDistance = Mathf.Abs(worldPoint.x - laneWorldPositions[0].x);
+
+        for (int i = 1; i < laneCount; i++)
+        {
+            float distance = Mathf.Abs(worldPoint.x - laneWorldPositions[i].x);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestLane = i;
+            }
+        }
+
+        // Debug the mapping
+        if (showDebugInfo)
+        {
+            Debug.Log($"🎯 Input mapping: Screen {screenPosition.x:F0}px → World {worldPoint.x:F2} → Lane {closestLane} (distance: {closestDistance:F2})");
+        }
+
+        return closestLane;
     }
 
     Vector2 LaneToScreenPosition(int lane)
@@ -302,9 +336,10 @@ public class InputManager : MonoBehaviour
 
     void UpdateDebugInfo()
     {
-        if (showDebugInfo && Time.frameCount % 60 == 0) // Every second
+        // Only log when debug is enabled AND there are active touches AND very rarely
+        if (showDebugInfo && activeTouchCount > 0 && Time.frameCount % 600 == 0) // Every 10 seconds
         {
-            Debug.Log($"Input Status - Active touches: {activeTouchCount}, Active lanes: [{string.Join(", ", currentlyActiveLanes)}]");
+            Debug.Log($"🎯 Input Status - Active touches: {activeTouchCount}");
         }
     }
 
@@ -332,7 +367,7 @@ public class InputManager : MonoBehaviour
     public void SetLaneCount(int count)
     {
         laneCount = Mathf.Clamp(count, 1, 10);
-        laneWidth = screenWidth / laneCount;
+        SetupLanePositions(); // Recalculate lane positions
         Debug.Log($"Lane count updated: {laneCount} lanes");
     }
 
@@ -392,30 +427,27 @@ public class InputManager : MonoBehaviour
 
     void CreateInputVisualization(int lane, Vector2 screenPosition)
     {
+        if (!enableTouchVisualization || lane < 0 || lane >= laneCount) return;
+
         // Create visual feedback for input (temporary sphere)
         GameObject feedback = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         feedback.name = "InputFeedback";
 
-        // Position at lane center in world space (approximate)
-        float laneWidth = screenWidth / laneCount / 100f; // Scale down for world space
-        Vector3 worldPosition = new Vector3((lane - 2.5f) * laneWidth, 1f, 3f);
+        // Position at exact lane center in world space
+        Vector3 worldPosition = laneWorldPositions[lane];
+        worldPosition.y = 1f; // Above ground level
+        worldPosition.z = 3f; // At hit zone
 
         feedback.transform.position = worldPosition;
         feedback.transform.localScale = Vector3.one * 0.5f;
 
         // Color coding by lane
         Renderer renderer = feedback.GetComponent<Renderer>();
-        Color laneColor = Color.HSVToRGB((float)lane / laneCount, 0.8f, 1f);
+        Color laneColor = Color.HSVToRGB((float)lane / laneCount, 0.8f, 1.0f);
         renderer.material.color = laneColor;
 
-        // Remove collider
-        DestroyImmediate(feedback.GetComponent<Collider>());
-
-        // Auto destroy after 1 second
-        Destroy(feedback, 1f);
-
-        if (showDebugInfo)
-            Debug.Log($"Created input visualization at lane {lane}, world pos: {worldPosition}");
+        // Auto cleanup after 1 second
+        Destroy(feedback, 1.0f);
     }
 }
 

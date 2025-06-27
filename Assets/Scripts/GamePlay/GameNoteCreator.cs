@@ -97,19 +97,6 @@ public class GameNoteCreator : MonoBehaviour
 
         accumulatedDeltaTime += deltaTime;
 
-        // Debug timing condition
-        if (showDebugInfo && Time.frameCount % 120 == 0) // Every 2 seconds
-        {
-            if (currentReturnPackage != null)
-            {
-                Debug.Log($"🎵 Timing check: Package time {currentReturnPackage.oneNote}ms vs Accumulated {accumulatedDeltaTime * 1000f:F1}ms");
-            }
-            else
-            {
-                Debug.Log($"🎵 No current package! Remaining in queue: {finalGameNotePackages.Count}");
-            }
-        }
-
         // Check if it's time to return notes (original timing logic)
         if (currentReturnPackage != null &&
             currentReturnPackage.oneNote <= accumulatedDeltaTime * 1000f)
@@ -132,7 +119,8 @@ public class GameNoteCreator : MonoBehaviour
             var notesToReturn = ProcessNotePackage(packageToProcess);
             OnNotesGenerated?.Invoke(notesToReturn);
 
-            if (showDebugInfo)
+            // Only log occasionally if debug enabled
+            if (showDebugInfo && totalNotesGenerated % 5 == 0)
                 Debug.Log($"🎵 Generated {notesToReturn.Count} notes at time: {(accumulatedDeltaTime + deltaTime) * 1000f:F1}ms");
 
             totalNotesGenerated += notesToReturn.Count;
@@ -461,12 +449,10 @@ public class GameNoteCreator : MonoBehaviour
 
     void Update()
     {
-        if (showDebugInfo && Time.frameCount % 60 == 0) // Every second
+        // Only log stats very rarely, not every 5 seconds
+        if (showDebugInfo && Time.frameCount % 1800 == 0) // Every 30 seconds
         {
-            var stats = GetGenerationStats();
-            Debug.Log($"🎵 Note Generator Stats: {stats.totalNotesGenerated} notes, " +
-                     $"Direction: {(stats.isRightDirection ? "→" : "←")} ({stats.currentDirectionCount}), " +
-                     $"Remaining: {stats.remainingPackages}");
+            Debug.Log($"🎵 Note Generator: {totalNotesGenerated} generated, Direction: {(isRightDirection ? "→" : "←")} ({currentDirectionCnt}), Remaining: {finalGameNotePackages.Count}");
         }
     }
 

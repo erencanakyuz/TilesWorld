@@ -20,8 +20,8 @@ public class NoteRenderer : MonoBehaviour
 
     [Header("🚀 Perspective Movement (Original Algorithm)")]
     [SerializeField] private float worldDepth = 25f;           // Original: 25.0F depth
-    [SerializeField] private float speedMultiplier = 0.1f;     // EXTREMELY SLOW for debugging
-    [SerializeField] private float baseNoteSpeed = 0.5f;       // EXTREMELY SLOW to see notes
+    [SerializeField] private float speedMultiplier = 0.1f;     // Debug: extremely slow for visibility
+    [SerializeField] private float baseNoteSpeed = 0.5f;       // Base movement speed
     [SerializeField] private bool enablePerspectiveScaling = true;
     [SerializeField] private bool enablePerspectiveRotation = true;
 
@@ -33,7 +33,7 @@ public class NoteRenderer : MonoBehaviour
     [Header("📊 Performance & Debug")]
     [SerializeField] private bool enableObjectPooling = true;
     [SerializeField] private int poolSize = 50;
-    [SerializeField] private bool showDebugInfo = true;  // Enable for debugging visibility issues
+    [SerializeField] private bool showDebugInfo = false; // Debug disabled for performance
     [SerializeField] private bool showHitZone = true;
 
     // Object pooling system (from MD analysis)
@@ -66,9 +66,6 @@ public class NoteRenderer : MonoBehaviour
         SetupCamera();
         SubscribeToEvents();
         CheckSceneLighting();
-
-        if (showDebugInfo)
-            Debug.Log("🎨 NoteRenderer initialized with original WorldRenderer algorithms");
     }
 
     void CheckSceneLighting()
@@ -76,18 +73,7 @@ public class NoteRenderer : MonoBehaviour
         Light[] lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
         if (lights.Length == 0)
         {
-            Debug.LogWarning("🎨 No lights found in scene! Notes may not be visible. URP/Lit material needs lighting.");
-        }
-        else
-        {
-            Debug.Log($"🎨 Found {lights.Length} lights in scene: {string.Join(", ", lights.Select(l => l.name + "(" + l.type + ")"))}");
-        }
-
-        // Check for UI Canvas that might block notes
-        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
-        foreach (var canvas in canvases)
-        {
-            Debug.Log($"🎨 Found Canvas: {canvas.name}, RenderMode: {canvas.renderMode}, SortingOrder: {canvas.sortingOrder}");
+            Debug.LogWarning("🎨 No lights found in scene! Notes may not be visible.");
         }
     }
 
@@ -104,7 +90,7 @@ public class NoteRenderer : MonoBehaviour
 
     void CreateNoteMaterial()
     {
-        // Create a bright, visible material for notes - using Unlit for guaranteed visibility
+        // Create a bright, visible material for notes
         noteMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
         noteMaterial.color = Color.cyan;
 
@@ -113,11 +99,6 @@ public class NoteRenderer : MonoBehaviour
         {
             noteMaterial = new Material(Shader.Find("Unlit/Color"));
             noteMaterial.color = Color.cyan;
-            Debug.Log("🎨 Created note material: Cyan Standard/Unlit (fallback)");
-        }
-        else
-        {
-            Debug.Log("🎨 Created note material: Cyan URP/Unlit");
         }
     }
 
@@ -131,8 +112,6 @@ public class NoteRenderer : MonoBehaviour
             note.SetActive(false);
             notePool.Enqueue(note);
         }
-
-        Debug.Log($"🎨 Note pool created: {poolSize} objects");
     }
 
     void SetupLanes()
@@ -193,30 +172,11 @@ public class NoteRenderer : MonoBehaviour
     {
         float deltaTime = Time.deltaTime;
 
-        // Debug Update method is being called when notes are active
-        if (showDebugInfo && activeNotes.Count > 0 && Time.frameCount % 5 == 0)
-        {
-            Debug.Log($"🎨 UPDATE: {activeNotes.Count} active notes, deltaTime: {deltaTime:F3}, TimeScale: {Time.timeScale}");
-        }
-
         UpdateNoteTextures(deltaTime);
         UpdateActiveNotes(deltaTime);
         CleanupDestroyedNotes();
 
         UpdateDebugInfo();
-
-        // Debug Update loop more frequently to confirm it's running  
-        if (showDebugInfo && Time.frameCount % 60 == 0) // Every second
-        {
-            if (activeNotes.Count > 0)
-            {
-                Debug.Log($"🎨 Update loop active: {activeNotes.Count} notes being processed, TimeScale: {Time.timeScale}");
-            }
-            else if (Time.frameCount % 300 == 0) // Every 5 seconds when no notes
-            {
-                Debug.Log($"🎨 Update loop running but no active notes, TimeScale: {Time.timeScale}");
-            }
-        }
     }
 
     /// <summary>
@@ -243,63 +203,48 @@ public class NoteRenderer : MonoBehaviour
     /// </summary>
     void UpdateActiveNotes(float deltaTime)
     {
-        // ULTRA-AGGRESSIVE debugging - log EVERY frame when we have notes
-        if (showDebugInfo && activeNotes.Count > 0)
-        {
-            Debug.Log($"🎨 UpdateActiveNotes called: {activeNotes.Count} notes to process, deltaTime: {deltaTime:F4}, TimeScale: {Time.timeScale}");
-        }
-
-        // CRITICAL: Check if time is paused (deltaTime will be 0)
+        // Check if time is paused
         if (deltaTime <= 0f || Time.timeScale <= 0f)
         {
-            if (showDebugInfo && activeNotes.Count > 0)
-            {
-                Debug.Log($"🎨 Movement paused! deltaTime: {deltaTime:F4}, TimeScale: {Time.timeScale}, {activeNotes.Count} notes waiting");
-            }
-            return; // Don't move notes when paused
+            return; // Skip movement if paused
         }
 
-        // DISABLED: This was making notes fly upward!
-        // accInvaderY += 0.01f; // Original: slight Y offset accumulation
-
-        for (int i = activeNotes.Count - 1; i >= 0; i--) // Reverse iteration (original)
+        for (int i = activeNotes.Count - 1; i >= 0; i--)
         {
             var activeNote = activeNotes[i];
+            if (activeNote == null || activeNote.gameObject == null || !activeNote.gameObject.activeInHierarchy) continue;
 
-            // Original movement calculation with perspective speed adjustment
-            float zPosition = activeNote.currentPosition.z;
-            float speedFactor = CalculateSpeedFactor(zPosition); // Original algorithm
-            float currentSpeed = baseNoteSpeed * speedFactor * speedMultiplier;
+            // Original Java movement logic - update currentPosition
+            float originalZ = activeNote.currentPosition.z;
 
-            // Move note towards player (original Z-axis movement)
-            float oldZ = activeNote.currentPosition.z;
-            activeNote.currentPosition.z -= currentSpeed * deltaTime;
+            // Move note forward (Z decreases from 25 to 3)
+            activeNote.currentPosition.z -= baseNoteSpeed * speedMultiplier * deltaTime;
 
-            // Apply original perspective effects
-            ApplyPerspectiveEffects(activeNote, zPosition);
-
-            // Update position
+            // Update GameObject position
             activeNote.gameObject.transform.position = activeNote.currentPosition;
 
-            // ULTRA-AGGRESSIVE: Debug ALL notes EVERY frame for the first 5 seconds
-            if (showDebugInfo && (Time.time - activeNote.spawnTime) < 5.0f)
+            // Occasional debug for first note only
+            if (showDebugInfo && i == 0 && Time.frameCount % 120 == 0) // Every 2 seconds
             {
-                Debug.Log($"🎨 NOTE {i} MOVING: Z {oldZ:F2} → {activeNote.currentPosition.z:F2}, Y: {activeNote.currentPosition.y:F2}, Speed: {currentSpeed:F4}, DeltaTime: {deltaTime:F4}");
+                Debug.Log($"🎨 Note 0 moving: Z {originalZ:F1} → {activeNote.currentPosition.z:F1}");
             }
 
-            // Check if note passed hit zone or should be destroyed
-            if (activeNote.currentPosition.z < noteDestroyZ)
+            // Remove notes that have passed the hit zone
+            if (activeNote.currentPosition.z <= 2f)
             {
-                if (showDebugInfo)
-                    Debug.Log($"🎨 Note destroyed at Z={activeNote.currentPosition.z:F1} (below {noteDestroyZ})");
-
-                HandleNoteMissed(activeNote);
                 ReturnNoteToPool(activeNote.gameObject);
                 activeNotes.RemoveAt(i);
             }
         }
 
-        activeNoteCount = activeNotes.Count;
+        // Update visual effects for all active notes
+        if (activeNotes.Count > 0)
+        {
+            foreach (var activeNote in activeNotes)
+            {
+                ApplyPerspectiveEffects(activeNote, activeNote.currentPosition.z);
+            }
+        }
     }
 
     /// <summary>
@@ -356,14 +301,14 @@ public class NoteRenderer : MonoBehaviour
 
     void HandleNotesGenerated(List<GameNoteInfo> notes)
     {
-        Debug.Log($"🎨 NoteRenderer received {notes.Count} notes to spawn! Time: {Time.time:F1}, Frame: {Time.frameCount}");
+        Debug.Log($"🎨 Spawning {notes.Count} notes at time {Time.time:F1}s");
 
         foreach (var note in notes)
         {
             SpawnNote(note);
         }
 
-        Debug.Log($"🎨 Finished spawning {notes.Count} notes. Active count now: {activeNotes.Count}");
+        Debug.Log($"🎨 Active notes: {activeNotes.Count}");
     }
 
     void SpawnNote(GameNoteInfo noteInfo)
@@ -380,7 +325,6 @@ public class NoteRenderer : MonoBehaviour
         if (noteRenderer != null && noteMaterial != null)
         {
             noteRenderer.material = noteMaterial;
-            Debug.Log($"🎨 Material assigned to note: {noteMaterial.color}, Enabled: {noteRenderer.enabled}");
         }
         else
         {
@@ -422,21 +366,22 @@ public class NoteRenderer : MonoBehaviour
         activeNotes.Add(activeNote);
         totalNotesRendered++;
 
-        Debug.Log($"🎨 Note spawned: Lane {noteInfo.idx}, Position {spawnPosition}, Active: {noteObject.activeSelf}");
-        Debug.Log($"🎨 Active notes count: {activeNotes.Count}, Total rendered: {totalNotesRendered}");
-        Debug.Log($"🎨 Note spawned at frame {Time.frameCount}, TimeScale: {Time.timeScale}, spawnTime: {activeNote.spawnTime:F2}");
+        // Only log detailed spawn info for first few notes
+        if (showDebugInfo && totalNotesRendered <= 3)
+        {
+            Debug.Log($"🎨 Note spawned: Lane {noteInfo.idx}, Position {spawnPosition}, TimeScale: {Time.timeScale}");
+        }
     }
 
     GameObject GetPooledNote()
     {
         if (enableObjectPooling && notePool.Count > 0)
         {
-            Debug.Log($"🎨 Getting note from pool (remaining: {notePool.Count - 1})");
             return notePool.Dequeue();
         }
         else if (notePrefab != null && noteParent != null)
         {
-            Debug.Log($"🎨 Creating new note from prefab");
+            Debug.Log($"🎨 Creating new note from prefab (pool empty)");
             return Instantiate(notePrefab, noteParent);
         }
         else if (notePrefab == null)
