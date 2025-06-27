@@ -347,10 +347,11 @@ public class GameplayManager : MonoBehaviour
         {
             Debug.Log($"🎮 Starting in {i}...");
 
-            // Show countdown UI
-            if (UIManager.Instance != null)
+            // Show countdown UI - using isCountingDown state
+            if (UIManager.Instance != null && isCountingDown)
             {
-                // UIManager would show countdown number
+                // UIManager would show countdown number based on isCountingDown
+                Debug.Log($"🔢 Countdown UI: {i} (isCountingDown: {isCountingDown})");
             }
 
             yield return new WaitForSeconds(1f);
@@ -361,6 +362,8 @@ public class GameplayManager : MonoBehaviour
 
     IEnumerator LoadAndStartSong()
     {
+        isSongLoaded = false; // Mark as loading
+
         // Load audio clip (this would be enhanced with actual asset loading)
         if (audioManager != null && !string.IsNullOrEmpty(currentSong.audioFilePath))
         {
@@ -370,13 +373,21 @@ public class GameplayManager : MonoBehaviour
 
             yield return new WaitForSeconds(0.1f); // Simulate loading time
 
+            // Apply song start delay before audio playback
+            if (songStartDelay > 0)
+            {
+                Debug.Log($"🎵 Applying song start delay: {songStartDelay}s");
+                yield return new WaitForSeconds(songStartDelay);
+            }
+
             // Start audio playback
             // audioManager.PlayMusic(loadedClip, songStartDelay);
             isUsingAudioSync = useAudioTimeSync;
         }
 
         songDuration = currentSong.duration;
-        isSongLoaded = true;
+        isSongLoaded = true; // Mark as loaded
+        Debug.Log($"🎵 Song loaded successfully (isSongLoaded: {isSongLoaded})");
     }
 
     void BeginActiveGameplay()

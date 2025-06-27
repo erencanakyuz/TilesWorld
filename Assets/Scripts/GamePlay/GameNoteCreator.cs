@@ -47,10 +47,6 @@ public class GameNoteCreator : MonoBehaviour
     public static event Action<List<GameNoteInfo>> OnNotesGenerated;
     public static event Action OnGenerationComplete;
 
-    // Performance tracking
-    private int notesGeneratedThisFrame = 0;
-    private float lastGenerationTime = 0f;
-
     void Awake()
     {
         InitializeNoteCreator();
@@ -161,7 +157,7 @@ public class GameNoteCreator : MonoBehaviour
                 GameNoteInfo note1 = notes[i];
                 GameNoteInfo note2 = notes[j];
 
-                // Check if notes are too close (original algorithm)
+                // Check if notes are too close in lane position (original algorithm)
                 if (Mathf.Abs(note1.idx - note2.idx) == 1)
                 {
                     // Adjust second note position (original logic)
@@ -169,6 +165,17 @@ public class GameNoteCreator : MonoBehaviour
 
                     if (showDebugInfo)
                         Debug.Log($"🎯 Applied spacing: Note moved from {notes[j].idx} to {note2.idx}");
+                }
+
+                // Check if notes are too close in time (using noteSpacingMinMs)
+                float timeDifference = Mathf.Abs(note1.timeMs - note2.timeMs);
+                if (timeDifference < noteSpacingMinMs)
+                {
+                    // Adjust timing to maintain minimum spacing
+                    note2.timeMs = note1.timeMs + noteSpacingMinMs;
+
+                    if (showDebugInfo)
+                        Debug.Log($"🎯 Applied time spacing: {timeDifference:F1}ms → {noteSpacingMinMs}ms minimum");
                 }
             }
         }

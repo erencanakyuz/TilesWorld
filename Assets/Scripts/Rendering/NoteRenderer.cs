@@ -52,7 +52,6 @@ public class NoteRenderer : MonoBehaviour
 
     // Performance tracking
     private int activeNoteCount = 0;
-    private float lastFrameTime = 0f;
 
     void Awake()
     {
