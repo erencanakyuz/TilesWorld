@@ -15,7 +15,7 @@ public class GameNoteCreator : MonoBehaviour
     [Header("🎵 Note Generation Configuration")]
     [SerializeField] private int laneCount = 6;
     [SerializeField] private int maxGameHeightLength = 6;
-    [SerializeField] private float firstDelayMs = 1000f;
+
     [SerializeField] private int maxDirectionInterval = 10;
 
     [Header("🎯 Algorithm Parameters")]

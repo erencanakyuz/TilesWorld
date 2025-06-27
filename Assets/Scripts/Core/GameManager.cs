@@ -59,15 +59,15 @@ public class GameManager : MonoBehaviour
     {
         // Initialize audio system (already tested and working)
         if (audioManager == null)
-            audioManager = FindObjectOfType<AudioManager>();
+            audioManager = FindFirstObjectByType<AudioManager>();
 
         // Initialize input system
         if (inputManager == null)
-            inputManager = FindObjectOfType<InputManager>();
+            inputManager = FindFirstObjectByType<InputManager>();
 
         // Initialize UI system
         if (uiManager == null)
-            uiManager = FindObjectOfType<UIManager>();
+            uiManager = FindFirstObjectByType<UIManager>();
 
         Debug.Log("🎵 Core systems initialized");
     }

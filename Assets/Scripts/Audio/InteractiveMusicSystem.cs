@@ -13,7 +13,6 @@ public class InteractiveMusicSystem : MonoBehaviour
     [Header("🎵 Interactive Music Configuration")]
     [SerializeField] private bool enableInteractiveMusic = true;
     [SerializeField] private bool enableMusicalScales = true;
-    [SerializeField] private bool enableHarmonySupport = true;
 
     [Header("🎼 Musical Mapping (Original SOUND_RESOURCE_IDXS)")]
     [SerializeField] private InstrumentType currentInstrument = InstrumentType.Piano;
@@ -101,7 +100,7 @@ public class InteractiveMusicSystem : MonoBehaviour
     {
         audioManager = AudioManager.Instance;
         if (audioManager == null)
-            audioManager = FindObjectOfType<AudioManager>();
+            audioManager = FindFirstObjectByType<AudioManager>();
 
         // Set initial instrument
         if (GameManager.Instance != null)

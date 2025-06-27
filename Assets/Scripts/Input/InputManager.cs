@@ -62,7 +62,7 @@ public class InputManager : MonoBehaviour
         // Get main camera
         mainCamera = Camera.main;
         if (mainCamera == null)
-            mainCamera = FindObjectOfType<Camera>();
+            mainCamera = FindFirstObjectByType<Camera>();
 
         // Calculate lane configuration
         laneWidth = screenWidth / laneCount;

@@ -92,13 +92,13 @@ public class GameplayManager : MonoBehaviour
     {
         // Find system references if not assigned
         if (noteCreator == null)
-            noteCreator = FindObjectOfType<GameNoteCreator>();
+            noteCreator = FindFirstObjectByType<GameNoteCreator>();
 
         if (noteRenderer == null)
-            noteRenderer = FindObjectOfType<NoteRenderer>();
+            noteRenderer = FindFirstObjectByType<NoteRenderer>();
 
         if (musicSystem == null)
-            musicSystem = FindObjectOfType<InteractiveMusicSystem>();
+            musicSystem = FindFirstObjectByType<InteractiveMusicSystem>();
 
         if (audioManager == null)
             audioManager = AudioManager.Instance;

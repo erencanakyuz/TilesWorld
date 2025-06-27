@@ -112,7 +112,7 @@ public class NoteRenderer : MonoBehaviour
     {
         mainCamera = Camera.main;
         if (mainCamera == null)
-            mainCamera = FindObjectOfType<Camera>();
+            mainCamera = FindFirstObjectByType<Camera>();
 
         if (mainCamera != null)
         {
