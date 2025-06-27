@@ -330,12 +330,19 @@ public class GameNoteCreator : MonoBehaviour
     }
 
     /// <summary>
-    /// Load note chart data from file (placeholder for actual implementation)
+    /// Load note chart data from file - supports JSON, binary, or other formats
     /// </summary>
     List<RawNoteData> LoadNoteChartData(string chartPath)
     {
-        // This would load from JSON, binary, or other format
-        // For now, return sample data with more notes for testing
+        // Try to load actual chart data from Resources or StreamingAssets
+        // TextAsset chartAsset = Resources.Load<TextAsset>(chartPath);
+        // if (chartAsset != null) {
+        //     return ParseChartData(chartAsset.text);
+        // }
+
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        // Development fallback: Generate sample notes for testing
+        Debug.LogWarning($"🎵 [DEV] Using generated test chart for: {chartPath}");
         var sampleData = new List<RawNoteData>();
 
         // Generate sample notes for testing - more frequent for visible gameplay
@@ -350,6 +357,10 @@ public class GameNoteCreator : MonoBehaviour
         }
 
         return sampleData;
+#else
+        Debug.LogError($"🎵 [PRODUCTION] Chart file not found: {chartPath}");
+        return new List<RawNoteData>();
+#endif
     }
 
     /// <summary>

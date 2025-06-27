@@ -250,36 +250,37 @@ public class GameplayManager : MonoBehaviour
 
     void HandleDebugInput()
     {
-        // Use new Input System
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        // Debug controls only available in development builds and editor
         if (UnityEngine.InputSystem.Keyboard.current != null)
         {
             if (UnityEngine.InputSystem.Keyboard.current.spaceKey.wasPressedThisFrame)
             {
-                Debug.Log($"🎮 Space key pressed! isGameActive: {isGameActive}");
+                Debug.Log($"🎮 [DEV] Space key pressed! isGameActive: {isGameActive}");
 
                 if (!isGameActive)
                 {
                     if (currentSong != null)
                     {
-                        Debug.Log("🎵 Starting existing song...");
+                        Debug.Log("🎵 [DEV] Starting existing song...");
                         StartGameplay(currentSong);
                     }
                     else
                     {
-                        Debug.Log("🎵 No song found, creating test song...");
-                        // Create a test song on the fly
+                        Debug.Log("🎵 [DEV] No song found, creating test song...");
+                        // Create a test song on the fly for development
                         CreateAndStartTestSong();
                     }
                 }
                 else
                 {
-                    Debug.Log("🎮 Game already active, Space ignored");
+                    Debug.Log("🎮 [DEV] Game already active, Space ignored");
                 }
             }
 
             if (UnityEngine.InputSystem.Keyboard.current.pKey.wasPressedThisFrame && isGameActive)
             {
-                Debug.Log($"🎮 P key pressed! isGamePaused: {isGamePaused}");
+                Debug.Log($"🎮 [DEV] P key pressed! isGamePaused: {isGamePaused}");
                 if (isGamePaused)
                     ResumeGameplay();
                 else
@@ -288,15 +289,17 @@ public class GameplayManager : MonoBehaviour
 
             if (UnityEngine.InputSystem.Keyboard.current.rKey.wasPressedThisFrame && isGamePaused)
             {
-                Debug.Log("🎮 R key pressed! Resuming...");
+                Debug.Log("🎮 [DEV] R key pressed! Resuming...");
                 ResumeGameplay();
             }
         }
+#endif
     }
 
     void CreateAndStartTestSong()
     {
-        // Create a temporary test song for immediate testing
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+        // Create a temporary test song for development testing only
         var testSong = ScriptableObject.CreateInstance<SongData>();
         testSong.songName = "Test Song";
         testSong.artist = "Piano Game Test";
@@ -306,8 +309,11 @@ public class GameplayManager : MonoBehaviour
         testSong.noteChartPath = "Test/Chart";
         testSong.difficulty = DifficultyLevel.Easy;
 
-        Debug.Log("🎵 Created test song - starting gameplay!");
+        Debug.Log("🎵 [DEV] Created test song - starting gameplay!");
         StartGameplay(testSong);
+#else
+        Debug.LogWarning("🎵 Test song creation not available in production builds");
+#endif
     }
     #endregion
 
