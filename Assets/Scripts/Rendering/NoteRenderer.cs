@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Burst;
@@ -19,8 +20,8 @@ public class NoteRenderer : MonoBehaviour
 
     [Header("🚀 Perspective Movement (Original Algorithm)")]
     [SerializeField] private float worldDepth = 25f;           // Original: 25.0F depth
-    [SerializeField] private float speedMultiplier = 2.0f;     // Original speed factor
-    [SerializeField] private float baseNoteSpeed = 5.0f;       // Base movement speed
+    [SerializeField] private float speedMultiplier = 0.1f;     // EXTREMELY SLOW for debugging
+    [SerializeField] private float baseNoteSpeed = 0.5f;       // EXTREMELY SLOW to see notes
     [SerializeField] private bool enablePerspectiveScaling = true;
     [SerializeField] private bool enablePerspectiveRotation = true;
 
@@ -32,7 +33,7 @@ public class NoteRenderer : MonoBehaviour
     [Header("📊 Performance & Debug")]
     [SerializeField] private bool enableObjectPooling = true;
     [SerializeField] private int poolSize = 50;
-    [SerializeField] private bool showDebugInfo = false;
+    [SerializeField] private bool showDebugInfo = true;  // Enable for debugging visibility issues
     [SerializeField] private bool showHitZone = true;
 
     // Object pooling system (from MD analysis)
@@ -42,6 +43,7 @@ public class NoteRenderer : MonoBehaviour
 
     // Original algorithm state
     private Camera mainCamera;
+    private Material noteMaterial;                            // Material for notes
     private float accInvaderY = 0f;                           // Original: accInvaderY
     private bool isNoteHighlight = false;                     // Original: isInvaderHilight
     private float noteTextureChangeTime = 0f;                 // Original: invaderTextureChangeTime
@@ -63,9 +65,30 @@ public class NoteRenderer : MonoBehaviour
         SetupLanes();
         SetupCamera();
         SubscribeToEvents();
+        CheckSceneLighting();
 
         if (showDebugInfo)
             Debug.Log("🎨 NoteRenderer initialized with original WorldRenderer algorithms");
+    }
+
+    void CheckSceneLighting()
+    {
+        Light[] lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
+        if (lights.Length == 0)
+        {
+            Debug.LogWarning("🎨 No lights found in scene! Notes may not be visible. URP/Lit material needs lighting.");
+        }
+        else
+        {
+            Debug.Log($"🎨 Found {lights.Length} lights in scene: {string.Join(", ", lights.Select(l => l.name + "(" + l.type + ")"))}");
+        }
+
+        // Check for UI Canvas that might block notes
+        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+        foreach (var canvas in canvases)
+        {
+            Debug.Log($"🎨 Found Canvas: {canvas.name}, RenderMode: {canvas.renderMode}, SortingOrder: {canvas.sortingOrder}");
+        }
     }
 
     void InitializeRenderer()
@@ -73,8 +96,29 @@ public class NoteRenderer : MonoBehaviour
         notePool = new Queue<GameObject>();
         activeNotes = new List<RenderingNote>();
 
+        CreateNoteMaterial();
+
         if (enableObjectPooling)
             CreateNotePool();
+    }
+
+    void CreateNoteMaterial()
+    {
+        // Create a bright, visible material for notes - using Unlit for guaranteed visibility
+        noteMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        noteMaterial.color = Color.cyan;
+
+        // Fallback to Standard Unlit if URP not available
+        if (noteMaterial.shader.name.Contains("Hidden"))
+        {
+            noteMaterial = new Material(Shader.Find("Unlit/Color"));
+            noteMaterial.color = Color.cyan;
+            Debug.Log("🎨 Created note material: Cyan Standard/Unlit (fallback)");
+        }
+        else
+        {
+            Debug.Log("🎨 Created note material: Cyan URP/Unlit");
+        }
     }
 
     void CreateNotePool()
@@ -115,9 +159,20 @@ public class NoteRenderer : MonoBehaviour
 
         if (mainCamera != null)
         {
-            // Optimal camera position for perspective effect
-            mainCamera.transform.position = new Vector3(0, 8, -5);
-            mainCamera.transform.rotation = Quaternion.Euler(45, 0, 0);
+            // CRITICAL: Set to perspective mode for 3D depth effect
+            bool wasOrthographic = mainCamera.orthographic;
+            mainCamera.orthographic = false;
+            mainCamera.fieldOfView = 60f;
+
+            // ADJUSTED camera position for better visibility of notes
+            mainCamera.transform.position = new Vector3(0, 12, -10); // Higher and further back
+            mainCamera.transform.rotation = Quaternion.Euler(35, 0, 0); // Less steep angle
+
+            Debug.Log($"🎥 Camera configured: {(wasOrthographic ? "Orthographic→" : "")}Perspective mode, FOV 60°, Position (0,12,-10), Rotation (35,0,0)");
+        }
+        else
+        {
+            Debug.LogError("🎥 No main camera found!");
         }
     }
 
@@ -125,6 +180,8 @@ public class NoteRenderer : MonoBehaviour
     {
         GameNoteCreator.OnNotesGenerated += HandleNotesGenerated;
         InputManager.OnLaneTapped += HandleLaneTapped;
+
+        Debug.Log("🎨 NoteRenderer subscribed to events");
     }
 
     #region Original WorldRenderer Algorithm
@@ -136,11 +193,30 @@ public class NoteRenderer : MonoBehaviour
     {
         float deltaTime = Time.deltaTime;
 
+        // Debug Update method is being called when notes are active
+        if (showDebugInfo && activeNotes.Count > 0 && Time.frameCount % 5 == 0)
+        {
+            Debug.Log($"🎨 UPDATE: {activeNotes.Count} active notes, deltaTime: {deltaTime:F3}, TimeScale: {Time.timeScale}");
+        }
+
         UpdateNoteTextures(deltaTime);
         UpdateActiveNotes(deltaTime);
         CleanupDestroyedNotes();
 
         UpdateDebugInfo();
+
+        // Debug Update loop more frequently to confirm it's running  
+        if (showDebugInfo && Time.frameCount % 60 == 0) // Every second
+        {
+            if (activeNotes.Count > 0)
+            {
+                Debug.Log($"🎨 Update loop active: {activeNotes.Count} notes being processed, TimeScale: {Time.timeScale}");
+            }
+            else if (Time.frameCount % 300 == 0) // Every 5 seconds when no notes
+            {
+                Debug.Log($"🎨 Update loop running but no active notes, TimeScale: {Time.timeScale}");
+            }
+        }
     }
 
     /// <summary>
@@ -167,7 +243,24 @@ public class NoteRenderer : MonoBehaviour
     /// </summary>
     void UpdateActiveNotes(float deltaTime)
     {
-        accInvaderY += 0.01f; // Original: slight Y offset accumulation
+        // ULTRA-AGGRESSIVE debugging - log EVERY frame when we have notes
+        if (showDebugInfo && activeNotes.Count > 0)
+        {
+            Debug.Log($"🎨 UpdateActiveNotes called: {activeNotes.Count} notes to process, deltaTime: {deltaTime:F4}, TimeScale: {Time.timeScale}");
+        }
+
+        // CRITICAL: Check if time is paused (deltaTime will be 0)
+        if (deltaTime <= 0f || Time.timeScale <= 0f)
+        {
+            if (showDebugInfo && activeNotes.Count > 0)
+            {
+                Debug.Log($"🎨 Movement paused! deltaTime: {deltaTime:F4}, TimeScale: {Time.timeScale}, {activeNotes.Count} notes waiting");
+            }
+            return; // Don't move notes when paused
+        }
+
+        // DISABLED: This was making notes fly upward!
+        // accInvaderY += 0.01f; // Original: slight Y offset accumulation
 
         for (int i = activeNotes.Count - 1; i >= 0; i--) // Reverse iteration (original)
         {
@@ -179,6 +272,7 @@ public class NoteRenderer : MonoBehaviour
             float currentSpeed = baseNoteSpeed * speedFactor * speedMultiplier;
 
             // Move note towards player (original Z-axis movement)
+            float oldZ = activeNote.currentPosition.z;
             activeNote.currentPosition.z -= currentSpeed * deltaTime;
 
             // Apply original perspective effects
@@ -187,9 +281,18 @@ public class NoteRenderer : MonoBehaviour
             // Update position
             activeNote.gameObject.transform.position = activeNote.currentPosition;
 
+            // ULTRA-AGGRESSIVE: Debug ALL notes EVERY frame for the first 5 seconds
+            if (showDebugInfo && (Time.time - activeNote.spawnTime) < 5.0f)
+            {
+                Debug.Log($"🎨 NOTE {i} MOVING: Z {oldZ:F2} → {activeNote.currentPosition.z:F2}, Y: {activeNote.currentPosition.y:F2}, Speed: {currentSpeed:F4}, DeltaTime: {deltaTime:F4}");
+            }
+
             // Check if note passed hit zone or should be destroyed
             if (activeNote.currentPosition.z < noteDestroyZ)
             {
+                if (showDebugInfo)
+                    Debug.Log($"🎨 Note destroyed at Z={activeNote.currentPosition.z:F1} (below {noteDestroyZ})");
+
                 HandleNoteMissed(activeNote);
                 ReturnNoteToPool(activeNote.gameObject);
                 activeNotes.RemoveAt(i);
@@ -231,10 +334,11 @@ public class NoteRenderer : MonoBehaviour
             transform.rotation = Quaternion.Euler(rotationX, 0, 0);
         }
 
+        // DISABLED: This was making notes fly upward!
         // Original Y offset accumulation for layering
-        Vector3 position = activeNote.currentPosition;
-        position.y += accInvaderY;
-        activeNote.currentPosition = position;
+        // Vector3 position = activeNote.currentPosition;
+        // position.y += accInvaderY;
+        // activeNote.currentPosition = position;
     }
 
     void ApplyNoteHighlight(GameObject noteObject, bool highlight)
@@ -252,22 +356,57 @@ public class NoteRenderer : MonoBehaviour
 
     void HandleNotesGenerated(List<GameNoteInfo> notes)
     {
+        Debug.Log($"🎨 NoteRenderer received {notes.Count} notes to spawn! Time: {Time.time:F1}, Frame: {Time.frameCount}");
+
         foreach (var note in notes)
         {
             SpawnNote(note);
         }
+
+        Debug.Log($"🎨 Finished spawning {notes.Count} notes. Active count now: {activeNotes.Count}");
     }
 
     void SpawnNote(GameNoteInfo noteInfo)
     {
         GameObject noteObject = GetPooledNote();
-        if (noteObject == null) return;
+        if (noteObject == null)
+        {
+            Debug.LogWarning("🎨 No pooled note available!");
+            return;
+        }
+
+        // CRITICAL: Assign material to make note visible
+        Renderer noteRenderer = noteObject.GetComponent<Renderer>();
+        if (noteRenderer != null && noteMaterial != null)
+        {
+            noteRenderer.material = noteMaterial;
+            Debug.Log($"🎨 Material assigned to note: {noteMaterial.color}, Enabled: {noteRenderer.enabled}");
+        }
+        else
+        {
+            Debug.LogWarning($"🎨 Material assignment failed! Renderer: {noteRenderer != null}, Material: {noteMaterial != null}");
+        }
 
         // Position note at far end of conveyor belt
-        Vector3 spawnPosition = lanePositions[noteInfo.idx];
-        spawnPosition.z = worldDepth; // Start at far end
+        Vector3 spawnPosition;
+        if (lanePositions != null && noteInfo.idx >= 0 && noteInfo.idx < lanePositions.Length)
+        {
+            spawnPosition = lanePositions[noteInfo.idx];
+        }
+        else
+        {
+            // Fallback positioning
+            float laneWidth = 1.8f;
+            float xOffset = (noteInfo.idx - 2.5f) * laneWidth;
+            spawnPosition = new Vector3(xOffset, 0, 0);
+            Debug.Log($"🎨 Using fallback position for lane {noteInfo.idx}");
+        }
+
+        spawnPosition.z = worldDepth; // Start at far end (25 units away)
         spawnPosition.y = 0;
 
+        // Make notes MUCH larger and more visible
+        noteObject.transform.localScale = new Vector3(2.0f, 1.0f, 2.0f); // Much bigger for visibility
         noteObject.transform.position = spawnPosition;
         noteObject.SetActive(true);
 
@@ -283,19 +422,30 @@ public class NoteRenderer : MonoBehaviour
         activeNotes.Add(activeNote);
         totalNotesRendered++;
 
-        if (showDebugInfo)
-            Debug.Log($"🎨 Note spawned: Lane {noteInfo.idx}, Position {spawnPosition}");
+        Debug.Log($"🎨 Note spawned: Lane {noteInfo.idx}, Position {spawnPosition}, Active: {noteObject.activeSelf}");
+        Debug.Log($"🎨 Active notes count: {activeNotes.Count}, Total rendered: {totalNotesRendered}");
+        Debug.Log($"🎨 Note spawned at frame {Time.frameCount}, TimeScale: {Time.timeScale}, spawnTime: {activeNote.spawnTime:F2}");
     }
 
     GameObject GetPooledNote()
     {
         if (enableObjectPooling && notePool.Count > 0)
         {
+            Debug.Log($"🎨 Getting note from pool (remaining: {notePool.Count - 1})");
             return notePool.Dequeue();
         }
         else if (notePrefab != null && noteParent != null)
         {
+            Debug.Log($"🎨 Creating new note from prefab");
             return Instantiate(notePrefab, noteParent);
+        }
+        else if (notePrefab == null)
+        {
+            Debug.LogWarning("🎨 No note prefab assigned!");
+        }
+        else if (noteParent == null)
+        {
+            Debug.LogWarning("🎨 No note parent assigned!");
         }
 
         Debug.LogWarning("🎨 No available notes in pool!");
@@ -450,32 +600,50 @@ public class NoteRenderer : MonoBehaviour
 
     void OnDrawGizmos()
     {
-        if (!showHitZone) return;
+        if (!showHitZone && !showDebugInfo) return;
 
         // Draw hit zone
-        Gizmos.color = Color.green;
-        for (int i = 0; i < laneCount; i++)
+        if (showHitZone)
         {
-            Vector3 lanePos = lanePositions != null && i < lanePositions.Length ?
-                lanePositions[i] : new Vector3((i - (laneCount - 1) * 0.5f) * laneWidth, 0, 0);
+            Gizmos.color = Color.green;
+            for (int i = 0; i < laneCount; i++)
+            {
+                Vector3 lanePos = lanePositions != null && i < lanePositions.Length ?
+                    lanePositions[i] : new Vector3((i - (laneCount - 1) * 0.5f) * laneWidth, 0, 0);
 
-            Vector3 hitZonePos = lanePos + Vector3.forward * hitZoneZ;
+                Vector3 hitZonePos = lanePos + Vector3.forward * hitZoneZ;
 
-            // Draw hit zone box
-            Gizmos.DrawWireCube(hitZonePos, new Vector3(laneWidth * 0.8f, 1f, hitZoneWidth));
+                // Draw hit zone box
+                Gizmos.DrawWireCube(hitZonePos, new Vector3(laneWidth * 0.8f, 1f, hitZoneWidth));
+            }
+
+            // Draw note destroy line
+            Gizmos.color = Color.red;
+            Vector3 destroyLineStart = new Vector3(-worldWidth * 0.5f, 0, noteDestroyZ);
+            Vector3 destroyLineEnd = new Vector3(worldWidth * 0.5f, 0, noteDestroyZ);
+            Gizmos.DrawLine(destroyLineStart, destroyLineEnd);
+
+            // Draw world depth
+            Gizmos.color = Color.blue;
+            Vector3 worldDepthStart = new Vector3(-worldWidth * 0.5f, 0, worldDepth);
+            Vector3 worldDepthEnd = new Vector3(worldWidth * 0.5f, 0, worldDepth);
+            Gizmos.DrawLine(worldDepthStart, worldDepthEnd);
         }
 
-        // Draw note destroy line
-        Gizmos.color = Color.red;
-        Vector3 destroyLineStart = new Vector3(-worldWidth * 0.5f, 0, noteDestroyZ);
-        Vector3 destroyLineEnd = new Vector3(worldWidth * 0.5f, 0, noteDestroyZ);
-        Gizmos.DrawLine(destroyLineStart, destroyLineEnd);
-
-        // Draw world depth
-        Gizmos.color = Color.blue;
-        Vector3 worldDepthStart = new Vector3(-worldWidth * 0.5f, 0, worldDepth);
-        Vector3 worldDepthEnd = new Vector3(worldWidth * 0.5f, 0, worldDepth);
-        Gizmos.DrawLine(worldDepthStart, worldDepthEnd);
+        // Draw active notes as spheres for debugging
+        if (showDebugInfo && activeNotes != null)
+        {
+            Gizmos.color = Color.yellow;
+            foreach (var note in activeNotes)
+            {
+                if (note.gameObject != null)
+                {
+                    Gizmos.DrawWireSphere(note.currentPosition, 0.5f);
+                    // Draw note direction arrow
+                    Gizmos.DrawLine(note.currentPosition, note.currentPosition + Vector3.back * 2f);
+                }
+            }
+        }
     }
     #endregion
 

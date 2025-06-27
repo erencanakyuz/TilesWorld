@@ -280,18 +280,24 @@ public class GameManager : MonoBehaviour
 
     void OnApplicationPause(bool pauseStatus)
     {
+#if !UNITY_EDITOR
         if (pauseStatus && CurrentGameState == GameState.Playing)
         {
             PauseGame();
         }
+#endif
     }
 
     void OnApplicationFocus(bool hasFocus)
     {
+#if UNITY_EDITOR
+        Debug.Log($"🎮 Editor focus change ignored: {hasFocus}");
+#else
         if (!hasFocus && CurrentGameState == GameState.Playing)
         {
             PauseGame();
         }
+#endif
     }
 
     void OnDestroy()

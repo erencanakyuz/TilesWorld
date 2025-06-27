@@ -2,7 +2,6 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
 using System;
-using TouchPhase = UnityEngine.TouchPhase; // Use legacy TouchPhase for Input.GetTouch()
 
 public class InputManager : MonoBehaviour
 {
@@ -67,7 +66,7 @@ public class InputManager : MonoBehaviour
         // Calculate lane configuration
         laneWidth = screenWidth / laneCount;
 
-        Debug.Log($"🎮 InputManager initialized - {laneCount} lanes, {laneWidth:F0}px wide each");
+        Debug.Log($"InputManager initialized - {laneCount} lanes, {laneWidth:F0}px wide each");
     }
 
     void SetupScreenConfiguration()
@@ -80,7 +79,7 @@ public class InputManager : MonoBehaviour
             screenBounds = new Vector2(screenTopRight.x - screenBottomLeft.x, screenTopRight.y - screenBottomLeft.y);
         }
 
-        Debug.Log($"📱 Screen configuration: {Screen.width}x{Screen.height}, bounds: {screenBounds}");
+        Debug.Log($"Screen configuration: {Screen.width}x{Screen.height}, bounds: {screenBounds}");
     }
 
     void Update()
@@ -92,13 +91,17 @@ public class InputManager : MonoBehaviour
 
     void HandleTouchInput()
     {
-        // Handle touch input
-        if (Input.touchCount > 0)
+        // Handle new Input System touch input
+        if (UnityEngine.InputSystem.Touchscreen.current != null)
         {
-            for (int i = 0; i < Input.touchCount && i < maxSimultaneousTouches; i++)
+            var touchscreen = UnityEngine.InputSystem.Touchscreen.current;
+            for (int i = 0; i < touchscreen.touches.Count && i < maxSimultaneousTouches; i++)
             {
-                Touch touch = Input.GetTouch(i);
-                ProcessTouch(touch);
+                var touch = touchscreen.touches[i];
+                if (touch.isInProgress)
+                {
+                    ProcessNewTouch(touch);
+                }
             }
         }
 
@@ -106,35 +109,7 @@ public class InputManager : MonoBehaviour
         HandleMouseInput();
     }
 
-    void ProcessTouch(Touch touch)
-    {
-        int touchId = touch.fingerId;
-        Vector2 screenPosition = touch.position;
-        int lane = ScreenPositionToLane(screenPosition);
 
-        switch (touch.phase)
-        {
-            case TouchPhase.Began:
-                HandleTouchBegan(touchId, screenPosition, lane);
-                break;
-
-            case TouchPhase.Moved:
-                HandleTouchMoved(touchId, screenPosition, lane);
-                break;
-
-            case TouchPhase.Stationary:
-                HandleTouchHeld(touchId);
-                break;
-
-            case TouchPhase.Ended:
-                HandleTouchEnded(touchId, lane);
-                break;
-
-            case TouchPhase.Canceled:
-                HandleTouchCanceled(touchId);
-                break;
-        }
-    }
 
     void HandleTouchBegan(int touchId, Vector2 screenPosition, int lane)
     {
@@ -160,8 +135,11 @@ public class InputManager : MonoBehaviour
             // Fire tap event
             OnLaneTapped?.Invoke(lane, screenPosition);
 
+            // Visual feedback for input
+            CreateInputVisualization(lane, screenPosition);
+
             if (showDebugInfo)
-                Debug.Log($"🎯 Touch began: Lane {lane}, Position {screenPosition}");
+                Debug.Log($"Touch began: Lane {lane}, Position {screenPosition}");
         }
     }
 
@@ -216,7 +194,7 @@ public class InputManager : MonoBehaviour
             OnLaneReleased?.Invoke(touchData.lane);
 
             if (showDebugInfo)
-                Debug.Log($"🎯 Touch ended: Lane {touchData.lane}");
+                Debug.Log($"Touch ended: Lane {touchData.lane}");
         }
     }
 
@@ -234,19 +212,54 @@ public class InputManager : MonoBehaviour
 
     void HandleMouseInput()
     {
-        // Mouse input for PC testing
-        if (Input.GetMouseButtonDown(0))
+        // Mouse input for PC testing using new Input System
+        if (UnityEngine.InputSystem.Mouse.current != null && UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
         {
-            Vector2 mousePosition = Input.mousePosition;
+            Vector2 mousePosition = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
             int lane = ScreenPositionToLane(mousePosition);
 
             if (lane >= 0 && lane < laneCount)
             {
                 OnLaneTapped?.Invoke(lane, mousePosition);
 
+                // Visual feedback for input
+                CreateInputVisualization(lane, mousePosition);
+
                 if (showDebugInfo)
-                    Debug.Log($"🖱️ Mouse click: Lane {lane}, Position {mousePosition}");
+                    Debug.Log($"Mouse click: Lane {lane}, Position {mousePosition}");
             }
+        }
+    }
+
+    void ProcessNewTouch(UnityEngine.InputSystem.Controls.TouchControl touch)
+    {
+        int touchId = touch.touchId.ReadValue();
+        Vector2 screenPosition = touch.position.ReadValue();
+        int lane = ScreenPositionToLane(screenPosition);
+
+        var phase = touch.phase.ReadValue();
+
+        switch (phase)
+        {
+            case UnityEngine.InputSystem.TouchPhase.Began:
+                HandleTouchBegan(touchId, screenPosition, lane);
+                break;
+
+            case UnityEngine.InputSystem.TouchPhase.Moved:
+                HandleTouchMoved(touchId, screenPosition, lane);
+                break;
+
+            case UnityEngine.InputSystem.TouchPhase.Stationary:
+                HandleTouchHeld(touchId);
+                break;
+
+            case UnityEngine.InputSystem.TouchPhase.Ended:
+                HandleTouchEnded(touchId, lane);
+                break;
+
+            case UnityEngine.InputSystem.TouchPhase.Canceled:
+                HandleTouchCanceled(touchId);
+                break;
         }
     }
 
@@ -291,7 +304,7 @@ public class InputManager : MonoBehaviour
     {
         if (showDebugInfo && Time.frameCount % 60 == 0) // Every second
         {
-            Debug.Log($"🎮 Input Status - Active touches: {activeTouchCount}, Active lanes: [{string.Join(", ", currentlyActiveLanes)}]");
+            Debug.Log($"Input Status - Active touches: {activeTouchCount}, Active lanes: [{string.Join(", ", currentlyActiveLanes)}]");
         }
     }
 
@@ -320,7 +333,7 @@ public class InputManager : MonoBehaviour
     {
         laneCount = Mathf.Clamp(count, 1, 10);
         laneWidth = screenWidth / laneCount;
-        Debug.Log($"🎮 Lane count updated: {laneCount} lanes");
+        Debug.Log($"Lane count updated: {laneCount} lanes");
     }
 
     public void EnableDebugVisualization(bool enable)
@@ -375,6 +388,34 @@ public class InputManager : MonoBehaviour
                 Gizmos.DrawSphere(worldPos, 0.5f);
             }
         }
+    }
+
+    void CreateInputVisualization(int lane, Vector2 screenPosition)
+    {
+        // Create visual feedback for input (temporary sphere)
+        GameObject feedback = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        feedback.name = "InputFeedback";
+
+        // Position at lane center in world space (approximate)
+        float laneWidth = screenWidth / laneCount / 100f; // Scale down for world space
+        Vector3 worldPosition = new Vector3((lane - 2.5f) * laneWidth, 1f, 3f);
+
+        feedback.transform.position = worldPosition;
+        feedback.transform.localScale = Vector3.one * 0.5f;
+
+        // Color coding by lane
+        Renderer renderer = feedback.GetComponent<Renderer>();
+        Color laneColor = Color.HSVToRGB((float)lane / laneCount, 0.8f, 1f);
+        renderer.material.color = laneColor;
+
+        // Remove collider
+        DestroyImmediate(feedback.GetComponent<Collider>());
+
+        // Auto destroy after 1 second
+        Destroy(feedback, 1f);
+
+        if (showDebugInfo)
+            Debug.Log($"Created input visualization at lane {lane}, world pos: {worldPosition}");
     }
 }
 

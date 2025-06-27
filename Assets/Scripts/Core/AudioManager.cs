@@ -171,6 +171,15 @@ public class AudioManager : MonoBehaviour
 
     AudioClip GetNoteClip(InstrumentType instrument, int noteIndex)
     {
+        // Check if instruments array is configured
+        if (instruments == null || instruments.Length == 0)
+        {
+            if (showDebugInfo && Time.frameCount % 300 == 0) // Log once every 5 seconds
+                Debug.Log($"🎵 No instrument data configured yet - will play dummy sound for {instrument} note {noteIndex}");
+
+            return CreateDummyAudioClip(); // Create a simple beep sound
+        }
+
         foreach (var instrumentData in instruments)
         {
             if (instrumentData.instrumentType == instrument)
@@ -179,9 +188,44 @@ public class AudioManager : MonoBehaviour
                 {
                     return instrumentData.noteClips[noteIndex];
                 }
+                else
+                {
+                    if (showDebugInfo && Time.frameCount % 180 == 0) // Log once every 3 seconds
+                        Debug.Log($"🎵 Note index {noteIndex} out of range for {instrument} (has {instrumentData.noteClips.Length} clips)");
+
+                    return CreateDummyAudioClip();
+                }
             }
         }
-        return null;
+
+        if (showDebugInfo && Time.frameCount % 300 == 0) // Log once every 5 seconds
+            Debug.Log($"🎵 Instrument {instrument} not found - using dummy sound");
+
+        return CreateDummyAudioClip();
+    }
+
+    private bool enableDebugInfo = true; // Add this field
+    private bool showDebugInfo => enableDebugInfo;
+
+    AudioClip CreateDummyAudioClip()
+    {
+        // Create a simple procedural audio clip for testing
+        int sampleRate = 44100;
+        int samples = sampleRate / 4; // 0.25 second clip
+        AudioClip clip = AudioClip.Create("DummyNote", samples, 1, sampleRate, false);
+
+        float[] data = new float[samples];
+        float frequency = 440f; // A4 note
+
+        for (int i = 0; i < samples; i++)
+        {
+            float time = (float)i / sampleRate;
+            float fade = 1f - (time * 4f); // Quick fade out
+            data[i] = Mathf.Sin(2 * Mathf.PI * frequency * time) * fade * 0.1f; // Low volume
+        }
+
+        clip.SetData(data, 0);
+        return clip;
     }
 
     AudioSource GetPooledAudioSource()

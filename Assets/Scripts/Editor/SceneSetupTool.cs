@@ -259,7 +259,7 @@ public class SceneSetupTool : EditorWindow
         rectTransform.sizeDelta = new Vector2(0, 100);
 
         TextMeshProUGUI debugText = debugGO.AddComponent<TextMeshProUGUI>();
-        debugText.text = "🎮 Piano Game Ready!\n🎵 Touch screen to test input\n🎹 Space to start test song";
+        debugText.text = "Piano Game Ready!\nTouch screen to test input\nSpace to start test song";
         debugText.fontSize = 18;
         debugText.color = Color.white;
         debugText.alignment = TextAlignmentOptions.Center;

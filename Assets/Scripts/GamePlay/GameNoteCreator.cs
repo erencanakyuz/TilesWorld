@@ -56,6 +56,9 @@ public class GameNoteCreator : MonoBehaviour
     {
         if (showDebugInfo)
             Debug.Log("🎵 GameNoteCreator initialized with original algorithms");
+
+        // Force enable debug for initial testing
+        showDebugInfo = true;
     }
 
     void InitializeNoteCreator()
@@ -87,38 +90,53 @@ public class GameNoteCreator : MonoBehaviour
         if (firstPassCount > 0)
         {
             firstPassCount--;
+            if (showDebugInfo)
+                Debug.Log($"🎵 First pass delay: {firstPassCount} remaining");
             return null;
         }
 
         accumulatedDeltaTime += deltaTime;
 
+        // Debug timing condition
+        if (showDebugInfo && Time.frameCount % 120 == 0) // Every 2 seconds
+        {
+            if (currentReturnPackage != null)
+            {
+                Debug.Log($"🎵 Timing check: Package time {currentReturnPackage.oneNote}ms vs Accumulated {accumulatedDeltaTime * 1000f:F1}ms");
+            }
+            else
+            {
+                Debug.Log($"🎵 No current package! Remaining in queue: {finalGameNotePackages.Count}");
+            }
+        }
+
         // Check if it's time to return notes (original timing logic)
         if (currentReturnPackage != null &&
             currentReturnPackage.oneNote <= accumulatedDeltaTime * 1000f)
         {
+            var packageToProcess = currentReturnPackage;
             accumulatedDeltaTime = 0f;
 
+            // Get next package ready
             if (finalGameNotePackages.Count > 0)
             {
-                GameNoteInfoPackage package = finalGameNotePackages.Dequeue();
-                currentReturnPackage = package;
-
-                var notesToReturn = ProcessNotePackage(package);
-
-                OnNotesGenerated?.Invoke(notesToReturn);
-
-                if (showDebugInfo)
-                    Debug.Log($"🎵 Generated {notesToReturn.Count} notes at time: {accumulatedDeltaTime * 1000f:F1}ms");
-
-                totalNotesGenerated += notesToReturn.Count;
-                return notesToReturn;
+                currentReturnPackage = finalGameNotePackages.Dequeue();
             }
             else
             {
+                currentReturnPackage = null;
                 isAllCreated = true;
                 OnGenerationComplete?.Invoke();
-                return null;
             }
+
+            var notesToReturn = ProcessNotePackage(packageToProcess);
+            OnNotesGenerated?.Invoke(notesToReturn);
+
+            if (showDebugInfo)
+                Debug.Log($"🎵 Generated {notesToReturn.Count} notes at time: {(accumulatedDeltaTime + deltaTime) * 1000f:F1}ms");
+
+            totalNotesGenerated += notesToReturn.Count;
+            return notesToReturn;
         }
 
         return null;
@@ -315,9 +333,11 @@ public class GameNoteCreator : MonoBehaviour
         // Apply original merging algorithm
         MergeGameNoteInfoPackage(notePackages);
 
-        // Populate the final queue
+        // Count total notes in packages for debugging
+        int totalNotesInPackages = 0;
         foreach (var package in notePackages)
         {
+            totalNotesInPackages += package.gameNoteInfos.Count;
             finalGameNotePackages.Enqueue(package);
         }
 
@@ -325,9 +345,10 @@ public class GameNoteCreator : MonoBehaviour
         if (finalGameNotePackages.Count > 0)
         {
             currentReturnPackage = finalGameNotePackages.Dequeue();
+            Debug.Log($"🎵 First package ready: {currentReturnPackage.oneNote}ms with {currentReturnPackage.gameNoteInfos.Count} notes");
         }
 
-        Debug.Log($"🎵 Song loaded: {notePackages.Count} note packages, {totalNotesGenerated} total notes");
+        Debug.Log($"🎵 Song loaded: {notePackages.Count} note packages, {totalNotesInPackages} total notes in packages");
     }
 
     /// <summary>
@@ -336,20 +357,23 @@ public class GameNoteCreator : MonoBehaviour
     List<RawNoteData> LoadNoteChartData(string chartPath)
     {
         // This would load from JSON, binary, or other format
-        // For now, return sample data
+        // For now, return sample data with more notes for testing
         var sampleData = new List<RawNoteData>();
 
-        // Generate some sample notes for testing
-        for (int i = 0; i < 20; i++)
+        Debug.Log($"🎵 Loading test note chart data from: {chartPath}");
+
+        // Generate sample notes for testing - more frequent for visible gameplay
+        for (int i = 0; i < 60; i++) // 60 notes over 30 seconds
         {
             sampleData.Add(new RawNoteData
             {
-                timeMs = i * 500f,
+                timeMs = i * 500f, // Every 0.5 seconds
                 lane = UnityEngine.Random.Range(0, laneCount),
                 noteType = NoteType.Single
             });
         }
 
+        Debug.Log($"🎵 Generated {sampleData.Count} test notes for gameplay");
         return sampleData;
     }
 
@@ -359,6 +383,8 @@ public class GameNoteCreator : MonoBehaviour
     List<GameNoteInfoPackage> ConvertRawDataToPackages(List<RawNoteData> rawData, float bpm)
     {
         var packages = new List<GameNoteInfoPackage>();
+
+        Debug.Log($"🎵 Converting {rawData.Count} raw notes to packages...");
 
         // Group notes by time
         var groupedNotes = rawData.GroupBy(note => Mathf.RoundToInt(note.timeMs / 50f) * 50f);
@@ -378,15 +404,22 @@ public class GameNoteCreator : MonoBehaviour
                     idx = rawNote.lane,
                     timeMs = rawNote.timeMs,
                     noteType = rawNote.noteType,
-                    instrumentType = GameManager.Instance.GetSelectedInstrument()
+                    instrumentType = GameManager.Instance?.GetSelectedInstrument() ?? InstrumentType.Piano,
+                    pitch = 24 + rawNote.lane * 2 // Simple pitch mapping
                 };
 
                 package.gameNoteInfos.Add(gameNote);
             }
 
             packages.Add(package);
+
+            if (showDebugInfo && packages.Count <= 5) // Show first 5 packages
+            {
+                Debug.Log($"🎵 Package {packages.Count}: Time {package.oneNote}ms, {package.gameNoteInfos.Count} notes");
+            }
         }
 
+        Debug.Log($"🎵 Converted to {packages.Count} packages");
         return packages.OrderBy(p => p.oneNote).ToList();
     }
     #endregion

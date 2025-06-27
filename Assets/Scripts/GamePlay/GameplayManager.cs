@@ -43,7 +43,7 @@ public class GameplayManager : MonoBehaviour
     [Header("📱 Debug & Testing")]
     [SerializeField] private bool showDebugInfo = false;
     [SerializeField] private bool enablePerformanceTracking = true;
-    [SerializeField] private KeyCode testStartKey = KeyCode.Space;
+
 
     // Game state management
     private bool isGameActive = false;
@@ -166,6 +166,9 @@ public class GameplayManager : MonoBehaviour
     /// </summary>
     void Update()
     {
+        // Debug input handling - ALWAYS check (even when game inactive)
+        HandleDebugInput();
+
         if (!isGameActive || isGamePaused) return;
 
         float deltaTime = Time.deltaTime;
@@ -179,9 +182,6 @@ public class GameplayManager : MonoBehaviour
         // Update performance tracking
         if (enablePerformanceTracking)
             UpdatePerformanceTracking(deltaTime);
-
-        // Debug input handling
-        HandleDebugInput();
 
         // Update UI with current stats
         UpdateGameplayUI();
@@ -250,25 +250,64 @@ public class GameplayManager : MonoBehaviour
 
     void HandleDebugInput()
     {
-        if (Input.GetKeyDown(testStartKey) && !isGameActive)
+        // Use new Input System
+        if (UnityEngine.InputSystem.Keyboard.current != null)
         {
-            if (currentSong != null)
+            if (UnityEngine.InputSystem.Keyboard.current.spaceKey.wasPressedThisFrame)
             {
-                StartGameplay(currentSong);
-            }
-            else
-            {
-                Debug.LogWarning("🎮 No song loaded for testing!");
-            }
-        }
+                Debug.Log($"🎮 Space key pressed! isGameActive: {isGameActive}");
 
-        if (Input.GetKeyDown(KeyCode.P) && isGameActive)
-        {
-            if (isGamePaused)
+                if (!isGameActive)
+                {
+                    if (currentSong != null)
+                    {
+                        Debug.Log("🎵 Starting existing song...");
+                        StartGameplay(currentSong);
+                    }
+                    else
+                    {
+                        Debug.Log("🎵 No song found, creating test song...");
+                        // Create a test song on the fly
+                        CreateAndStartTestSong();
+                    }
+                }
+                else
+                {
+                    Debug.Log("🎮 Game already active, Space ignored");
+                }
+            }
+
+            if (UnityEngine.InputSystem.Keyboard.current.pKey.wasPressedThisFrame && isGameActive)
+            {
+                Debug.Log($"🎮 P key pressed! isGamePaused: {isGamePaused}");
+                if (isGamePaused)
+                    ResumeGameplay();
+                else
+                    PauseGameplay();
+            }
+
+            if (UnityEngine.InputSystem.Keyboard.current.rKey.wasPressedThisFrame && isGamePaused)
+            {
+                Debug.Log("🎮 R key pressed! Resuming...");
                 ResumeGameplay();
-            else
-                PauseGameplay();
+            }
         }
+    }
+
+    void CreateAndStartTestSong()
+    {
+        // Create a temporary test song for immediate testing
+        var testSong = ScriptableObject.CreateInstance<SongData>();
+        testSong.songName = "Test Song";
+        testSong.artist = "Piano Game Test";
+        testSong.bpm = 120f;
+        testSong.duration = 30f; // 30 second test
+        testSong.audioFilePath = "Test/Audio";
+        testSong.noteChartPath = "Test/Chart";
+        testSong.difficulty = DifficultyLevel.Easy;
+
+        Debug.Log("🎵 Created test song - starting gameplay!");
+        StartGameplay(testSong);
     }
     #endregion
 
@@ -424,7 +463,11 @@ public class GameplayManager : MonoBehaviour
 
     public void ResumeGameplay()
     {
-        if (!isGameActive || !isGamePaused) return;
+        if (!isGameActive || !isGamePaused)
+        {
+            Debug.Log($"🎮 Resume blocked: isGameActive={isGameActive}, isGamePaused={isGamePaused}");
+            return;
+        }
 
         isGamePaused = false;
         Time.timeScale = 1f;
@@ -439,7 +482,7 @@ public class GameplayManager : MonoBehaviour
             GameManager.Instance.ChangeGameState(GameState.Playing);
         }
 
-        Debug.Log("▶️ Gameplay resumed");
+        Debug.Log($"▶️ Gameplay resumed! TimeScale: {Time.timeScale}");
     }
 
     public void EndGameplay()
@@ -744,10 +787,14 @@ public class GameplayManager : MonoBehaviour
 
     void OnApplicationFocus(bool hasFocus)
     {
+#if UNITY_EDITOR
+        Debug.Log($"🎮 GameplayManager focus change ignored: {hasFocus}");
+#else
         if (enablePauseOnFocusLoss && !hasFocus && isGameActive && !isGamePaused)
         {
             PauseGameplay();
         }
+#endif
     }
 
     void OnDestroy()
