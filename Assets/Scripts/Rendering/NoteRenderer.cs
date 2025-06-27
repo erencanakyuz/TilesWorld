@@ -44,7 +44,6 @@ public class NoteRenderer : MonoBehaviour
     // Original algorithm state
     private Camera mainCamera;
     private Material noteMaterial;                            // Material for notes
-    private float accInvaderY = 0f;                           // Original: accInvaderY
     private bool isNoteHighlight = false;                     // Original: isInvaderHilight
     private float noteTextureChangeTime = 0f;                 // Original: invaderTextureChangeTime
 
@@ -138,16 +137,10 @@ public class NoteRenderer : MonoBehaviour
 
         if (mainCamera != null)
         {
-            // CRITICAL: Set to perspective mode for 3D depth effect
-            bool wasOrthographic = mainCamera.orthographic;
             mainCamera.orthographic = false;
             mainCamera.fieldOfView = 60f;
-
-            // ADJUSTED camera position for better visibility of notes
-            mainCamera.transform.position = new Vector3(0, 12, -10); // Higher and further back
-            mainCamera.transform.rotation = Quaternion.Euler(35, 0, 0); // Less steep angle
-
-            Debug.Log($"🎥 Camera configured: {(wasOrthographic ? "Orthographic→" : "")}Perspective mode, FOV 60°, Position (0,12,-10), Rotation (35,0,0)");
+            mainCamera.transform.position = new Vector3(0, 12, -10);
+            mainCamera.transform.rotation = Quaternion.Euler(35, 0, 0);
         }
         else
         {
@@ -159,8 +152,6 @@ public class NoteRenderer : MonoBehaviour
     {
         GameNoteCreator.OnNotesGenerated += HandleNotesGenerated;
         InputManager.OnLaneTapped += HandleLaneTapped;
-
-        Debug.Log("🎨 NoteRenderer subscribed to events");
     }
 
     #region Original WorldRenderer Algorithm
@@ -203,10 +194,9 @@ public class NoteRenderer : MonoBehaviour
     /// </summary>
     void UpdateActiveNotes(float deltaTime)
     {
-        // Check if time is paused
         if (deltaTime <= 0f || Time.timeScale <= 0f)
         {
-            return; // Skip movement if paused
+            return;
         }
 
         for (int i = activeNotes.Count - 1; i >= 0; i--)
@@ -214,22 +204,9 @@ public class NoteRenderer : MonoBehaviour
             var activeNote = activeNotes[i];
             if (activeNote == null || activeNote.gameObject == null || !activeNote.gameObject.activeInHierarchy) continue;
 
-            // Original Java movement logic - update currentPosition
-            float originalZ = activeNote.currentPosition.z;
-
-            // Move note forward (Z decreases from 25 to 3)
             activeNote.currentPosition.z -= baseNoteSpeed * speedMultiplier * deltaTime;
-
-            // Update GameObject position
             activeNote.gameObject.transform.position = activeNote.currentPosition;
 
-            // Occasional debug for first note only
-            if (showDebugInfo && i == 0 && Time.frameCount % 120 == 0) // Every 2 seconds
-            {
-                Debug.Log($"🎨 Note 0 moving: Z {originalZ:F1} → {activeNote.currentPosition.z:F1}");
-            }
-
-            // Remove notes that have passed the hit zone
             if (activeNote.currentPosition.z <= 2f)
             {
                 ReturnNoteToPool(activeNote.gameObject);
@@ -237,7 +214,6 @@ public class NoteRenderer : MonoBehaviour
             }
         }
 
-        // Update visual effects for all active notes
         if (activeNotes.Count > 0)
         {
             foreach (var activeNote in activeNotes)
@@ -301,14 +277,10 @@ public class NoteRenderer : MonoBehaviour
 
     void HandleNotesGenerated(List<GameNoteInfo> notes)
     {
-        Debug.Log($"🎨 Spawning {notes.Count} notes at time {Time.time:F1}s");
-
         foreach (var note in notes)
         {
             SpawnNote(note);
         }
-
-        Debug.Log($"🎨 Active notes: {activeNotes.Count}");
     }
 
     void SpawnNote(GameNoteInfo noteInfo)
@@ -320,18 +292,12 @@ public class NoteRenderer : MonoBehaviour
             return;
         }
 
-        // CRITICAL: Assign material to make note visible
         Renderer noteRenderer = noteObject.GetComponent<Renderer>();
         if (noteRenderer != null && noteMaterial != null)
         {
             noteRenderer.material = noteMaterial;
         }
-        else
-        {
-            Debug.LogWarning($"🎨 Material assignment failed! Renderer: {noteRenderer != null}, Material: {noteMaterial != null}");
-        }
 
-        // Position note at far end of conveyor belt
         Vector3 spawnPosition;
         if (lanePositions != null && noteInfo.idx >= 0 && noteInfo.idx < lanePositions.Length)
         {
@@ -339,22 +305,18 @@ public class NoteRenderer : MonoBehaviour
         }
         else
         {
-            // Fallback positioning
             float laneWidth = 1.8f;
             float xOffset = (noteInfo.idx - 2.5f) * laneWidth;
             spawnPosition = new Vector3(xOffset, 0, 0);
-            Debug.Log($"🎨 Using fallback position for lane {noteInfo.idx}");
         }
 
-        spawnPosition.z = worldDepth; // Start at far end (25 units away)
+        spawnPosition.z = worldDepth;
         spawnPosition.y = 0;
 
-        // Make notes MUCH larger and more visible
-        noteObject.transform.localScale = new Vector3(2.0f, 1.0f, 2.0f); // Much bigger for visibility
+        noteObject.transform.localScale = new Vector3(2.0f, 1.0f, 2.0f);
         noteObject.transform.position = spawnPosition;
         noteObject.SetActive(true);
 
-        // Create active note tracking
         var activeNote = new RenderingNote
         {
             gameObject = noteObject,
@@ -365,12 +327,6 @@ public class NoteRenderer : MonoBehaviour
 
         activeNotes.Add(activeNote);
         totalNotesRendered++;
-
-        // Only log detailed spawn info for first few notes
-        if (showDebugInfo && totalNotesRendered <= 3)
-        {
-            Debug.Log($"🎨 Note spawned: Lane {noteInfo.idx}, Position {spawnPosition}, TimeScale: {Time.timeScale}");
-        }
     }
 
     GameObject GetPooledNote()
@@ -381,19 +337,9 @@ public class NoteRenderer : MonoBehaviour
         }
         else if (notePrefab != null && noteParent != null)
         {
-            Debug.Log($"🎨 Creating new note from prefab (pool empty)");
             return Instantiate(notePrefab, noteParent);
         }
-        else if (notePrefab == null)
-        {
-            Debug.LogWarning("🎨 No note prefab assigned!");
-        }
-        else if (noteParent == null)
-        {
-            Debug.LogWarning("🎨 No note parent assigned!");
-        }
 
-        Debug.LogWarning("🎨 No available notes in pool!");
         return null;
     }
 
@@ -508,10 +454,7 @@ public class NoteRenderer : MonoBehaviour
 
     void UpdateDebugInfo()
     {
-        if (showDebugInfo && Time.frameCount % 60 == 0) // Every second
-        {
-            Debug.Log($"🎨 Renderer Stats: {activeNoteCount} active, {notePool.Count} pooled, {totalNotesRendered} total rendered");
-        }
+        // Removed debug spam
     }
 
     #region Public Interface
@@ -527,7 +470,6 @@ public class NoteRenderer : MonoBehaviour
             ReturnNoteToPool(activeNote.gameObject);
         }
         activeNotes.Clear();
-        accInvaderY = 0f;
     }
 
     public void SetNoteSpeed(float speed)

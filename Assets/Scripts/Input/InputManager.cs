@@ -16,7 +16,6 @@ public class InputManager : MonoBehaviour
     [SerializeField] private float holdTimeThreshold = 0.1f; // For hold notes
 
     [Header("🎯 Lane Configuration")]
-    [SerializeField] private float screenWidth = 1080f; // Reference width
     [SerializeField] private int laneCount = 6;
     private float laneWidth = 1.8f; // Match NoteRenderer laneWidth - don't serialize, get from NoteRenderer
 
@@ -65,8 +64,6 @@ public class InputManager : MonoBehaviour
         mainCamera = Camera.main;
         if (mainCamera == null)
             mainCamera = FindFirstObjectByType<Camera>();
-
-        Debug.Log($"InputManager initialized - {laneCount} lanes");
     }
 
     void SetupLanePositions()
@@ -79,11 +76,6 @@ public class InputManager : MonoBehaviour
             float xOffset = (i - (laneCount - 1) * 0.5f) * laneWidth;
             laneWorldPositions[i] = new Vector3(xOffset, 0, 0);
         }
-
-        if (showDebugInfo)
-        {
-            Debug.Log($"🎯 Input lanes configured: {laneCount} lanes, {laneWidth:F1}f width each");
-        }
     }
 
     void SetupScreenConfiguration()
@@ -92,11 +84,6 @@ public class InputManager : MonoBehaviour
         {
             // Get screen bounds for UI positioning
             Vector3 screenBounds = mainCamera.ScreenToWorldPoint(new Vector3(Screen.width, Screen.height, mainCamera.nearClipPlane));
-
-            if (showDebugInfo)
-            {
-                Debug.Log($"Screen: {Screen.width}x{Screen.height}, bounds: ({screenBounds.x:F2}, {screenBounds.y:F2})");
-            }
         }
     }
 
@@ -336,11 +323,7 @@ public class InputManager : MonoBehaviour
 
     void UpdateDebugInfo()
     {
-        // Only log when debug is enabled AND there are active touches AND very rarely
-        if (showDebugInfo && activeTouchCount > 0 && Time.frameCount % 600 == 0) // Every 10 seconds
-        {
-            Debug.Log($"🎯 Input Status - Active touches: {activeTouchCount}");
-        }
+        // Debug removed for performance
     }
 
     #region Public Interface

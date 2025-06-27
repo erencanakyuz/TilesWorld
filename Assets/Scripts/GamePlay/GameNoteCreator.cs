@@ -86,25 +86,23 @@ public class GameNoteCreator : MonoBehaviour
     /// </summary>
     public List<GameNoteInfo> GetNote(float deltaTime)
     {
-        // First delay logic (original Java)
+        if (isAllCreated || currentReturnPackage == null) return new List<GameNoteInfo>();
+
+        // Original firstPassDelay logic
         if (firstPassCount > 0)
         {
             firstPassCount--;
-            if (showDebugInfo)
-                Debug.Log($"🎵 First pass delay: {firstPassCount} remaining");
-            return null;
+            return new List<GameNoteInfo>();
         }
 
         accumulatedDeltaTime += deltaTime;
 
-        // Check if it's time to return notes (original timing logic)
         if (currentReturnPackage != null &&
             currentReturnPackage.oneNote <= accumulatedDeltaTime * 1000f)
         {
             var packageToProcess = currentReturnPackage;
             accumulatedDeltaTime = 0f;
 
-            // Get next package ready
             if (finalGameNotePackages.Count > 0)
             {
                 currentReturnPackage = finalGameNotePackages.Dequeue();
@@ -119,15 +117,11 @@ public class GameNoteCreator : MonoBehaviour
             var notesToReturn = ProcessNotePackage(packageToProcess);
             OnNotesGenerated?.Invoke(notesToReturn);
 
-            // Only log occasionally if debug enabled
-            if (showDebugInfo && totalNotesGenerated % 5 == 0)
-                Debug.Log($"🎵 Generated {notesToReturn.Count} notes at time: {(accumulatedDeltaTime + deltaTime) * 1000f:F1}ms");
-
             totalNotesGenerated += notesToReturn.Count;
             return notesToReturn;
         }
 
-        return null;
+        return new List<GameNoteInfo>();
     }
 
     /// <summary>
@@ -307,8 +301,6 @@ public class GameNoteCreator : MonoBehaviour
             return;
         }
 
-        Debug.Log($"🎵 Loading song: {songData.songName} - {songData.bpm} BPM");
-
         // Reset state for new song
         ResetGenerationState();
 
@@ -333,10 +325,7 @@ public class GameNoteCreator : MonoBehaviour
         if (finalGameNotePackages.Count > 0)
         {
             currentReturnPackage = finalGameNotePackages.Dequeue();
-            Debug.Log($"🎵 First package ready: {currentReturnPackage.oneNote}ms with {currentReturnPackage.gameNoteInfos.Count} notes");
         }
-
-        Debug.Log($"🎵 Song loaded: {notePackages.Count} note packages, {totalNotesInPackages} total notes in packages");
     }
 
     /// <summary>
@@ -347,8 +336,6 @@ public class GameNoteCreator : MonoBehaviour
         // This would load from JSON, binary, or other format
         // For now, return sample data with more notes for testing
         var sampleData = new List<RawNoteData>();
-
-        Debug.Log($"🎵 Loading test note chart data from: {chartPath}");
 
         // Generate sample notes for testing - more frequent for visible gameplay
         for (int i = 0; i < 60; i++) // 60 notes over 30 seconds
@@ -361,7 +348,6 @@ public class GameNoteCreator : MonoBehaviour
             });
         }
 
-        Debug.Log($"🎵 Generated {sampleData.Count} test notes for gameplay");
         return sampleData;
     }
 
@@ -371,8 +357,6 @@ public class GameNoteCreator : MonoBehaviour
     List<GameNoteInfoPackage> ConvertRawDataToPackages(List<RawNoteData> rawData, float bpm)
     {
         var packages = new List<GameNoteInfoPackage>();
-
-        Debug.Log($"🎵 Converting {rawData.Count} raw notes to packages...");
 
         // Group notes by time
         var groupedNotes = rawData.GroupBy(note => Mathf.RoundToInt(note.timeMs / 50f) * 50f);
@@ -400,14 +384,8 @@ public class GameNoteCreator : MonoBehaviour
             }
 
             packages.Add(package);
-
-            if (showDebugInfo && packages.Count <= 5) // Show first 5 packages
-            {
-                Debug.Log($"🎵 Package {packages.Count}: Time {package.oneNote}ms, {package.gameNoteInfos.Count} notes");
-            }
         }
 
-        Debug.Log($"🎵 Converted to {packages.Count} packages");
         return packages.OrderBy(p => p.oneNote).ToList();
     }
     #endregion
@@ -449,11 +427,7 @@ public class GameNoteCreator : MonoBehaviour
 
     void Update()
     {
-        // Only log stats very rarely, not every 5 seconds
-        if (showDebugInfo && Time.frameCount % 1800 == 0) // Every 30 seconds
-        {
-            Debug.Log($"🎵 Note Generator: {totalNotesGenerated} generated, Direction: {(isRightDirection ? "→" : "←")} ({currentDirectionCnt}), Remaining: {finalGameNotePackages.Count}");
-        }
+        // Removed debug spam
     }
 
     void OnDrawGizmos()

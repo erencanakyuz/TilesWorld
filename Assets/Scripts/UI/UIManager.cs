@@ -84,6 +84,12 @@ public class UIManager : MonoBehaviour
 
     void InitializeUISystem()
     {
+        SetupCanvasReferences();
+        AdaptToScreenSize();
+    }
+
+    void SetupCanvasReferences()
+    {
         // Initialize state panels dictionary
         statePanels = new Dictionary<GameState, GameObject>
         {
@@ -99,8 +105,6 @@ public class UIManager : MonoBehaviour
         activeEffects = new List<GameObject>();
 
         InitializeHitEffectPool();
-
-        Debug.Log("🎨 UIManager initialized");
     }
 
     void InitializeHitEffectPool()
@@ -136,46 +140,31 @@ public class UIManager : MonoBehaviour
 
     void AdaptToScreenSize()
     {
-        if (adaptiveUISize)
+        float aspectRatio = (float)Screen.width / Screen.height;
+
+        // Adapt UI to different screen sizes
+        bool isTablet = aspectRatio > 1.5f;
+
+        if (mainCanvas != null)
         {
-            // Adapt UI to different screen sizes
-            float aspectRatio = (float)Screen.width / Screen.height;
-            bool isTablet = aspectRatio > 1.5f;
-
-            if (mainCanvas != null)
+            CanvasScaler scaler = mainCanvas.GetComponent<CanvasScaler>();
+            if (scaler != null)
             {
-                CanvasScaler scaler = mainCanvas.GetComponent<CanvasScaler>();
-                if (scaler != null)
-                {
-                    scaler.referenceResolution = isTablet ?
-                        new Vector2(1920, 1080) :
-                        new Vector2(1080, 1920);
-                }
+                scaler.referenceResolution = isTablet ?
+                    new Vector2(1920, 1080) :
+                    new Vector2(1080, 1920);
             }
-
-            Debug.Log($"📱 UI adapted for {(isTablet ? "tablet" : "phone")} (AR: {aspectRatio:F2})");
         }
     }
 
     #region Game State UI Management
     void HandleGameStateChange(GameState newState)
     {
-        // Hide all panels first
-        foreach (var panel in statePanels.Values)
-        {
-            if (panel != null)
-                panel.SetActive(false);
-        }
-
-        // Show the appropriate panel
-        if (statePanels.ContainsKey(newState) && statePanels[newState] != null)
-        {
-            statePanels[newState].SetActive(true);
-        }
-
-        // Handle special UI cases
         switch (newState)
         {
+            case GameState.MainMenu:
+                ShowMainMenuUI();
+                break;
             case GameState.Playing:
                 ShowGameplayUI();
                 break;
@@ -185,12 +174,7 @@ public class UIManager : MonoBehaviour
             case GameState.GameOver:
                 ShowGameOverUI();
                 break;
-            case GameState.MainMenu:
-                ShowMainMenuUI();
-                break;
         }
-
-        Debug.Log($"🎨 UI updated for state: {newState}");
     }
 
     void ShowGameplayUI()

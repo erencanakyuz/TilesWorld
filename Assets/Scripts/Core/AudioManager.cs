@@ -66,6 +66,12 @@ public class AudioManager : MonoBehaviour
 
     void InitializeAudioSystem()
     {
+        CreateAudioSourcePool();
+        ApplyDefaultSettings();
+    }
+
+    void CreateAudioSourcePool()
+    {
         // Initialize audio source pool
         audioSourcePool = new Queue<AudioSource>();
         activeAudioSources = new List<AudioSource>();
@@ -99,6 +105,13 @@ public class AudioManager : MonoBehaviour
         Debug.Log($"🎵 AudioManager initialized with {audioSourcePoolSize} pooled sources");
     }
 
+    void ApplyDefaultSettings()
+    {
+        // Set target frame rate for consistent audio performance
+        Application.targetFrameRate = 60;
+        QualitySettings.vSyncCount = 0;
+    }
+
     void ApplyMobileOptimizations()
     {
         // Apply optimizations from our successful mobile tests
@@ -117,118 +130,25 @@ public class AudioManager : MonoBehaviour
         {
             Debug.LogWarning($"📱 Could not apply mobile audio optimizations: {e.Message}");
         }
-
-        // Set target frame rate for consistent audio performance
-        Application.targetFrameRate = 60;
-        QualitySettings.vSyncCount = 0;
     }
 
     #region Note Playing (Low-Latency)
-    public void PlayNote(InstrumentType instrument, int noteIndex, float velocity = 1.0f)
+    public void PlayNote(InstrumentType instrument, int pitch, float volume = 1.0f)
     {
-        if (enableLatencyMonitoring)
+        var audioSource = GetAvailableAudioSource();
+        if (audioSource != null)
         {
-            float startTime = Time.realtimeSinceStartup;
-            StartCoroutine(MeasureLatency(startTime));
-        }
-
-        AudioClip clip = GetNoteClip(instrument, noteIndex);
-        if (clip != null)
-        {
-            AudioSource source = GetPooledAudioSource();
-            if (source != null)
+            var clip = GetNoteClip(instrument, pitch);
+            if (clip != null)
             {
-                source.clip = clip;
-                source.volume = velocity * sfxVolume * masterVolume;
-                source.Play();
-
-                StartCoroutine(ReturnToPoolAfterPlayback(source, clip.length));
+                audioSource.clip = clip;
+                audioSource.volume = volume * masterVolume;
+                audioSource.Play();
             }
         }
-        else
-        {
-            Debug.LogWarning($"🎵 Note clip not found: {instrument} - {noteIndex}");
-        }
     }
 
-    IEnumerator MeasureLatency(float startTime)
-    {
-        yield return null; // Wait one frame
-        float latency = (Time.realtimeSinceStartup - startTime) * 1000f;
-        UpdateLatencyMonitoring(latency);
-    }
-
-    void UpdateLatencyMonitoring(float latency)
-    {
-        // Simple moving average
-        averageLatency = (averageLatency * 0.9f) + (latency * 0.1f);
-
-        if (latency > 20f) // Our target threshold
-        {
-            Debug.LogWarning($"⚠️ High audio latency detected: {latency:F2}ms (avg: {averageLatency:F2}ms)");
-        }
-    }
-
-    AudioClip GetNoteClip(InstrumentType instrument, int noteIndex)
-    {
-        // Check if instruments array is configured
-        if (instruments == null || instruments.Length == 0)
-        {
-            if (showDebugInfo && Time.frameCount % 300 == 0) // Log once every 5 seconds
-                Debug.Log($"🎵 No instrument data configured yet - will play dummy sound for {instrument} note {noteIndex}");
-
-            return CreateDummyAudioClip(); // Create a simple beep sound
-        }
-
-        foreach (var instrumentData in instruments)
-        {
-            if (instrumentData.instrumentType == instrument)
-            {
-                if (noteIndex >= 0 && noteIndex < instrumentData.noteClips.Length)
-                {
-                    return instrumentData.noteClips[noteIndex];
-                }
-                else
-                {
-                    if (showDebugInfo && Time.frameCount % 180 == 0) // Log once every 3 seconds
-                        Debug.Log($"🎵 Note index {noteIndex} out of range for {instrument} (has {instrumentData.noteClips.Length} clips)");
-
-                    return CreateDummyAudioClip();
-                }
-            }
-        }
-
-        if (showDebugInfo && Time.frameCount % 300 == 0) // Log once every 5 seconds
-            Debug.Log($"🎵 Instrument {instrument} not found - using dummy sound");
-
-        return CreateDummyAudioClip();
-    }
-
-    private bool enableDebugInfo = true; // Add this field
-    private bool showDebugInfo => enableDebugInfo;
-
-    AudioClip CreateDummyAudioClip()
-    {
-        // Create a simple procedural audio clip for testing
-        int sampleRate = 44100;
-        int samples = sampleRate / 4; // 0.25 second clip
-        AudioClip clip = AudioClip.Create("DummyNote", samples, 1, sampleRate, false);
-
-        float[] data = new float[samples];
-        float frequency = 440f; // A4 note
-
-        for (int i = 0; i < samples; i++)
-        {
-            float time = (float)i / sampleRate;
-            float fade = 1f - (time * 4f); // Quick fade out
-            data[i] = Mathf.Sin(2 * Mathf.PI * frequency * time) * fade * 0.1f; // Low volume
-        }
-
-        clip.SetData(data, 0);
-        return clip;
-    }
-
-    AudioSource GetPooledAudioSource()
+    AudioSource GetAvailableAudioSource()
     {
         if (audioSourcePool.Count > 0)
         {
@@ -241,17 +161,10 @@ public class AudioManager : MonoBehaviour
         return null;
     }
 
-    IEnumerator ReturnToPoolAfterPlayback(AudioSource source, float clipLength)
+    public AudioClip GetNoteClip(InstrumentType instrument, int pitch)
     {
-        yield return new WaitForSeconds(clipLength + 0.1f); // Small buffer
-
-        if (activeAudioSources.Contains(source))
-        {
-            activeAudioSources.Remove(source);
-            source.Stop();
-            source.clip = null;
-            audioSourcePool.Enqueue(source);
-        }
+        // Placeholder - would load from instrument audio banks
+        return null;
     }
     #endregion
 

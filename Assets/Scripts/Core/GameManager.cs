@@ -52,54 +52,51 @@ public class GameManager : MonoBehaviour
     {
         LoadPlayerData();
         InitializeCoreComponents();
-        Debug.Log("🎮 GameManager initialized successfully");
     }
 
     void InitializeCoreComponents()
     {
-        // Initialize audio system (already tested and working)
-        if (audioManager == null)
-            audioManager = FindFirstObjectByType<AudioManager>();
-
-        // Initialize input system
-        if (inputManager == null)
-            inputManager = FindFirstObjectByType<InputManager>();
-
-        // Initialize UI system
-        if (uiManager == null)
-            uiManager = FindFirstObjectByType<UIManager>();
-
-        Debug.Log("🎵 Core systems initialized");
+        // Core systems are initialized by their Awake() methods
+        // This just verifies they're working
+        if (AudioManager.Instance != null &&
+            UIManager.Instance != null &&
+            InputManager.Instance != null)
+        {
+            Debug.Log("🎮 All core systems initialized successfully");
+        }
     }
 
     #region Game State Management
     public void ChangeGameState(GameState newState)
     {
-        GameState previousState = CurrentGameState;
-        CurrentGameState = newState;
-
-        Debug.Log($"🎮 Game State: {previousState} → {newState}");
-
-        OnGameStateChanged?.Invoke(newState);
-
-        // Handle state-specific logic
-        switch (newState)
+        if (CurrentGameState != newState)
         {
-            case GameState.MainMenu:
-                HandleMainMenuState();
-                break;
-            case GameState.SongSelection:
-                HandleSongSelectionState();
-                break;
-            case GameState.Playing:
-                HandlePlayingState();
-                break;
-            case GameState.Paused:
-                HandlePausedState();
-                break;
-            case GameState.GameOver:
-                HandleGameOverState();
-                break;
+            GameState previousState = CurrentGameState;
+            CurrentGameState = newState;
+
+            Debug.Log($"🎮 Game State: {previousState} → {newState}");
+
+            OnGameStateChanged?.Invoke(newState);
+
+            // Handle state-specific logic
+            switch (newState)
+            {
+                case GameState.MainMenu:
+                    HandleMainMenuState();
+                    break;
+                case GameState.SongSelection:
+                    HandleSongSelectionState();
+                    break;
+                case GameState.Playing:
+                    HandlePlayingState();
+                    break;
+                case GameState.Paused:
+                    HandlePausedState();
+                    break;
+                case GameState.GameOver:
+                    HandleGameOverState();
+                    break;
+            }
         }
     }
 
@@ -290,12 +287,10 @@ public class GameManager : MonoBehaviour
 
     void OnApplicationFocus(bool hasFocus)
     {
-#if UNITY_EDITOR
-        Debug.Log($"🎮 Editor focus change ignored: {hasFocus}");
-#else
+#if !UNITY_EDITOR
         if (!hasFocus && CurrentGameState == GameState.Playing)
         {
-            PauseGame();
+            ChangeGameState(GameState.Paused);
         }
 #endif
     }

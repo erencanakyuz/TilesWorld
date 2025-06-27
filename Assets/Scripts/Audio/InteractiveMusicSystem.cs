@@ -11,18 +11,15 @@ using System.Collections;
 public class InteractiveMusicSystem : MonoBehaviour
 {
     [Header("🎵 Interactive Music Configuration")]
-    [SerializeField] private bool enableInteractiveMusic = true;
-    [SerializeField] private bool enableMusicalScales = true;
-
-    [Header("🎼 Musical Mapping (Original SOUND_RESOURCE_IDXS)")]
     [SerializeField] private InstrumentType currentInstrument = InstrumentType.Piano;
     [SerializeField] private MusicalScale currentScale = MusicalScale.CMajor;
+    [SerializeField] private bool showMappingDebug = false;
+
+    [Header("🎼 Musical Mapping (Original SOUND_RESOURCE_IDXS)")]
     [SerializeField] private int baseOctave = 4;
 
     [Header("🎯 Lane to Music Mapping")]
-    [SerializeField] private bool showMappingDebug = false;
     [SerializeField] private float velocitySensitivity = 1.0f;
-    [SerializeField] private bool enableChordDetection = true;
 
     [Header("📊 Musical Analysis")]
     [SerializeField] private int notesPlayedThisSession = 0;
@@ -98,7 +95,7 @@ public class InteractiveMusicSystem : MonoBehaviour
 
     void SetupMusicSystem()
     {
-        audioManager = AudioManager.Instance;
+        // Get references to other systems
         if (audioManager == null)
             audioManager = FindFirstObjectByType<AudioManager>();
 
@@ -107,8 +104,6 @@ public class InteractiveMusicSystem : MonoBehaviour
         {
             currentInstrument = GameManager.Instance.GetSelectedInstrument();
         }
-
-        Debug.Log($"🎵 Interactive Music System initialized - Instrument: {currentInstrument}, Scale: {currentScale}");
     }
 
     void SubscribeToEvents()
@@ -125,8 +120,6 @@ public class InteractiveMusicSystem : MonoBehaviour
     /// </summary>
     public void PlayInteractiveNote(int lane, float velocity = 1.0f, bool isPlayerTriggered = true)
     {
-        if (!enableInteractiveMusic) return;
-
         // Get musical note information for this lane
         MusicalNoteInfo noteInfo = CalculateMusicalNote(lane);
 
@@ -150,7 +143,7 @@ public class InteractiveMusicSystem : MonoBehaviour
             CleanupOldMusicalEvents();
 
             // Detect chords and harmonies
-            if (enableChordDetection && isPlayerTriggered)
+            if (isPlayerTriggered)
             {
                 CheckForChordCreation(musicalEvent);
             }
@@ -163,9 +156,6 @@ public class InteractiveMusicSystem : MonoBehaviour
             laneLastPlayTime[lane] = Time.time;
 
             OnMusicalEventCreated?.Invoke(musicalEvent);
-
-            if (showMappingDebug)
-                Debug.Log($"🎵 Musical Note: Lane {lane} → {noteInfo.noteName} (MIDI {noteInfo.midiNote}) - Velocity: {velocity:F2}");
         }
     }
 
@@ -190,7 +180,7 @@ public class InteractiveMusicSystem : MonoBehaviour
         int soundIndex = SOUND_RESOURCE_IDXS[instrumentIndex][lane];
 
         // Enhanced with musical scale mapping
-        if (enableMusicalScales && MUSICAL_SCALES.ContainsKey(currentScale))
+        if (MUSICAL_SCALES.ContainsKey(currentScale))
         {
             int[] scaleNotes = MUSICAL_SCALES[currentScale];
             int scaleNoteIndex = lane % scaleNotes.Length;
@@ -479,9 +469,7 @@ public class InteractiveMusicSystem : MonoBehaviour
 
     void LogSessionSummary()
     {
-        var stats = GetSessionStats();
-        Debug.Log($"🎵 Session Summary: {stats.notesPlayed} notes, {stats.chordsPlayed} chords, " +
-                 $"Complexity: {stats.melodyComplexity:F2}, Instrument: {stats.currentInstrument}");
+        // Session logging removed for performance
     }
 
     void LogMusicalMapping()
