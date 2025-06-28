@@ -68,7 +68,6 @@ public class UIManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            InitializeUISystem();
         }
         else
         {
@@ -78,49 +77,52 @@ public class UIManager : MonoBehaviour
 
     void Start()
     {
-        ConfigureMobileLandscapeCanvas();
-        SetupEventListeners();
-        AdaptToScreenSize();
         InitializeUISystem();
-    }
-
-    void ConfigureMobileLandscapeCanvas()
-    {
-        // Force landscape configuration for mobile rhythm game
-        if (mainCanvas != null)
-        {
-            CanvasScaler scaler = mainCanvas.GetComponent<CanvasScaler>();
-            if (scaler == null)
-                scaler = mainCanvas.gameObject.AddComponent<CanvasScaler>();
-
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080); // Force landscape
-            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = 0.0f; // Match width for landscape
-
-            // Canvas configured for landscape
-
-            // Hint: Make sure Project Settings > Player > Resolution > Default Orientation = Landscape Left/Right
-        }
-
-        // Also configure HUD canvas
-        if (hudCanvas != null)
-        {
-            CanvasScaler hudScaler = hudCanvas.GetComponent<CanvasScaler>();
-            if (hudScaler == null)
-                hudScaler = hudCanvas.gameObject.AddComponent<CanvasScaler>();
-
-            hudScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            hudScaler.referenceResolution = new Vector2(1920, 1080);
-            hudScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            hudScaler.matchWidthOrHeight = 0.0f;
-        }
+        ConfigureCanvasScalers();
+        SetupEventListeners();
     }
 
     void InitializeUISystem()
     {
         SetupCanvasReferences();
-        AdaptToScreenSize();
+    }
+
+    /// <summary>
+    /// Configures all Canvas Scalers in the scene for a consistent landscape UI.
+    /// This should be called once during initialization.
+    /// </summary>
+    void ConfigureCanvasScalers()
+    {
+        // Configure main canvas for primary UI panels
+        if (mainCanvas != null)
+        {
+            SetupScaler(mainCanvas.GetComponent<CanvasScaler>());
+        }
+
+        // Configure HUD canvas for gameplay elements
+        if (hudCanvas != null)
+        {
+            SetupScaler(hudCanvas.GetComponent<CanvasScaler>());
+        }
+
+        // Configure Overlay canvas if it exists
+        if (overlayCanvas != null)
+        {
+            SetupScaler(overlayCanvas.GetComponent<CanvasScaler>());
+        }
+    }
+
+    /// <summary>
+    /// Applies standardized landscape scaling settings to a CanvasScaler.
+    /// </summary>
+    private void SetupScaler(CanvasScaler scaler)
+    {
+        if (scaler == null) return;
+
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080); // Target landscape resolution
+        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+        scaler.matchWidthOrHeight = 0.5f; // Balanced scaling for various aspect ratios
     }
 
     void SetupCanvasReferences()
@@ -168,40 +170,6 @@ public class UIManager : MonoBehaviour
 
         if (settingsButton != null)
             settingsButton.onClick.AddListener(() => OnSettingsPressed?.Invoke());
-    }
-
-    void AdaptToScreenSize()
-    {
-        float aspectRatio = (float)Screen.width / Screen.height;
-
-        // Force landscape orientation for mobile piano game
-        bool isLandscape = aspectRatio > 1.0f;
-
-        if (mainCanvas != null)
-        {
-            CanvasScaler scaler = mainCanvas.GetComponent<CanvasScaler>();
-            if (scaler != null)
-            {
-                // Always use landscape resolution for mobile rhythm game
-                scaler.referenceResolution = new Vector2(1920, 1080);
-                scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-                scaler.matchWidthOrHeight = isLandscape ? 0.0f : 1.0f; // Match width in landscape
-
-                // Canvas orientation adapted
-            }
-        }
-
-        // Also adapt HUD canvas if available
-        if (hudCanvas != null)
-        {
-            CanvasScaler hudScaler = hudCanvas.GetComponent<CanvasScaler>();
-            if (hudScaler != null)
-            {
-                hudScaler.referenceResolution = new Vector2(1920, 1080);
-                hudScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-                hudScaler.matchWidthOrHeight = 0.0f; // Match width for HUD elements
-            }
-        }
     }
 
     #region Game State UI Management

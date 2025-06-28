@@ -136,20 +136,6 @@ public class NoteRenderer : MonoBehaviour
 
         if (mainCamera != null)
         {
-            // Minimal camera adjustments - keep original table/ground appearance
-            if (mainCamera.orthographic)
-            {
-                mainCamera.orthographic = false; // Enable perspective for 3D depth
-                mainCamera.fieldOfView = 60f;
-            }
-
-            // Only adjust if camera is at default position (don't override custom setups)
-            if (mainCamera.transform.position == Vector3.zero || mainCamera.transform.position.z >= 0)
-            {
-                mainCamera.transform.position = new Vector3(0, 8, -8); // Less aggressive positioning
-                mainCamera.transform.rotation = Quaternion.Euler(25, 0, 0); // Gentler angle
-            }
-
             Debug.Log($"🎥 Camera setup: Position {mainCamera.transform.position}, Rotation {mainCamera.transform.rotation.eulerAngles}");
         }
         else
