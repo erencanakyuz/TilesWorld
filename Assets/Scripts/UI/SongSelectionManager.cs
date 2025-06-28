@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
+using System.Linq;
 
 public class SongSelectionManager : MonoBehaviour
 {
@@ -16,6 +18,7 @@ public class SongSelectionManager : MonoBehaviour
     [System.Serializable]
     public class SongData
     {
+        public int musicId;
         public string title;
         public string artist;
         public string duration;
@@ -29,7 +32,8 @@ public class SongSelectionManager : MonoBehaviour
         Easy,
         Medium,
         Hard,
-        Expert
+        Expert,
+        Master
     }
 
     private void Start()
@@ -44,98 +48,147 @@ public class SongSelectionManager : MonoBehaviour
 
     private void InitializeSongData()
     {
-        // Real song data from ClassicPlayer database
+        // Load real songs from CSV database
+        LoadSongsFromDatabase();
+    }
+
+    private void LoadSongsFromDatabase()
+    {
+        try
+        {
+            // Load MUSIC.csv from Resources
+            TextAsset musicCsv = Resources.Load<TextAsset>("Database csv/MUSIC");
+            if (musicCsv == null)
+            {
+                Debug.LogError("❌ MUSIC.csv not found in Resources/Database csv/");
+                CreateFallbackSongs();
+                return;
+            }
+
+            var songList = new List<SongData>();
+            string[] lines = musicCsv.text.Split('\n');
+
+            // Skip header line (line 0)
+            for (int i = 1; i < lines.Length; i++)
+            {
+                string line = lines[i].Trim();
+                if (string.IsNullOrEmpty(line)) continue;
+
+                string[] values = ParseCSVLine(line);
+                if (values.Length >= 4)
+                {
+                    try
+                    {
+                        int musicId = int.Parse(values[0].Trim('"'));
+                        string title = values[2].Trim('"');
+                        string artist = values[3].Trim('"');
+                        int bpm = int.Parse(values[4].Trim('"'));
+
+                        // Determine difficulty from stars in title
+                        DifficultyLevel difficulty = GetDifficultyFromTitle(title);
+
+                        // Clean title (remove stars)
+                        string cleanTitle = title.Replace("★", "").Replace("☆", "").Trim();
+
+                        var songData = new SongData
+                        {
+                            musicId = musicId,
+                            title = cleanTitle,
+                            artist = artist,
+                            duration = CalculateDuration(bpm), // Estimate based on BPM
+                            difficulty = difficulty,
+                            bpm = bpm,
+                            songKey = $"music_{musicId}" // JSON file key
+                        };
+
+                        songList.Add(songData);
+                        Debug.Log($"🎵 Loaded: {cleanTitle} by {artist} (BPM: {bpm}, Difficulty: {difficulty})");
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogWarning($"⚠️ Failed to parse song line {i}: {e.Message}");
+                    }
+                }
+            }
+
+            availableSongs = songList.ToArray();
+            Debug.Log($"🎼 Successfully loaded {availableSongs.Length} songs from database");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Error loading songs from database: {e.Message}");
+            CreateFallbackSongs();
+        }
+    }
+
+    private string[] ParseCSVLine(string line)
+    {
+        // Simple CSV parser that handles quoted fields
+        var result = new List<string>();
+        bool inQuotes = false;
+        string currentField = "";
+
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                result.Add(currentField);
+                currentField = "";
+            }
+            else
+            {
+                currentField += c;
+            }
+        }
+
+        result.Add(currentField); // Add last field
+        return result.ToArray();
+    }
+
+    private DifficultyLevel GetDifficultyFromTitle(string title)
+    {
+        int starCount = title.Count(c => c == '★');
+        return starCount switch
+        {
+            0 => DifficultyLevel.Easy,
+            1 => DifficultyLevel.Easy,
+            2 => DifficultyLevel.Medium,
+            3 => DifficultyLevel.Hard,
+            4 => DifficultyLevel.Expert,
+            >= 5 => DifficultyLevel.Master,
+            _ => DifficultyLevel.Easy
+        };
+    }
+
+    private string CalculateDuration(int bpm)
+    {
+        // Estimate song duration based on BPM (rough calculation)
+        int estimatedSeconds = Mathf.Clamp(300 - bpm, 60, 240); // 1-4 minutes
+        int minutes = estimatedSeconds / 60;
+        int seconds = estimatedSeconds % 60;
+        return $"{minutes}:{seconds:D2}";
+    }
+
+    private void CreateFallbackSongs()
+    {
+        // Fallback songs if CSV loading fails
         availableSongs = new SongData[]
         {
             new SongData
             {
+                musicId = 1,
                 title = "Cannon",
                 artist = "Pachelbel",
                 duration = "3:00",
                 difficulty = DifficultyLevel.Easy,
                 bpm = 77,
-                songKey = "cannon"
-            },
-            new SongData
-            {
-                title = "The Entertainer",
-                artist = "Scott Joplin",
-                duration = "3:20",
-                difficulty = DifficultyLevel.Medium,
-                bpm = 80,
-                songKey = "entertainer"
-            },
-            new SongData
-            {
-                title = "Air on a G String",
-                artist = "Bach",
-                duration = "2:40",
-                difficulty = DifficultyLevel.Easy,
-                bpm = 65,
-                songKey = "air_g_string"
-            },
-            new SongData
-            {
-                title = "Vidalita",
-                artist = "Traditional",
-                duration = "2:30",
-                difficulty = DifficultyLevel.Medium,
-                bpm = 120,
-                songKey = "vidalita"
-            },
-            new SongData
-            {
-                title = "Minuet",
-                artist = "Bach",
-                duration = "2:00",
-                difficulty = DifficultyLevel.Easy,
-                bpm = 140,
-                songKey = "minuet"
-            },
-            new SongData
-            {
-                title = "Romance",
-                artist = "Tarrega",
-                duration = "3:00",
-                difficulty = DifficultyLevel.Medium,
-                bpm = 120,
-                songKey = "romance"
-            },
-            new SongData
-            {
-                title = "Toccata and Fugue",
-                artist = "Bach",
-                duration = "5:00",
-                difficulty = DifficultyLevel.Expert,
-                bpm = 110,
-                songKey = "toccata_fugue"
-            },
-            new SongData
-            {
-                title = "Moonlight Sonata",
-                artist = "Beethoven",
-                duration = "4:00",
-                difficulty = DifficultyLevel.Easy,
-                bpm = 50,
-                songKey = "moonlight"
-            },
-            new SongData
-            {
-                title = "Fur Elise",
-                artist = "Beethoven",
-                duration = "3:00",
-                difficulty = DifficultyLevel.Medium,
-                bpm = 62,
-                songKey = "fur_elise"
-            },
-            new SongData
-            {
-                title = "Turkish Delight",
-                artist = "Mozart",
-                duration = "3:20",
-                difficulty = DifficultyLevel.Expert,
-                bpm = 140,
-                songKey = "turkish_delight"
+                songKey = "music_1"
             }
         };
     }
@@ -258,6 +311,7 @@ public class SongSelectionManager : MonoBehaviour
             DifficultyLevel.Medium => "#FFFF00",  // Sarı
             DifficultyLevel.Hard => "#FF8000",    // Turuncu
             DifficultyLevel.Expert => "#FF0000",  // Kırmızı
+            DifficultyLevel.Master => "#FF00FF",  // Mor
             _ => "#FFFFFF"
         };
 
@@ -273,6 +327,7 @@ public class SongSelectionManager : MonoBehaviour
             DifficultyLevel.Medium => "**",   // Medium = 2 stars  
             DifficultyLevel.Hard => "***",   // Hard = 3 stars
             DifficultyLevel.Expert => "****", // Expert = 4 stars
+            DifficultyLevel.Master => "*****", // Master = 5 stars
             _ => "-"
         };
     }

@@ -516,21 +516,13 @@ public class NoteRenderer : MonoBehaviour
 
     void TriggerNoteAudio(GameNoteInfo noteInfo)
     {
-        // Interactive music creation (MD's "secret sauce") - Enhanced with JSON
+        // Only use InteractiveMusicSystem to avoid duplicate calls
         if (InteractiveMusicSystem.Instance != null)
         {
-            // Use enhanced music system with JSON pitch data
+            // Use enhanced music system with JSON pitch data - this handles all audio
             InteractiveMusicSystem.Instance.TriggerNoteAudio(noteInfo);
         }
-        else if (AudioManager.Instance != null)
-        {
-            // Fallback to direct audio manager
-            AudioManager.Instance.PlayNote(
-                noteInfo.instrumentType,
-                noteInfo.pitch,
-                1.0f
-            );
-        }
+        // Note: No fallback to prevent duplicate audio calls
     }
 
     int CalculateScore(float accuracy)

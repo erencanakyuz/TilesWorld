@@ -499,6 +499,7 @@ public class SongData : ScriptableObject
     public float duration;
     public string audioFilePath;
     public string noteChartPath;
+    public string songKey;
     public DifficultyLevel difficulty;
 }
 

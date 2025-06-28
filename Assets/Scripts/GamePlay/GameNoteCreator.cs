@@ -41,6 +41,9 @@ public class GameNoteCreator : MonoBehaviour
     // Original algorithm arrays (from MD analysis)
     private static readonly int[] LINE_TO_MATCH = { 3, 5, 7, 11, 13, 17 };
 
+    // Current song data
+    private float currentSongBPM = 120f;
+
     // Events for system integration
     public static event Action<List<GameNoteInfo>> OnNotesGenerated;
     public static event Action OnGenerationComplete;
@@ -288,8 +291,12 @@ public class GameNoteCreator : MonoBehaviour
         // Reset state for new song
         ResetGenerationState();
 
-        // Load note chart (this would come from JSON or other data source)
-        var rawNoteData = LoadNoteChartData(songData.noteChartPath);
+        // Store song BPM for tempo calculations
+        currentSongBPM = songData.bpm;
+        Debug.Log($"🎵 Song BPM set to: {currentSongBPM}");
+
+        // Load note chart using songKey instead of noteChartPath
+        var rawNoteData = LoadNotesFromJSON(songData.songKey);
 
         // Convert raw data to note packages using original algorithms
         var notePackages = ConvertRawDataToPackages(rawNoteData, songData.bpm);
@@ -304,6 +311,8 @@ public class GameNoteCreator : MonoBehaviour
             totalNotesInPackages += package.gameNoteInfos.Count;
             finalGameNotePackages.Enqueue(package);
         }
+
+        Debug.Log($"🎵 Created {notePackages.Count} note packages with {totalNotesInPackages} total notes");
 
         // Set first package as current
         if (finalGameNotePackages.Count > 0)
@@ -322,7 +331,8 @@ public class GameNoteCreator : MonoBehaviour
         if (chartAsset != null)
         {
             Debug.Log($"🎵 Chart file found: {chartPath}, loading real data!");
-            return ParseJsonChartData(chartAsset.text);
+            float songBPM = GetCurrentSongBPM(); // Get BPM from current song
+            return ParseJsonChartData(chartAsset.text, songBPM);
         }
 
         // Try alternative paths for known songs
@@ -349,7 +359,7 @@ public class GameNoteCreator : MonoBehaviour
     /// <summary>
     /// Parse JSON chart data into raw note data
     /// </summary>
-    List<RawNoteData> ParseJsonChartData(string jsonText)
+    List<RawNoteData> ParseJsonChartData(string jsonText, float songBPM = 120f)
     {
         List<RawNoteData> notes = new List<RawNoteData>();
 
@@ -362,9 +372,9 @@ public class GameNoteCreator : MonoBehaviour
             JsonSongSequence[] sequences = wrapper.sequences;
 
             float currentTime = 0f;
-            float stepDuration = (60f / 120f) / 4f; // 1/16 note at 120 BPM
+            float stepDuration = (60f / songBPM) / 4f; // Use actual song BPM!
 
-            foreach (var sequence in sequences.Take(5)) // Limit for testing
+            foreach (var sequence in sequences) // Load all sequences for full song
             {
                 float sequenceStartTime = currentTime;
 
@@ -415,15 +425,23 @@ public class GameNoteCreator : MonoBehaviour
             {
                 if (int.TryParse(parts[0], out int pitch) && int.TryParse(parts[1], out int duration))
                 {
-                    var noteData = new RawNoteData
+                    // Validate pitch range (AudioManager supports 0-44)
+                    if (pitch >= 0 && pitch <= 44)
                     {
-                        timeMs = startTime + (stepIndex * stepDuration * 1000f),
-                        lane = lane,
-                        noteType = NoteType.Single,
-                        pitch = pitch,
-                        duration = duration
-                    };
-                    notes.Add(noteData);
+                        var noteData = new RawNoteData
+                        {
+                            timeMs = startTime + (stepIndex * stepDuration * 1000f),
+                            lane = lane,
+                            noteType = NoteType.Single,
+                            pitch = pitch,
+                            duration = duration
+                        };
+                        notes.Add(noteData);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"🎵 Pitch {pitch} out of range (0-44), skipping note");
+                    }
                 }
             }
         }
@@ -438,7 +456,7 @@ public class GameNoteCreator : MonoBehaviour
     {
         List<RawNoteData> demoNotes = new List<RawNoteData>();
 
-        // Generate simple demo pattern
+        // Generate simple demo pattern with full pitch range
         for (int i = 0; i < 20; i++)
         {
             var note = new RawNoteData
@@ -446,13 +464,13 @@ public class GameNoteCreator : MonoBehaviour
                 timeMs = i * 500f, // Every 0.5 seconds
                 lane = i % laneCount,
                 noteType = NoteType.Single,
-                pitch = UnityEngine.Random.Range(0, 12), // C major scale
+                pitch = UnityEngine.Random.Range(0, 45), // Full range (0-44) to use all available audio files
                 duration = 4
             };
             demoNotes.Add(note);
         }
 
-        Debug.Log($"🎵 Generated {demoNotes.Count} demo notes");
+        Debug.Log($"🎵 Generated {demoNotes.Count} demo notes with full pitch range (0-44)");
         return demoNotes;
     }
 
@@ -494,11 +512,80 @@ public class GameNoteCreator : MonoBehaviour
 
         return packages.OrderBy(p => p.oneNote).ToList();
     }
+
+    /// <summary>
+    /// Load note data from JSON file based on song key
+    /// </summary>
+    List<RawNoteData> LoadNotesFromJSON(string songKey)
+    {
+        try
+        {
+            // Map song key to correct JSON file
+            string jsonPath = GetJSONPathForSong(songKey);
+
+            Debug.Log($"🎼 Loading notes from: {jsonPath}");
+
+            TextAsset jsonFile = Resources.Load<TextAsset>(jsonPath);
+            if (jsonFile == null)
+            {
+                Debug.LogWarning($"⚠️ JSON file not found: {jsonPath}, using demo notes");
+                return GenerateDemoNoteData();
+            }
+
+            // Use existing ParseJsonChartData method with current song BPM
+            List<RawNoteData> notes = ParseJsonChartData(jsonFile.text, currentSongBPM);
+
+            Debug.Log($"🎵 Loaded {notes.Count} notes from {jsonPath}");
+            return notes;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Error loading JSON for {songKey}: {e.Message}");
+            return GenerateDemoNoteData();
+        }
+    }
+
+    /// <summary>
+    /// Map song key to correct JSON file path
+    /// </summary>
+    string GetJSONPathForSong(string songKey)
+    {
+        // songKey format: "music_1", "music_2", etc.
+        if (songKey.StartsWith("music_"))
+        {
+            string musicId = songKey.Substring(6); // Remove "music_" prefix
+
+            // Check for specific named files first
+            switch (musicId)
+            {
+                case "1":
+                    return "Song_Note_Jsons/cannon_notes"; // Pachelbel's Cannon
+                case "4":
+                    return "Song_Note_Jsons/vidalita_notes"; // Vidalita (if exists)
+                case "7":
+                    return "Song_Note_Jsons/toccata_notes"; // Toccata and Fugue (if exists)
+                default:
+                    // Try generic format first
+                    return $"Song_Note_Jsons/music_{musicId}_notes";
+            }
+        }
+
+        // Fallback to old format for backwards compatibility
+        return $"Song_Note_Jsons/{songKey}_notes";
+    }
     #endregion
 
     #region Public Interface
 
     public bool IsGenerationComplete() => isAllCreated;
+
+    /// <summary>
+    /// Get current song BPM for tempo calculations
+    /// </summary>
+    float GetCurrentSongBPM()
+    {
+        return currentSongBPM;
+    }
 
     /// <summary>
     /// Force generation completion (for testing)

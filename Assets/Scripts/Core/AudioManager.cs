@@ -9,7 +9,7 @@ public class AudioManager : MonoBehaviour
 
     [Header("🎵 Audio Configuration")]
     [SerializeField] private AudioMixer mainMixer;
-    [SerializeField] private int audioSourcePoolSize = 100; // Increased for high-frequency note playing
+    [SerializeField] private int audioSourcePoolSize = 200; // Increased for high-frequency note playing - was 100
 
     [Header("🎼 Instrument Audio Clips")]
     [SerializeField] private InstrumentAudioData[] instruments;
