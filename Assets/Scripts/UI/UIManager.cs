@@ -162,9 +162,6 @@ public class UIManager : MonoBehaviour
         GameManager.OnScoreChanged += UpdateScore;
         GameManager.OnComboChanged += UpdateCombo;
 
-        // Subscribe to InputManager events
-        InputManager.OnLaneTapped += HandleLaneTapped;
-
         // Setup button events
         if (pauseButton != null)
             pauseButton.onClick.AddListener(() => OnPausePressed?.Invoke());
@@ -210,6 +207,19 @@ public class UIManager : MonoBehaviour
     #region Game State UI Management
     void HandleGameStateChange(GameState newState)
     {
+        // Deactivate all panels first
+        foreach (var panel in statePanels.Values)
+        {
+            if (panel != null) panel.SetActive(false);
+        }
+
+        // Activate the correct panel for the new state
+        if (statePanels.TryGetValue(newState, out GameObject activePanel))
+        {
+            if (activePanel != null) activePanel.SetActive(true);
+        }
+
+        // Handle specific logic for each state
         switch (newState)
         {
             case GameState.MainMenu:
@@ -291,8 +301,6 @@ public class UIManager : MonoBehaviour
             multiplierText.fontSize = 28;
             multiplierText.alignment = TMPro.TextAlignmentOptions.Left;
         }
-
-        // Landscape HUD configured
     }
 
     void SetupMobileLandscapeControls()
@@ -318,14 +326,12 @@ public class UIManager : MonoBehaviour
             settingsRect.anchoredPosition = new Vector2(-80f, -160f); // Below pause
             settingsRect.sizeDelta = new Vector2(60f, 60f);
         }
-
-        // Mobile controls configured
     }
 
     void ShowPauseUI()
     {
         if (hudCanvas != null)
-            hudCanvas.gameObject.SetActive(true);
+            hudCanvas.gameObject.SetActive(true); // Keep HUD visible on pause
     }
 
     void ShowGameOverUI()
@@ -437,13 +443,6 @@ public class UIManager : MonoBehaviour
     #endregion
 
     #region Hit Effects
-    void HandleLaneTapped(int lane, Vector2 screenPosition)
-    {
-        // This will be called by the gameplay system with hit accuracy
-        // For now, just show a basic effect
-        ShowHitEffect(HitAccuracy.Perfect, screenPosition);
-    }
-
     public void ShowHitEffect(HitAccuracy accuracy, Vector2 screenPosition)
     {
         GameObject effectPrefab = GetEffectPrefab(accuracy);
@@ -615,7 +614,6 @@ public class UIManager : MonoBehaviour
         GameManager.OnGameStateChanged -= HandleGameStateChange;
         GameManager.OnScoreChanged -= UpdateScore;
         GameManager.OnComboChanged -= UpdateCombo;
-        InputManager.OnLaneTapped -= HandleLaneTapped;
     }
 }
 

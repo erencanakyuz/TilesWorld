@@ -11,7 +11,6 @@ using System.Collections.Generic;
 public class GameplayManager : MonoBehaviour
 {
     [Header("🎮 Gameplay Configuration")]
-    [SerializeField] private bool autoStartOnLoad = false;
     [SerializeField] private float countdownDuration = 3f;
     [SerializeField] private bool enablePauseOnFocusLoss = true;
 
@@ -68,15 +67,6 @@ public class GameplayManager : MonoBehaviour
     void Start()
     {
         InitializeGameplayManager();
-
-        if (autoStartOnLoad && currentSong != null)
-        {
-            StartCoroutine(DelayedGameStartCoroutine(1f));
-        }
-        else if (autoStartOnLoad)
-        {
-            Debug.LogWarning("🎮 No song available for auto-start");
-        }
     }
 
     void InitializeGameplayManager()

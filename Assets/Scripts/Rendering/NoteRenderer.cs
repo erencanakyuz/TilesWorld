@@ -399,7 +399,7 @@ public class NoteRenderer : MonoBehaviour
 
         foreach (var activeNote in hitNotes)
         {
-            HandleNoteHit(activeNote);
+            HandleNoteHit(activeNote, screenPosition);
             ReturnNoteToPool(activeNote.gameObject);
             activeNotes.Remove(activeNote);
 
@@ -425,7 +425,7 @@ public class NoteRenderer : MonoBehaviour
         return hitNotes;
     }
 
-    void HandleNoteHit(RenderingNote activeNote)
+    void HandleNoteHit(RenderingNote activeNote, Vector2 screenPosition)
     {
         // Calculate hit accuracy based on distance from perfect hit zone
         float distance = Mathf.Abs(activeNote.currentPosition.z - hitZoneZ);
@@ -436,6 +436,13 @@ public class NoteRenderer : MonoBehaviour
         {
             int score = CalculateScore(accuracy);
             GameManager.Instance.UpdateScore(score);
+        }
+
+        // Trigger visual effect via UIManager
+        if (UIManager.Instance != null)
+        {
+            HitAccuracy accuracyEnum = accuracy > 0.9f ? HitAccuracy.Perfect : (accuracy > 0.7f ? HitAccuracy.Good : HitAccuracy.Miss);
+            UIManager.Instance.ShowHitEffect(accuracyEnum, screenPosition);
         }
     }
 

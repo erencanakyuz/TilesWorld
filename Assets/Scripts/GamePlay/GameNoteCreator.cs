@@ -372,10 +372,6 @@ public class GameNoteCreator : MonoBehaviour
     #region Public Interface
 
     public bool IsGenerationComplete() => isAllCreated;
-    public int GetTotalNotesGenerated() => totalNotesGenerated;
-    public float GetCurrentGenerationTime() => accumulatedDeltaTime;
-    public bool IsRightDirection() => isRightDirection;
-    public int GetCurrentDirectionCount() => currentDirectionCnt;
 
     /// <summary>
     /// Force generation completion (for testing)
@@ -384,21 +380,6 @@ public class GameNoteCreator : MonoBehaviour
     {
         isAllCreated = true;
         OnGenerationComplete?.Invoke();
-    }
-
-    /// <summary>
-    /// Get algorithm statistics for debugging
-    /// </summary>
-    public NoteGenerationStats GetGenerationStats()
-    {
-        return new NoteGenerationStats
-        {
-            totalNotesGenerated = totalNotesGenerated,
-            currentDirectionCount = currentDirectionCnt,
-            isRightDirection = isRightDirection,
-            remainingPackages = finalGameNotePackages.Count,
-            accumulatedTime = accumulatedDeltaTime
-        };
     }
     #endregion
 }
@@ -442,16 +423,6 @@ public enum NoteType
     Single,
     Hold,
     Chord
-}
-
-[System.Serializable]
-public struct NoteGenerationStats
-{
-    public int totalNotesGenerated;
-    public int currentDirectionCount;
-    public bool isRightDirection;
-    public int remainingPackages;
-    public float accumulatedTime;
 }
 
 #endregion

@@ -48,6 +48,13 @@ public class GameManager : MonoBehaviour
     public GameState CurrentGameState { get; private set; } = GameState.MainMenu;
     public bool IsGamePaused { get; private set; } = false;
 
+    public float perfectTimingWindow = 50f; // ms
+    public float goodTimingWindow = 100f;   // ms
+
+    [Header("📱 Mobile Settings")]
+    public bool enableHaptics = true;
+    public int targetFrameRate = 60;
+
     void InitializeGameManager()
     {
         LoadPlayerData();
@@ -376,10 +383,4 @@ public class GameConfig
     [Header("🎮 Gameplay Settings")]
     public int laneCount = 6;
     public float noteSpeed = 500f;
-    public float perfectTimingWindow = 50f; // ms
-    public float goodTimingWindow = 100f;   // ms
-
-    [Header("📱 Mobile Settings")]
-    public bool enableHaptics = true;
-    public int targetFrameRate = 60;
 }
