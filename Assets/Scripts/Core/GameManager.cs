@@ -120,7 +120,9 @@ public class GameManager : MonoBehaviour
 
             Debug.Log($"🎮 Game State: {previousState} → {newState}");
 
+            Debug.Log($"🔔 Firing OnGameStateChanged event with {newState}");
             OnGameStateChanged?.Invoke(newState);
+            Debug.Log($"🔔 Event fired. Subscribers: {OnGameStateChanged?.GetInvocationList()?.Length ?? 0}");
 
             // Handle state-specific logic
             switch (newState)
@@ -399,6 +401,27 @@ public class GameManager : MonoBehaviour
         {
             ShowGameStateDebug();
         }
+
+        // Debug: S tuşuna basınca Song Selection'a geç
+        if (Keyboard.current.sKey.wasPressedThisFrame)
+        {
+            Debug.Log("🎵 Switching to Song Selection state...");
+            ChangeGameState(GameState.SongSelection);
+        }
+
+        // Debug: R tuşuna basınca UI refresh
+        if (Keyboard.current.rKey.wasPressedThisFrame)
+        {
+            Debug.Log("🔄 Refreshing UIManager...");
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.RefreshUIElements();
+            }
+            else
+            {
+                Debug.LogError("❌ UIManager.Instance is NULL!");
+            }
+        }
     }
 
     void ShowGameStateDebug()
@@ -428,6 +451,11 @@ public class GameManager : MonoBehaviour
         }
 
         Debug.Log("========================");
+
+        // Test: Switch to Song Selection state
+        Debug.Log("🎵 Testing Song Selection - Press S to switch to SongSelection state");
+        Debug.Log("🔄 Press R to refresh UIManager Canvas detection");
+        Debug.Log("🎮 Press K to show this debug info");
     }
 }
 

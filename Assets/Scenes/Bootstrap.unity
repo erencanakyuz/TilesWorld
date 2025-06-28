@@ -223,7 +223,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mainMenuPanelPrefab: {fileID: 4949574427873613607, guid: 0f7824b817dda044eacbba45df62a0b8, type: 3}
-  songSelectionPanelPrefab: {fileID: 3838508773296629766, guid: 3167509f19bfaf04fa530ce24aba5f91, type: 3}
+  songSelectionPanelPrefab: {fileID: 7482992003517174357, guid: 3167509f19bfaf04fa530ce24aba5f91, type: 3}
   gameplayPanelPrefab: {fileID: 6801837407720441779, guid: 6b33929a40b2ede479d132d9229cfc48, type: 3}
   pausePanelPrefab: {fileID: 7818130866711618077, guid: 8f0a8e83f900c424cbd3493d8d548fcc, type: 3}
   gameOverPanelPrefab: {fileID: 1383066566220183752, guid: c78e37983fe153a4d9b5da11d27d4e38, type: 3}
@@ -231,7 +231,6 @@ MonoBehaviour:
   perfectHitEffect: {fileID: 7980075456805444894, guid: c6a05dccfcea9fb4a93b60cd6011f9d3, type: 3}
   goodHitEffect: {fileID: 5801645551642291797, guid: b67a591a03e01684983a26cfc3466c77, type: 3}
   missEffect: {fileID: 2699943676106352735, guid: 2ee5b4190176ec446ac2fa92f7a64606, type: 3}
-  mobileControlsPrefab: {fileID: 0}
   effectDuration: 1
   fadeAnimation:
     serializedVersion: 2
