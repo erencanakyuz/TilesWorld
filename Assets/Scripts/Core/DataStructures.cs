@@ -31,6 +31,44 @@ public class GameNoteInfo
     public int duration;               // Note duration from JSON
     public bool alreadyHit;           // Hit state tracking
     public int line;                  // Original line/lane (oldgame.md'den)
+
+    // *** EXACT JAVA: From GameNoteCreator.java ***
+    public int seq;                   // Sequence number
+    public List<OneNote> noteInfoList; // List of notes in this game note
+
+    public GameNoteInfo()
+    {
+        noteInfoList = new List<OneNote>();
+    }
+}
+
+/// <summary>
+/// *** EXACT JAVA: OneNote class from GameNoteCreator.java ***
+/// </summary>
+[System.Serializable]
+public class OneNote
+{
+    public int flat;    // Pitch value (EXACT Java: public int flat)
+    public int line;    // Line index (EXACT Java: public int line)
+}
+
+/// <summary>
+/// *** EXACT JAVA: NoteInfo class equivalent to Java NoteInfo ***
+/// </summary>
+[System.Serializable]
+public class NoteInfo
+{
+    public int[] pitch;    // Array of pitches for each line
+    public float oneTempo; // Timing for next note package (EXACT Java: int oneNote)
+
+    public NoteInfo()
+    {
+        pitch = new int[6]; // 6 lanes
+        for (int i = 0; i < pitch.Length; i++)
+        {
+            pitch[i] = -1; // Initialize to "no note"
+        }
+    }
 }
 
 [System.Serializable]
@@ -44,7 +82,7 @@ public class RawNoteData
 }
 
 // Ham veriyi geçici olarak tutmak için (oldgame.md'den)
-internal class TemporalNoteInfo
+public class TemporalNoteInfo
 {
     public int[] pitches = { -1, -1, -1, -1, -1, -1 };
     public int durationType = -1;

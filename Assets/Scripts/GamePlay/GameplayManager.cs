@@ -176,17 +176,18 @@ public class GameplayManager : MonoBehaviour
     }
 
     /// <summary>
-    /// *** ORİJİNAL JAVA ALGORİTMASI RESTORE EDİLDİ! ***
-    /// Original Java: noteCreator.getNote() calls in main loop
-    /// Bu sistem oldgame.md'de detaylı açıklanıyor!
+    /// *** EXACT JAVA: Main game loop calls getNote() ***
+    /// Original Java: World.java updateInvaders() calls gameNoteCreator.getNote()
     /// </summary>
     void UpdateNoteGeneration(float deltaTime)
     {
         if (noteCreator == null) return;
 
-        // *** ORİJİNAL JAVA ALGORİTMASI: Sadece Tick() sistemi kullan ***
-        // GetNote() kaldırıldı çünkü çifte işleme sorunu yaratıyordu
-        noteCreator.Tick(deltaTime);
+        // *** EXACT JAVA: Call getNote() every frame like original ***
+        List<GameNoteInfo> newNotes = noteCreator.GetNote(deltaTime);
+
+        // GetNote() already fires OnNotesGenerated event, so no need to handle here
+        // This matches the original Java flow exactly
     }
 
     #region Song Management & Game Flow

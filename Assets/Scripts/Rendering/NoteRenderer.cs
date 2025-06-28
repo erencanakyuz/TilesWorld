@@ -200,54 +200,42 @@ public class NoteRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// *** ORİJİNAL JAVA ALGORİTMASI RESTORE EDİLDİ! ***
-    /// Original Java: updateInvaders() - Note movement and perspective calculation
-    /// EXACT FORMULA: f = (invader.position.z - 3.0F) / -25.0F * this.speedMultiplier
+    /// *** EXACT JAVA: updateInvaders() - World.java line 107 ***
+    /// CRITICAL FORMULA: f = (invader.position.z - 3.0F) / -25.0F * speedMultiplier
     /// </summary>
     void UpdateActiveNotes(float deltaTime)
     {
-        if (deltaTime <= 0f || Time.timeScale <= 0f)
-        {
-            return;
-        }
+        if (deltaTime <= 0f || Time.timeScale <= 0f) return;
 
         for (int i = activeNotes.Count - 1; i >= 0; i--)
         {
             var activeNote = activeNotes[i];
-            if (activeNote == null || activeNote.gameObject == null || !activeNote.gameObject.activeInHierarchy) continue;
+            if (activeNote == null || activeNote.gameObject == null) continue;
 
-            // *** ORİJİNAL JAVA EXACT FORMULA! ***
-            // f = (invader.position.z - 3.0F) / -25.0F * this.speedMultiplier;
-            // else: f = this.speedMultiplier * 0.2F;
-            float currentSpeed;
+            // *** EXACT JAVA ALGORITHM FROM World.java ***
+            float f; // Speed variable like original Java
 
-            if (activeNote.currentPosition.z < 0.0f) // Hit zonunu geçmiş (like original Java)
+            if (activeNote.currentPosition.z < 0.0f)
             {
-                // *** EXACT ORIGINAL FORMULA! ***
-                currentSpeed = (activeNote.currentPosition.z - 3.0f) / -25.0f * speedMultiplier;
+                // *** EXACT FORMULA: (z - 3.0F) / -25.0F * speedMultiplier ***
+                f = (activeNote.currentPosition.z - 3.0f) / -25.0f * speedMultiplier;
             }
-            else // Henüz hit zonuna ulaşmamış
+            else
             {
-                // *** EXACT ORIGINAL FORMULA! ***
-                currentSpeed = speedMultiplier * 0.2f;
+                // *** EXACT FORMULA: speedMultiplier * 0.2F ***
+                f = speedMultiplier * 0.2f;
             }
 
-            // Apply base speed multiplier for Unity scaling
-            currentSpeed *= baseNoteSpeed * deltaTime;
+            // *** EXACT JAVA: invader.update(deltaTime, f) ***
+            activeNote.currentPosition.z += deltaTime * f; // FORWARD direction in Java (negative in Unity)
 
-            // *** ORİJİNAL JAVA: Move note towards player with DYNAMIC SPEED! ***
-            activeNote.currentPosition.z -= currentSpeed;
+            // Convert to Unity coordinate system (z towards camera is negative)
+            Vector3 unityPosition = activeNote.currentPosition;
+            unityPosition.z = -activeNote.currentPosition.z; // Flip for Unity camera
+            activeNote.gameObject.transform.position = unityPosition;
 
-            // Keep note stable in X and Y (no drifting or falling)
-            Vector3 stablePosition = activeNote.currentPosition;
-            stablePosition.y = 0f; // Always at ground level
-            activeNote.currentPosition = stablePosition;
-
-            // Apply position to GameObject
-            activeNote.gameObject.transform.position = activeNote.currentPosition;
-
-            // Remove notes that have passed the hit zone  
-            if (activeNote.currentPosition.z <= noteDestroyZ)
+            // *** EXACT JAVA: Remove missed notes (position.z > 2.0F) ***
+            if (activeNote.currentPosition.z > 2.0f)
             {
                 HandleNoteMissed(activeNote);
                 ReturnNoteToPool(activeNote.gameObject);
@@ -255,8 +243,8 @@ public class NoteRenderer : MonoBehaviour
                 continue;
             }
 
-            // Apply perspective effects while moving
-            ApplyPerspectiveEffects(activeNote, activeNote.currentPosition.z);
+            // Apply perspective effects
+            ApplyPerspectiveEffects(activeNote, unityPosition.z);
         }
     }
 
@@ -445,8 +433,8 @@ public class NoteRenderer : MonoBehaviour
             spawnPosition = new Vector3(xOffset, 0, 0);
         }
 
-        // Position note at back of world (far from camera)
-        spawnPosition.z = worldDepth;
+        // *** EXACT JAVA: Spawn at WORLD_MIN_Z = -25.0F ***
+        spawnPosition.z = -25.0f; // Java coordinate system
         spawnPosition.y = 0;
 
         // Set note properties
