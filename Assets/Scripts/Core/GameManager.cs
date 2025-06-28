@@ -6,6 +6,23 @@ using System;
 public class GameManager : MonoBehaviour
 {
     #region Singleton
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    public static void Initialize()
+    {
+#if UNITY_EDITOR
+        if (Instance == null)
+        {
+            var bootstrapScene = SceneManager.GetSceneByName("Bootstrap");
+            if (!bootstrapScene.isLoaded)
+            {
+                Debug.Log("Editor'de oyun başlatıldı, Bootstrap sahnesi yükleniyor...");
+                SceneManager.LoadScene("Bootstrap", LoadSceneMode.Additive);
+            }
+        }
+#endif
+    }
+
     public static GameManager Instance { get; private set; }
 
     void Awake()
@@ -18,6 +35,8 @@ public class GameManager : MonoBehaviour
         }
         else
         {
+            // Bu kısım artık Bootstrap mantığı sayesinde daha az önemli hale geliyor
+            // ama yine de bir güvenlik önlemi olarak kalabilir.
             Destroy(gameObject);
         }
     }
@@ -70,6 +89,16 @@ public class GameManager : MonoBehaviour
             inputManager = InputManager.Instance;
         if (uiManager == null)
             uiManager = UIManager.Instance;
+
+        // Subscribe to UI events
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.OnPausePressed += HandlePauseButtonPressed;
+            UIManager.Instance.OnSettingsPressed += HandleSettingsButtonPressed;
+            UIManager.Instance.OnResumePressed += HandleResumeButtonPressed;
+            UIManager.Instance.OnRestartPressed += HandleRestartButtonPressed;
+            UIManager.Instance.OnMainMenuPressed += HandleMainMenuButtonPressed;
+        }
 
         // This just verifies they're working
         if (AudioManager.Instance != null &&
@@ -276,6 +305,44 @@ public class GameManager : MonoBehaviour
     }
     #endregion
 
+    #region UI Event Handlers
+    void HandlePauseButtonPressed()
+    {
+        Debug.Log("🎮 Pause button pressed");
+        PauseGame();
+    }
+
+    void HandleSettingsButtonPressed()
+    {
+        Debug.Log("⚙️ Settings button pressed");
+        // TODO: Settings panel functionality will be added later
+        // For now, just open a simple settings overlay
+    }
+
+    void HandleResumeButtonPressed()
+    {
+        Debug.Log("▶️ Resume button pressed");
+        ResumeGame();
+    }
+
+    void HandleRestartButtonPressed()
+    {
+        Debug.Log("🔄 Restart button pressed");
+        // Restart current session
+        if (currentSession != null)
+        {
+            EndGameSession();
+            StartNewGameSession(currentSession.songData);
+        }
+    }
+
+    void HandleMainMenuButtonPressed()
+    {
+        Debug.Log("🏠 Main menu button pressed");
+        ChangeGameState(GameState.MainMenu);
+    }
+    #endregion
+
     #region Getters
     public PlayerData GetCurrentPlayer() => currentPlayer;
     public GameSession GetCurrentSession() => currentSession;
@@ -311,6 +378,16 @@ public class GameManager : MonoBehaviour
 
     void OnDestroy()
     {
+        // Unsubscribe from UI events to prevent memory leaks
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.OnPausePressed -= HandlePauseButtonPressed;
+            UIManager.Instance.OnSettingsPressed -= HandleSettingsButtonPressed;
+            UIManager.Instance.OnResumePressed -= HandleResumeButtonPressed;
+            UIManager.Instance.OnRestartPressed -= HandleRestartButtonPressed;
+            UIManager.Instance.OnMainMenuPressed -= HandleMainMenuButtonPressed;
+        }
+
         SavePlayerData();
     }
 }

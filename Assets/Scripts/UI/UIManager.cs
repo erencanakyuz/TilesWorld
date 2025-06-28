@@ -3,41 +3,45 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using System.Collections;
 using TMPro;
+using UnityEngine.SceneManagement;
 
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
-    [Header("🎨 UI References")]
-    [SerializeField] private Canvas mainCanvas;
-    [SerializeField] private Canvas overlayCanvas;
-    [SerializeField] private Canvas hudCanvas;
+    // Bu referanslar artık Inspector'da görünmeyecek, çalışma anında doldurulacak.
+    private Canvas mainCanvas;
+    private Canvas overlayCanvas;
+    private Canvas hudCanvas;
 
-    [Header("📊 HUD Elements")]
-    [SerializeField] private TextMeshProUGUI scoreText;
-    [SerializeField] private TextMeshProUGUI comboText;
-    [SerializeField] private TextMeshProUGUI multiplierText;
-    [SerializeField] private Slider healthBar;
-    [SerializeField] private Image instrumentIcon;
+    private TextMeshProUGUI scoreText;
+    private TextMeshProUGUI comboText;
+    private TextMeshProUGUI multiplierText;
+    private Slider healthBar;
+    private Image instrumentIcon;
 
-    [Header("🎮 Game State Panels")]
-    [SerializeField] private GameObject mainMenuPanel;
-    [SerializeField] private GameObject songSelectionPanel;
-    [SerializeField] private GameObject gameplayPanel;
-    [SerializeField] private GameObject pausePanel;
-    [SerializeField] private GameObject gameOverPanel;
-    [SerializeField] private GameObject settingsPanel;
+    private Transform effectParent;
+
+    private Button pauseButton;
+    private Button settingsButton;
+    private GameObject mobileControls;
+
+
+    [Header("🎮 Game State Panel Prefabs")]
+    [SerializeField] private GameObject mainMenuPanelPrefab;
+    [SerializeField] private GameObject songSelectionPanelPrefab;
+    [SerializeField] private GameObject gameplayPanelPrefab; // This might be used for a specific overlay during gameplay
+    [SerializeField] private GameObject pausePanelPrefab;
+    [SerializeField] private GameObject gameOverPanelPrefab;
+    [SerializeField] private GameObject settingsPanelPrefab;
 
     [Header("🎵 Audio Feedback UI")]
     [SerializeField] private GameObject perfectHitEffect;
     [SerializeField] private GameObject goodHitEffect;
     [SerializeField] private GameObject missEffect;
-    [SerializeField] private Transform effectParent;
 
     [Header("📱 Mobile UI")]
-    [SerializeField] private Button pauseButton;
-    [SerializeField] private Button settingsButton;
-    [SerializeField] private GameObject mobileControls;
+    // Mobile controls are found automatically in the scene, no prefab needed
 
     [Header("⚙️ UI Configuration")]
     [SerializeField] private float effectDuration = 1.0f;
@@ -45,7 +49,8 @@ public class UIManager : MonoBehaviour
     // Removed unused field adaptiveUISize
 
     // UI State Management
-    private Dictionary<GameState, GameObject> statePanels;
+    private Dictionary<GameState, GameObject> statePanelPrefabs;
+    private GameObject currentPanelInstance;
     private Queue<GameObject> hitEffectPool;
     private List<GameObject> activeEffects;
 
@@ -75,12 +80,158 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    void OnEnable()
+    {
+        Debug.Log("🎨 UIManager OnEnable - Subscribing to scene events");
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    void OnDisable()
+    {
+        Debug.Log("🎨 UIManager OnDisable - Unsubscribing from scene events");
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
     void Start()
     {
+        Debug.Log("🎨 UIManager started and active!");
         InitializeUISystem();
-        ConfigureCanvasScalers();
-        SetupEventListeners();
+        // Canvas Scaler'ları ve Event Listener'ları referanslar bulunduktan sonra kurulmalı.
+        // Bu yüzden Start içindeki bazı çağrıları OnSceneLoaded'a taşıyacağız.
     }
+
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        Debug.Log($"🎨 UIManager received scene loaded event: '{scene.name}' (mode: {mode})");
+
+        // Bootstrap sahnesi yüklendiğinde bir şey yapma
+        if (scene.name == "Bootstrap")
+        {
+            Debug.Log("🎨 Bootstrap scene detected, skipping UI setup");
+            return;
+        }
+
+        Debug.Log($"UIManager, '{scene.name}' sahnesindeki UI elemanlarını otomatik olarak buluyor...");
+
+        if (AutoFindUIElements())
+        {
+            ConfigureCanvasScalers();
+            SetupEventListeners();
+            Debug.Log("UIManager referansları otomatik olarak başarıyla yüklendi.");
+        }
+        else
+        {
+            Debug.LogWarning($"'{scene.name}' sahnesinde bazı UI elemanları bulunamadı! UI düzgün çalışmayabilir.");
+        }
+    }
+
+    bool AutoFindUIElements()
+    {
+        bool success = true;
+
+        // Canvas'ları akıllı şekilde bul
+        success &= FindCanvases();
+
+        // HUD elemanlarını HUDCanvas içinde ara
+        success &= FindHUDElements();
+
+        // Efekt parent'ını overlay canvas'ta ara
+        success &= FindEffectElements();
+
+        // Mobil kontrolleri ara
+        success &= FindMobileControls();
+
+        return success;
+    }
+
+    bool FindCanvases()
+    {
+        var allCanvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+
+        // İsim veya pattern'e göre canvas'ları ayır
+        mainCanvas = System.Array.Find(allCanvases, c =>
+            c.name.ToLower().Contains("main") ||
+            c.name.ToLower() == "canvas" ||
+            c.sortingOrder == 0) ?? allCanvases[0]; // Fallback: ilk canvas
+
+        hudCanvas = System.Array.Find(allCanvases, c =>
+            c.name.ToLower().Contains("hud"));
+
+        overlayCanvas = System.Array.Find(allCanvases, c =>
+            c.name.ToLower().Contains("overlay") ||
+            c.sortingOrder > 10); // Yüksek sorting order = overlay
+
+        Debug.Log($"Canvas'lar bulundu - Main: {mainCanvas?.name}, HUD: {hudCanvas?.name}, Overlay: {overlayCanvas?.name}");
+        return mainCanvas != null;
+    }
+
+    bool FindHUDElements()
+    {
+        if (hudCanvas == null) return false;
+
+        // HUD Canvas içindeki text elemanlarını akıllı şekilde bul
+        var allTexts = hudCanvas.GetComponentsInChildren<TextMeshProUGUI>();
+
+        scoreText = System.Array.Find(allTexts, t =>
+            t.name.ToLower().Contains("score"));
+
+        comboText = System.Array.Find(allTexts, t =>
+            t.name.ToLower().Contains("combo"));
+
+        multiplierText = System.Array.Find(allTexts, t =>
+            t.name.ToLower().Contains("multiplier") ||
+            t.name.ToLower().Contains("multi"));
+
+        // Health bar'ı bul
+        healthBar = hudCanvas.GetComponentInChildren<Slider>();
+
+        // Instrument icon'u bul
+        var allImages = hudCanvas.GetComponentsInChildren<Image>();
+        instrumentIcon = System.Array.Find(allImages, img =>
+            img.name.ToLower().Contains("instrument") ||
+            img.name.ToLower().Contains("icon"));
+
+        Debug.Log($"HUD elemanları - Score: {scoreText?.name}, Combo: {comboText?.name}, Health: {healthBar?.name}");
+        return scoreText != null && comboText != null;
+    }
+
+    bool FindEffectElements()
+    {
+        // Effect parent'ı overlay canvas'ta ara, yoksa HUD canvas'ta ara
+        Canvas targetCanvas = overlayCanvas ?? hudCanvas;
+        if (targetCanvas == null) return false;
+
+        var allTransforms = targetCanvas.GetComponentsInChildren<Transform>();
+        effectParent = System.Array.Find(allTransforms, t =>
+            t.name.ToLower().Contains("effect")) ?? targetCanvas.transform;
+
+        Debug.Log($"Effect Parent bulundu: {effectParent?.name}");
+        return effectParent != null;
+    }
+
+    bool FindMobileControls()
+    {
+        // Butonları tüm canvas'larda ara
+        var allButtons = FindObjectsByType<Button>(FindObjectsSortMode.None);
+
+        pauseButton = System.Array.Find(allButtons, b =>
+            b.name.ToLower().Contains("pause"));
+
+        settingsButton = System.Array.Find(allButtons, b =>
+            b.name.ToLower().Contains("settings") ||
+            b.name.ToLower().Contains("setting"));
+
+        // Mobile controls container'ını ara
+        var allGameObjects = FindObjectsByType<GameObject>(FindObjectsSortMode.None);
+        mobileControls = System.Array.Find(allGameObjects, go =>
+            go.name.ToLower().Contains("mobile") &&
+            go.name.ToLower().Contains("control"));
+
+        Debug.Log($"Mobil kontroller - Pause: {pauseButton?.name}, Settings: {settingsButton?.name}");
+        return true; // Mobil kontroller opsiyonel
+    }
+
+
 
     void InitializeUISystem()
     {
@@ -128,13 +279,13 @@ public class UIManager : MonoBehaviour
     void SetupCanvasReferences()
     {
         // Initialize state panels dictionary
-        statePanels = new Dictionary<GameState, GameObject>
+        statePanelPrefabs = new Dictionary<GameState, GameObject>
         {
-            { GameState.MainMenu, mainMenuPanel },
-            { GameState.SongSelection, songSelectionPanel },
-            { GameState.Playing, gameplayPanel },
-            { GameState.Paused, pausePanel },
-            { GameState.GameOver, gameOverPanel }
+            { GameState.MainMenu, mainMenuPanelPrefab },
+            { GameState.SongSelection, songSelectionPanelPrefab },
+            { GameState.Playing, gameplayPanelPrefab }, // Note: Gameplay HUD is handled separately
+            { GameState.Paused, pausePanelPrefab },
+            { GameState.GameOver, gameOverPanelPrefab }
         };
 
         // Initialize hit effect pool
@@ -142,6 +293,13 @@ public class UIManager : MonoBehaviour
         activeEffects = new List<GameObject>();
 
         InitializeHitEffectPool();
+
+        // Setup button events
+        if (pauseButton != null)
+            pauseButton.onClick.AddListener(() => OnPausePressed?.Invoke());
+
+        if (settingsButton != null)
+            settingsButton.onClick.AddListener(() => OnSettingsPressed?.Invoke());
     }
 
     void InitializeHitEffectPool()
@@ -163,28 +321,23 @@ public class UIManager : MonoBehaviour
         GameManager.OnGameStateChanged += HandleGameStateChange;
         GameManager.OnScoreChanged += UpdateScore;
         GameManager.OnComboChanged += UpdateCombo;
-
-        // Setup button events
-        if (pauseButton != null)
-            pauseButton.onClick.AddListener(() => OnPausePressed?.Invoke());
-
-        if (settingsButton != null)
-            settingsButton.onClick.AddListener(() => OnSettingsPressed?.Invoke());
     }
 
     #region Game State UI Management
     void HandleGameStateChange(GameState newState)
     {
-        // Deactivate all panels first
-        foreach (var panel in statePanels.Values)
+        // Destroy the previous panel instance
+        if (currentPanelInstance != null)
         {
-            if (panel != null) panel.SetActive(false);
+            Destroy(currentPanelInstance);
+            currentPanelInstance = null;
         }
 
-        // Activate the correct panel for the new state
-        if (statePanels.TryGetValue(newState, out GameObject activePanel))
+        // Activate the correct panel for the new state by instantiating it
+        if (statePanelPrefabs.TryGetValue(newState, out GameObject prefab) && prefab != null)
         {
-            if (activePanel != null) activePanel.SetActive(true);
+            Transform parentCanvas = GetParentCanvasForState(newState);
+            currentPanelInstance = Instantiate(prefab, parentCanvas);
         }
 
         // Handle specific logic for each state
@@ -202,6 +355,23 @@ public class UIManager : MonoBehaviour
             case GameState.GameOver:
                 ShowGameOverUI();
                 break;
+        }
+    }
+
+    private Transform GetParentCanvasForState(GameState state)
+    {
+        switch (state)
+        {
+            case GameState.Paused:
+                // Pause panel should appear on top of everything
+                return overlayCanvas.transform;
+
+            case GameState.MainMenu:
+            case GameState.SongSelection:
+            case GameState.GameOver:
+            default:
+                // Most panels go on the main canvas
+                return mainCanvas.transform;
         }
     }
 
