@@ -82,42 +82,43 @@ public class UIManager : MonoBehaviour
 
     void OnEnable()
     {
-        Debug.Log("🎨 UIManager OnEnable - Subscribing to scene events");
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     void OnDisable()
     {
-        Debug.Log("🎨 UIManager OnDisable - Unsubscribing from scene events");
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
     void Start()
     {
-        Debug.Log("🎨 UIManager started and active!");
         InitializeUISystem();
-        // Canvas Scaler'ları ve Event Listener'ları referanslar bulunduktan sonra kurulmalı.
-        // Bu yüzden Start içindeki bazı çağrıları OnSceneLoaded'a taşıyacağız.
+
+        // Zaten yüklü olan sahneleri kontrol et
+        CheckAlreadyLoadedScenes();
     }
 
-    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    void CheckAlreadyLoadedScenes()
     {
-        Debug.Log($"🎨 UIManager received scene loaded event: '{scene.name}' (mode: {mode})");
-
-        // Bootstrap sahnesi yüklendiğinde bir şey yapma
-        if (scene.name == "Bootstrap")
+        for (int i = 0; i < SceneManager.sceneCount; i++)
         {
-            Debug.Log("🎨 Bootstrap scene detected, skipping UI setup");
-            return;
+            Scene scene = SceneManager.GetSceneAt(i);
+
+            // Bootstrap dışındaki sahneleri işle
+            if (scene.name != "Bootstrap" && scene.isLoaded)
+            {
+                ProcessScene(scene);
+                break; // İlk non-bootstrap sahne ile devam et
+            }
         }
+    }
 
-        Debug.Log($"UIManager, '{scene.name}' sahnesindeki UI elemanlarını otomatik olarak buluyor...");
-
+    void ProcessScene(Scene scene)
+    {
         if (AutoFindUIElements())
         {
             ConfigureCanvasScalers();
             SetupEventListeners();
-            Debug.Log("UIManager referansları otomatik olarak başarıyla yüklendi.");
         }
         else
         {
@@ -161,7 +162,6 @@ public class UIManager : MonoBehaviour
             c.name.ToLower().Contains("overlay") ||
             c.sortingOrder > 10); // Yüksek sorting order = overlay
 
-        Debug.Log($"Canvas'lar bulundu - Main: {mainCanvas?.name}, HUD: {hudCanvas?.name}, Overlay: {overlayCanvas?.name}");
         return mainCanvas != null;
     }
 
@@ -191,7 +191,6 @@ public class UIManager : MonoBehaviour
             img.name.ToLower().Contains("instrument") ||
             img.name.ToLower().Contains("icon"));
 
-        Debug.Log($"HUD elemanları - Score: {scoreText?.name}, Combo: {comboText?.name}, Health: {healthBar?.name}");
         return scoreText != null && comboText != null;
     }
 
@@ -205,7 +204,6 @@ public class UIManager : MonoBehaviour
         effectParent = System.Array.Find(allTransforms, t =>
             t.name.ToLower().Contains("effect")) ?? targetCanvas.transform;
 
-        Debug.Log($"Effect Parent bulundu: {effectParent?.name}");
         return effectParent != null;
     }
 
@@ -227,7 +225,6 @@ public class UIManager : MonoBehaviour
             go.name.ToLower().Contains("mobile") &&
             go.name.ToLower().Contains("control"));
 
-        Debug.Log($"Mobil kontroller - Pause: {pauseButton?.name}, Settings: {settingsButton?.name}");
         return true; // Mobil kontroller opsiyonel
     }
 
@@ -752,6 +749,18 @@ public class UIManager : MonoBehaviour
         GameManager.OnGameStateChanged -= HandleGameStateChange;
         GameManager.OnScoreChanged -= UpdateScore;
         GameManager.OnComboChanged -= UpdateCombo;
+    }
+
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // Bootstrap sahnesi yüklendiğinde bir şey yapma
+        if (scene.name == "Bootstrap")
+        {
+            return;
+        }
+
+        // Yeni yüklenen sahneyi işle
+        ProcessScene(scene);
     }
 }
 

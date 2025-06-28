@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using System;
+using UnityEngine.InputSystem;
 
 public class GameManager : MonoBehaviour
 {
@@ -389,6 +390,44 @@ public class GameManager : MonoBehaviour
         }
 
         SavePlayerData();
+    }
+
+    void Update()
+    {
+        // Debug: K tuşuna basınca oyun durumu bilgilerini göster
+        if (Keyboard.current.kKey.wasPressedThisFrame)
+        {
+            ShowGameStateDebug();
+        }
+    }
+
+    void ShowGameStateDebug()
+    {
+        Debug.Log("=== 🎮 OYUN DURUMU DEBUG ===");
+        Debug.Log($"🎯 Current State: {CurrentGameState}");
+        Debug.Log($"⏸️ Is Paused: {IsGamePaused}");
+        Debug.Log($"🎵 Selected Instrument: {selectedInstrument}");
+
+        if (currentPlayer != null)
+        {
+            Debug.Log($"👤 Player: {currentPlayer.playerName}");
+            Debug.Log($"🏆 High Score: {currentPlayer.totalScore}");
+            Debug.Log($"🔥 Best Combo: {currentPlayer.highestCombo}");
+        }
+
+        if (currentSession != null)
+        {
+            Debug.Log($"🎵 Current Song: {currentSession.songData?.songName ?? "None"}");
+            Debug.Log($"📊 Score: {currentSession.currentScore}");
+            Debug.Log($"🔥 Combo: {currentSession.currentCombo}");
+            Debug.Log($"✨ Perfect: {currentSession.perfectHits}, Good: {currentSession.goodHits}, Miss: {currentSession.missedNotes}");
+        }
+        else
+        {
+            Debug.Log("🎵 No active session");
+        }
+
+        Debug.Log("========================");
     }
 }
 
