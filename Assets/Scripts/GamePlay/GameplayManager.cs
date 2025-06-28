@@ -286,12 +286,6 @@ public class GameplayManager : MonoBehaviour
                 else
                     PauseGameplay();
             }
-
-            if (UnityEngine.InputSystem.Keyboard.current.rKey.wasPressedThisFrame && isGamePaused)
-            {
-                Debug.Log("🎮 [DEV] R key pressed! Resuming...");
-                ResumeGameplay();
-            }
         }
 #endif
     }

@@ -96,7 +96,11 @@ public class InputManager : MonoBehaviour
 
     void HandleTouchInput()
     {
-        // Handle new Input System touch input
+        // Handle keyboard input for Q,W,E,R,T,Y keys mapped to lanes
+        HandleKeyboardInput();
+
+        // Handle new Input System touch input only on mobile
+#if UNITY_ANDROID || UNITY_IOS
         if (UnityEngine.InputSystem.Touchscreen.current != null)
         {
             var touchscreen = UnityEngine.InputSystem.Touchscreen.current;
@@ -109,9 +113,7 @@ public class InputManager : MonoBehaviour
                 }
             }
         }
-
-        // Handle mouse input for testing on PC
-        HandleMouseInput();
+#endif
     }
 
     void HandleTouchBegan(int touchId, Vector2 screenPosition, int lane)
@@ -213,22 +215,62 @@ public class InputManager : MonoBehaviour
         }
     }
 
-    void HandleMouseInput()
+    void HandleKeyboardInput()
     {
-        // Mouse input for PC testing using new Input System
-        if (UnityEngine.InputSystem.Mouse.current != null && UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
+        // Keyboard input for Q,W,E,R,T,Y keys mapped to lanes 0-5
+        if (UnityEngine.InputSystem.Keyboard.current != null)
         {
-            Vector2 mousePosition = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
-            int lane = ScreenPositionToLane(mousePosition);
+            var keyboard = UnityEngine.InputSystem.Keyboard.current;
 
-            if (lane >= 0 && lane < laneCount)
+            // Q = Lane 0
+            if (keyboard.qKey.wasPressedThisFrame)
             {
-                OnLaneTapped?.Invoke(lane, mousePosition);
-
-                // Visual feedback for input
-                if (enableTouchVisualization)
-                    CreateInputVisualization(lane, mousePosition);
+                HandleLaneKeyPress(0);
             }
+            // W = Lane 1  
+            if (keyboard.wKey.wasPressedThisFrame)
+            {
+                HandleLaneKeyPress(1);
+            }
+            // E = Lane 2
+            if (keyboard.eKey.wasPressedThisFrame)
+            {
+                HandleLaneKeyPress(2);
+            }
+            // R = Lane 3
+            if (keyboard.rKey.wasPressedThisFrame)
+            {
+                HandleLaneKeyPress(3);
+            }
+            // T = Lane 4
+            if (keyboard.tKey.wasPressedThisFrame)
+            {
+                HandleLaneKeyPress(4);
+            }
+            // Y = Lane 5
+            if (keyboard.yKey.wasPressedThisFrame)
+            {
+                HandleLaneKeyPress(5);
+            }
+        }
+    }
+
+    void HandleLaneKeyPress(int lane)
+    {
+        if (lane >= 0 && lane < laneCount)
+        {
+            // Calculate screen position for the lane center
+            Vector2 lanePosition = LaneToScreenPosition(lane);
+
+            // Fire lane tapped event
+            OnLaneTapped?.Invoke(lane, lanePosition);
+
+            // Visual feedback for input
+            if (enableTouchVisualization)
+                CreateInputVisualization(lane, lanePosition);
+
+            if (showDebugInfo)
+                Debug.Log($"🎹 Key pressed: Lane {lane}, Position {lanePosition}");
         }
     }
 

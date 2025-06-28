@@ -108,7 +108,8 @@ public class InteractiveMusicSystem : MonoBehaviour
 
     void SubscribeToEvents()
     {
-        InputManager.OnLaneTapped += HandleLaneMusicalInput;
+        // Removed direct input handling to prevent duplicate audio
+        // Audio is now handled only through NoteRenderer hit detection
         GameManager.OnGameStateChanged += HandleGameStateChange;
     }
 
@@ -404,14 +405,9 @@ public class InteractiveMusicSystem : MonoBehaviour
 
     #region Event Handlers
 
-    void HandleLaneMusicalInput(int lane, Vector2 screenPosition)
-    {
-        // Calculate velocity based on timing or pressure (simplified)
-        float timeSinceLastHit = Time.time - (laneLastPlayTime.ContainsKey(lane) ? laneLastPlayTime[lane] : 0f);
-        float velocity = Mathf.Clamp(0.5f + (timeSinceLastHit * velocitySensitivity), 0.1f, 1.0f);
-
-        PlayInteractiveNote(lane, velocity, true);
-    }
+    // Direct input handling removed to prevent duplicate audio
+    // Audio is now triggered only through NoteRenderer hit detection
+    // This ensures notes only play when actually hitting chart notes, not random key presses
 
     void HandleGameStateChange(GameState newState)
     {
@@ -485,7 +481,7 @@ public class InteractiveMusicSystem : MonoBehaviour
 
     void OnDestroy()
     {
-        InputManager.OnLaneTapped -= HandleLaneMusicalInput;
+        // Removed input unsubscription since we no longer handle direct input
         GameManager.OnGameStateChanged -= HandleGameStateChange;
     }
 }
