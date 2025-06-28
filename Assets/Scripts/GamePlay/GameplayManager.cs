@@ -39,11 +39,7 @@ public class GameplayManager : MonoBehaviour
     [SerializeField] private NoteRenderer noteRenderer;
     [SerializeField] private InteractiveMusicSystem musicSystem;
     [SerializeField] private AudioManager audioManager;
-
-    [Header("📱 Debug & Testing")]
-    [SerializeField] private bool showDebugInfo = false;
-    [SerializeField] private bool enablePerformanceTracking = true;
-
+    [SerializeField] private UIManager uiManager;
 
     // Game state management
     private bool isGameActive = false;
@@ -56,11 +52,6 @@ public class GameplayManager : MonoBehaviour
     private float currentGameTime = 0f;
     private float songDuration = 0f;
     private bool isUsingAudioSync = true;
-
-    // Performance tracking
-    private float lastUpdateTime = 0f;
-    private int frameCount = 0;
-    private float avgFPS = 60f;
 
     // Events for system coordination
     public static System.Action OnGameplayStarted;
@@ -76,43 +67,42 @@ public class GameplayManager : MonoBehaviour
 
     void Start()
     {
-        SetupGameplaySystems();
-        SubscribeToEvents();
+        InitializeGameplayManager();
 
         if (autoStartOnLoad && currentSong != null)
         {
             StartCoroutine(DelayedGameStartCoroutine(1f));
         }
-
-        if (showDebugInfo)
-            Debug.Log("🎮 GameplayManager initialized - Ready for musical gameplay!");
+        else if (autoStartOnLoad)
+        {
+            Debug.LogWarning("🎮 No song available for auto-start");
+        }
     }
 
     void InitializeGameplayManager()
     {
-        // Find system references if not assigned
+        // Get system references if not assigned in Inspector
         if (noteCreator == null)
             noteCreator = FindFirstObjectByType<GameNoteCreator>();
-
         if (noteRenderer == null)
             noteRenderer = FindFirstObjectByType<NoteRenderer>();
-
         if (musicSystem == null)
             musicSystem = FindFirstObjectByType<InteractiveMusicSystem>();
-
         if (audioManager == null)
-            audioManager = AudioManager.Instance;
+            audioManager = FindFirstObjectByType<AudioManager>();
+        if (uiManager == null)
+            uiManager = FindFirstObjectByType<UIManager>();
 
-        ResetGameplayStats();
+        SetupGameplaySystems();
     }
 
     void SetupGameplaySystems()
     {
-        // Configure note renderer speed
-        if (noteRenderer != null)
-        {
-            noteRenderer.SetNoteSpeed(noteSpeed);
-        }
+        // Reset gameplay stats to default values
+        ResetGameplayStats();
+
+        // Subscribe to game events for coordinated gameplay
+        SubscribeToEvents();
 
         // Set initial game state
         if (GameManager.Instance != null)
@@ -123,93 +113,64 @@ public class GameplayManager : MonoBehaviour
 
     void SubscribeToEvents()
     {
-        // Subscribe to input events for note hitting
-        InputManager.OnLaneTapped += HandleNoteHit;
-
-        // Subscribe to note generation events
+        // GameNoteCreator events
         GameNoteCreator.OnNotesGenerated += HandleNotesGenerated;
         GameNoteCreator.OnGenerationComplete += HandleSongComplete;
 
-        // Subscribe to musical events
+        // InteractiveMusicSystem events
         InteractiveMusicSystem.OnChordDetected += HandleChordDetected;
         InteractiveMusicSystem.OnMusicalEventCreated += HandleMusicalEvent;
 
-        // Subscribe to audio events
+        // AudioManager events
         if (audioManager != null)
         {
             audioManager.OnMusicFinished += HandleMusicFinished;
         }
 
-        // Subscribe to game manager events
+        // GameManager events
         GameManager.OnGameStateChanged += HandleGameStateChange;
     }
 
     IEnumerator DelayedGameStartCoroutine(float delay)
     {
         yield return new WaitForSeconds(delay);
-
         if (currentSong != null)
         {
             StartGameplay(currentSong);
         }
-        else
-        {
-            Debug.LogWarning("🎮 No song available for auto-start");
-        }
     }
 
-    #region Main Game Loop (Original World.java update logic)
-
-    /// <summary>
-    /// Original Java: update(float deltaTime) - Main game loop
-    /// Enhanced with modern Unity patterns and system coordination
-    /// </summary>
     void Update()
     {
-        // Debug input handling - ALWAYS check (even when game inactive)
-        HandleDebugInput();
-
         if (!isGameActive || isGamePaused) return;
 
         float deltaTime = Time.deltaTime;
-
-        // Update game timing (original World timing logic)
         UpdateGameTiming(deltaTime);
-
-        // Update note generation (original getNote calls)
         UpdateNoteGeneration(deltaTime);
-
-        // Update performance tracking
-        if (enablePerformanceTracking)
-            UpdatePerformanceTracking(deltaTime);
-
-        // Update UI with current stats
-        UpdateGameplayUI();
     }
 
-    /// <summary>
-    /// Original World.java timing system enhanced with audio synchronization
-    /// </summary>
     void UpdateGameTiming(float deltaTime)
     {
         if (isUsingAudioSync && audioManager != null && audioManager.IsMusicPlaying)
         {
-            // Use audio time as source of truth (critical for rhythm games)
             currentGameTime = audioManager.CurrentMusicTime;
         }
         else
         {
             // Fallback to game time
-            currentGameTime = Time.time - gameStartTime;
+            currentGameTime += deltaTime;
         }
 
         OnGameTimeUpdated?.Invoke(currentGameTime);
 
-        // Check if song should end
-        if (songDuration > 0 && currentGameTime >= songDuration)
+        // Check for song end
+        if (currentGameTime >= songDuration && songDuration > 0)
         {
             EndGameplay();
         }
+
+        // Update game stats
+        UpdateGameStats();
     }
 
     /// <summary>
@@ -224,92 +185,9 @@ public class GameplayManager : MonoBehaviour
             if (newNotes != null && newNotes.Count > 0)
             {
                 // Notes will be handled by NoteRenderer through events
-                if (showDebugInfo)
-                    Debug.Log($"🎵 Generated {newNotes.Count} notes at time {currentGameTime:F2}s");
             }
         }
     }
-
-    void UpdatePerformanceTracking(float deltaTime)
-    {
-        frameCount++;
-        lastUpdateTime += deltaTime;
-
-        if (lastUpdateTime >= 1f) // Update every second
-        {
-            avgFPS = frameCount / lastUpdateTime;
-            frameCount = 0;
-            lastUpdateTime = 0f;
-
-            if (showDebugInfo && Time.frameCount % 60 == 0)
-            {
-                Debug.Log($"🎮 Performance: {avgFPS:F1} FPS, Notes: {totalNotesHit}, Combo: {currentCombo}");
-            }
-        }
-    }
-
-    void HandleDebugInput()
-    {
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
-        // Debug controls only available in development builds and editor
-        if (UnityEngine.InputSystem.Keyboard.current != null)
-        {
-            if (UnityEngine.InputSystem.Keyboard.current.spaceKey.wasPressedThisFrame)
-            {
-                Debug.Log($"🎮 [DEV] Space key pressed! isGameActive: {isGameActive}");
-
-                if (!isGameActive)
-                {
-                    if (currentSong != null)
-                    {
-                        Debug.Log("🎵 [DEV] Starting existing song...");
-                        StartGameplay(currentSong);
-                    }
-                    else
-                    {
-                        Debug.Log("🎵 [DEV] No song found, creating test song...");
-                        // Create a test song on the fly for development
-                        CreateAndStartTestSong();
-                    }
-                }
-                else
-                {
-                    Debug.Log("🎮 [DEV] Game already active, Space ignored");
-                }
-            }
-
-            if (UnityEngine.InputSystem.Keyboard.current.pKey.wasPressedThisFrame && isGameActive)
-            {
-                Debug.Log($"🎮 [DEV] P key pressed! isGamePaused: {isGamePaused}");
-                if (isGamePaused)
-                    ResumeGameplay();
-                else
-                    PauseGameplay();
-            }
-        }
-#endif
-    }
-
-    void CreateAndStartTestSong()
-    {
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
-        // Create a temporary test song for development testing only
-        var testSong = ScriptableObject.CreateInstance<SongData>();
-        testSong.songName = "Test Song";
-        testSong.artist = "Piano Game Test";
-        testSong.bpm = 120f;
-        testSong.duration = 30f; // 30 second test
-        testSong.audioFilePath = "Test/Audio";
-        testSong.noteChartPath = "Test/Chart";
-        testSong.difficulty = DifficultyLevel.Easy;
-
-        Debug.Log("🎵 [DEV] Created test song - starting gameplay!");
-        StartGameplay(testSong);
-#else
-        Debug.LogWarning("🎵 Test song creation not available in production builds");
-#endif
-    }
-    #endregion
 
     #region Song Management & Game Flow
 
@@ -390,7 +268,6 @@ public class GameplayManager : MonoBehaviour
             if (UIManager.Instance != null && isCountingDown)
             {
                 // UIManager would show countdown number based on isCountingDown
-                Debug.Log($"🔢 Countdown UI: {i} (isCountingDown: {isCountingDown})");
             }
 
             yield return new WaitForSeconds(1f);
@@ -516,120 +393,6 @@ public class GameplayManager : MonoBehaviour
 
     #region Event Handlers (Original World.java onTap logic)
 
-    /// <summary>
-    /// Original Java: onTap(int lane, boolean isTap) enhanced with timing analysis
-    /// </summary>
-    void HandleNoteHit(int lane, Vector2 screenPosition)
-    {
-        if (!isGameActive || isGamePaused) return;
-
-        // Find notes in hit zone for this lane
-        var hitNotes = FindHittableNotes(lane);
-
-        if (hitNotes.Count > 0)
-        {
-            // Get the closest note to perfect timing
-            var bestNote = GetBestTimingNote(hitNotes);
-            ProcessNoteHit(bestNote, lane);
-        }
-        else
-        {
-            // No notes to hit - miss
-            ProcessMiss(lane);
-        }
-    }
-
-    List<GameNoteInfo> FindHittableNotes(int lane)
-    {
-        // This would integrate with NoteRenderer to find notes in hit zone
-        // For now, return empty list - NoteRenderer handles actual hit detection
-        return new List<GameNoteInfo>();
-    }
-
-    GameNoteInfo GetBestTimingNote(List<GameNoteInfo> notes)
-    {
-        // Return note with best timing (closest to perfect hit zone)
-        // This is a placeholder - actual implementation would calculate timing differences
-        return notes.Count > 0 ? notes[0] : null;
-    }
-
-    void ProcessNoteHit(GameNoteInfo note, int lane)
-    {
-        if (note == null) return;
-
-        // Calculate hit accuracy based on timing
-        float timingDifference = CalculateTimingDifference(note);
-        HitAccuracy accuracy = CalculateHitAccuracy(timingDifference);
-
-        // Update stats
-        totalNotesHit++;
-
-        switch (accuracy)
-        {
-            case HitAccuracy.Perfect:
-                perfectHits++;
-                currentCombo++;
-                break;
-            case HitAccuracy.Good:
-                goodHits++;
-                currentCombo++;
-                break;
-            case HitAccuracy.Miss:
-                missedNotes++;
-                currentCombo = 0;
-                break;
-        }
-
-        if (currentCombo > maxCombo)
-            maxCombo = currentCombo;
-
-        // Update UI and game manager
-        UpdateGameStats();
-
-        // Show hit effect
-        if (UIManager.Instance != null)
-        {
-            Vector2 hitPosition = new Vector2(lane * Screen.width / 6f, Screen.height * 0.8f);
-            UIManager.Instance.ShowHitEffect(accuracy, hitPosition);
-        }
-
-        if (showDebugInfo)
-            Debug.Log($"🎯 Note hit: Lane {lane}, Accuracy: {accuracy}, Combo: {currentCombo}");
-    }
-
-    void ProcessMiss(int lane)
-    {
-        currentCombo = 0;
-
-        // Update UI to show miss
-        if (UIManager.Instance != null)
-        {
-            Vector2 missPosition = new Vector2(lane * Screen.width / 6f, Screen.height * 0.8f);
-            UIManager.Instance.ShowHitEffect(HitAccuracy.Miss, missPosition);
-        }
-
-        UpdateGameStats();
-
-        if (showDebugInfo)
-            Debug.Log($"❌ Miss: Lane {lane}, Combo reset");
-    }
-
-    float CalculateTimingDifference(GameNoteInfo note)
-    {
-        // Calculate difference between note timing and current game time
-        return Mathf.Abs(note.timeMs - (currentGameTime * 1000f));
-    }
-
-    HitAccuracy CalculateHitAccuracy(float timingDifference)
-    {
-        if (timingDifference <= perfectTimingWindow)
-            return HitAccuracy.Perfect;
-        else if (timingDifference <= goodTimingWindow)
-            return HitAccuracy.Good;
-        else
-            return HitAccuracy.Miss;
-    }
-
     void HandleNotesGenerated(List<GameNoteInfo> notes)
     {
         // Notes are handled by NoteRenderer through events
@@ -650,9 +413,6 @@ public class GameplayManager : MonoBehaviour
             int chordBonus = chordType == ChordType.Major || chordType == ChordType.Minor ? 500 : 200;
             GameManager.Instance.UpdateScore(chordBonus);
         }
-
-        if (showDebugInfo)
-            Debug.Log($"🎼 Chord bonus: {chordType} - Extra points awarded!");
     }
 
     void HandleMusicalEvent(MusicalEvent musicalEvent)
@@ -798,7 +558,6 @@ public class GameplayManager : MonoBehaviour
     void OnDestroy()
     {
         // Unsubscribe from events
-        InputManager.OnLaneTapped -= HandleNoteHit;
         GameNoteCreator.OnNotesGenerated -= HandleNotesGenerated;
         GameNoteCreator.OnGenerationComplete -= HandleSongComplete;
         InteractiveMusicSystem.OnChordDetected -= HandleChordDetected;

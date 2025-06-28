@@ -13,13 +13,9 @@ public class InteractiveMusicSystem : MonoBehaviour
     [Header("🎵 Interactive Music Configuration")]
     [SerializeField] private InstrumentType currentInstrument = InstrumentType.Piano;
     [SerializeField] private MusicalScale currentScale = MusicalScale.CMajor;
-    [SerializeField] private bool showMappingDebug = false;
 
     [Header("🎼 Musical Mapping (Original SOUND_RESOURCE_IDXS)")]
     [SerializeField] private int baseOctave = 4;
-
-    [Header("🎯 Lane to Music Mapping")]
-    [SerializeField] private float velocitySensitivity = 1.0f;
 
     [Header("📊 Musical Analysis")]
     [SerializeField] private int notesPlayedThisSession = 0;
@@ -75,9 +71,6 @@ public class InteractiveMusicSystem : MonoBehaviour
     {
         SetupMusicSystem();
         SubscribeToEvents();
-
-        if (showMappingDebug)
-            LogMusicalMapping();
     }
 
     void InitializeInteractiveMusic()
@@ -302,12 +295,6 @@ public class InteractiveMusicSystem : MonoBehaviour
 
         OnChordDetected?.Invoke(chordType);
 
-        if (showMappingDebug)
-        {
-            string noteNames = string.Join(", ", chordNotes.ConvertAll(n => n.noteInfo.noteName));
-            Debug.Log($"🎼 Chord Detected: {chordType} - Notes: {noteNames}");
-        }
-
         // Visual feedback for chord
         TriggerChordVisualEffect(chordType, chordNotes);
     }
@@ -428,19 +415,16 @@ public class InteractiveMusicSystem : MonoBehaviour
     public void SetInstrument(InstrumentType instrument)
     {
         currentInstrument = instrument;
-        Debug.Log($"🎵 Instrument changed to: {instrument}");
     }
 
     public void SetMusicalScale(MusicalScale scale)
     {
         currentScale = scale;
-        Debug.Log($"🎵 Musical scale changed to: {scale}");
     }
 
     public void SetBaseOctave(int octave)
     {
         baseOctave = Mathf.Clamp(octave, 1, 8);
-        Debug.Log($"🎵 Base octave changed to: {octave}");
     }
 
     public MusicalSessionStats GetSessionStats()
@@ -466,16 +450,6 @@ public class InteractiveMusicSystem : MonoBehaviour
     void LogSessionSummary()
     {
         // Session logging removed for performance
-    }
-
-    void LogMusicalMapping()
-    {
-        Debug.Log("🎵 === MUSICAL MAPPING DEBUG ===");
-        for (int lane = 0; lane < 6; lane++)
-        {
-            var noteInfo = CalculateMusicalNote(lane);
-            Debug.Log($"Lane {lane}: {noteInfo.noteName} (MIDI: {noteInfo.midiNote}, Sound: {noteInfo.soundIndex})");
-        }
     }
     #endregion
 

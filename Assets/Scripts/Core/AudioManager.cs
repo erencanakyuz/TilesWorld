@@ -185,13 +185,8 @@ public class AudioManager : MonoBehaviour
         }
 
         // Development fallback: Generate test tone when real audio missing
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
-        Debug.LogWarning($"🎵 [DEV] Using generated test tone for {instrument} pitch {pitch} - real audio file missing!");
-        return GenerateTestTone(pitch);
-#else
         Debug.LogError($"🎵 [PRODUCTION] Missing audio file for {instrument} pitch {pitch} - no fallback available!");
         return null;
-#endif
     }
 
     AudioClip LoadAudioFromAssets(InstrumentType instrument, int pitch)
@@ -256,32 +251,6 @@ public class AudioManager : MonoBehaviour
         Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch}. " +
                         $"Make sure audio files are in Resources folder!");
         return null;
-    }
-
-    AudioClip GenerateTestTone(int pitch)
-    {
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
-        // Generate a simple sine wave tone for development testing only
-        float frequency = 440f * Mathf.Pow(2f, (pitch - 69) / 12f); // A4 = 440Hz
-        int sampleRate = 44100;
-        float duration = 0.2f; // Short note
-        int samples = Mathf.RoundToInt(duration * sampleRate);
-
-        AudioClip clip = AudioClip.Create($"DevTestTone_{pitch}", samples, 1, sampleRate, false);
-        float[] data = new float[samples];
-
-        for (int i = 0; i < samples; i++)
-        {
-            float time = (float)i / sampleRate;
-            data[i] = Mathf.Sin(2 * Mathf.PI * frequency * time) * 0.3f; // 30% volume
-        }
-
-        clip.SetData(data, 0);
-        return clip;
-#else
-        // No test tone generation in production builds
-        return null;
-#endif
     }
     #endregion
 

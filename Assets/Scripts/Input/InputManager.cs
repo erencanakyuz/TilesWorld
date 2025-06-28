@@ -9,7 +9,6 @@ public class InputManager : MonoBehaviour
 
     [Header("🎮 Input Configuration")]
     [SerializeField] private int maxSimultaneousTouches = 6; // 6 lanes support
-    [SerializeField] private bool enableTouchVisualization = true; // Enable for debugging
 
     [Header("📱 Mobile Settings")]
     [SerializeField] private float touchSensitivity = 1.0f;
@@ -17,11 +16,7 @@ public class InputManager : MonoBehaviour
 
     [Header("🎯 Lane Configuration")]
     [SerializeField] private int laneCount = 6;
-    private float laneWidth = 1.8f; // Match NoteRenderer laneWidth - don't serialize, get from NoteRenderer
-
-    [Header("📊 Debug Info")]
-    [SerializeField] private bool showDebugInfo = false; // Disable debug spam
-    [SerializeField] private int activeTouchCount = 0;
+    private float laneWidth = 1.8f;
 
     // Input Events
     public static event Action<int, Vector2> OnLaneTapped;     // lane, position
@@ -34,7 +29,6 @@ public class InputManager : MonoBehaviour
 
     // Screen to lane conversion
     private Camera mainCamera;
-    private Vector2 screenBounds;
     private Vector3[] laneWorldPositions; // Match NoteRenderer lanes
 
     void Awake()
@@ -55,7 +49,6 @@ public class InputManager : MonoBehaviour
     {
         // Setup lane positions after SerializeField values are loaded
         SetupLanePositions();
-        SetupScreenConfiguration();
     }
 
     void InitializeInputSystem()
@@ -78,20 +71,10 @@ public class InputManager : MonoBehaviour
         }
     }
 
-    void SetupScreenConfiguration()
-    {
-        if (mainCamera != null)
-        {
-            // Get screen bounds for UI positioning
-            Vector3 screenBounds = mainCamera.ScreenToWorldPoint(new Vector3(Screen.width, Screen.height, mainCamera.nearClipPlane));
-        }
-    }
-
     void Update()
     {
         HandleTouchInput();
         UpdateActiveTouches();
-        UpdateDebugInfo();
     }
 
     void HandleTouchInput()
@@ -139,12 +122,6 @@ public class InputManager : MonoBehaviour
 
             // Fire tap event
             OnLaneTapped?.Invoke(lane, screenPosition);
-
-            // Visual feedback for input
-            CreateInputVisualization(lane, screenPosition);
-
-            if (showDebugInfo)
-                Debug.Log($"Touch began: Lane {lane}, Position {screenPosition}");
         }
     }
 
@@ -197,9 +174,6 @@ public class InputManager : MonoBehaviour
             activeTouches.Remove(touchId);
 
             OnLaneReleased?.Invoke(touchData.lane);
-
-            if (showDebugInfo)
-                Debug.Log($"Touch ended: Lane {touchData.lane}");
         }
     }
 
@@ -264,13 +238,6 @@ public class InputManager : MonoBehaviour
 
             // Fire lane tapped event
             OnLaneTapped?.Invoke(lane, lanePosition);
-
-            // Visual feedback for input
-            if (enableTouchVisualization)
-                CreateInputVisualization(lane, lanePosition);
-
-            if (showDebugInfo)
-                Debug.Log($"🎹 Key pressed: Lane {lane}, Position {lanePosition}");
         }
     }
 
@@ -317,10 +284,6 @@ public class InputManager : MonoBehaviour
         // Clamp to valid range
         lane = Mathf.Clamp(lane, 0, laneCount - 1);
 
-        // Debug the mapping with more detail (only when debug enabled)
-        if (showDebugInfo)
-            Debug.Log($"🎯 Input mapping: Screen {screenPosition.x:F0}px ({normalizedX:F2}) → Lane {lane} (lanes 0-{laneCount - 1})");
-
         return lane;
     }
 
@@ -333,8 +296,6 @@ public class InputManager : MonoBehaviour
 
     void UpdateActiveTouches()
     {
-        activeTouchCount = activeTouches.Count;
-
         // Clean up any invalid touches
         List<int> touchesToRemove = new List<int>();
         foreach (var kvp in activeTouches)
@@ -349,11 +310,6 @@ public class InputManager : MonoBehaviour
         {
             activeTouches.Remove(touchId);
         }
-    }
-
-    void UpdateDebugInfo()
-    {
-        // Debug removed for performance
     }
 
     #region Public Interface
@@ -381,13 +337,6 @@ public class InputManager : MonoBehaviour
     {
         laneCount = Mathf.Clamp(count, 1, 10);
         SetupLanePositions(); // Recalculate lane positions
-        Debug.Log($"Lane count updated: {laneCount} lanes");
-    }
-
-    public void EnableDebugVisualization(bool enable)
-    {
-        enableTouchVisualization = enable;
-        showDebugInfo = enable;
     }
     #endregion
 
@@ -395,83 +344,14 @@ public class InputManager : MonoBehaviour
     void LoadInputSettings()
     {
         touchSensitivity = PlayerPrefs.GetFloat("TouchSensitivity", 1.0f);
-        enableTouchVisualization = PlayerPrefs.GetInt("TouchVisualization", 0) == 1;
-        showDebugInfo = PlayerPrefs.GetInt("InputDebug", 0) == 1;
     }
 
     public void SaveInputSettings()
     {
         PlayerPrefs.SetFloat("TouchSensitivity", touchSensitivity);
-        PlayerPrefs.SetInt("TouchVisualization", enableTouchVisualization ? 1 : 0);
-        PlayerPrefs.SetInt("InputDebug", showDebugInfo ? 1 : 0);
         PlayerPrefs.Save();
     }
     #endregion
-
-    void OnDrawGizmos()
-    {
-        if (enableTouchVisualization)
-        {
-            // Draw lane boundaries
-            Gizmos.color = Color.yellow;
-            for (int i = 0; i <= laneCount; i++)
-            {
-                float x = (float)i / laneCount * Screen.width;
-                Vector3 screenPos = new Vector3(x, 0, 0);
-                Vector3 worldPos = mainCamera != null ? mainCamera.ScreenToWorldPoint(screenPos) : Vector3.zero;
-
-                Gizmos.DrawLine(
-                    new Vector3(worldPos.x, -10, 0),
-                    new Vector3(worldPos.x, 10, 0)
-                );
-            }
-
-            // Draw active touches
-            Gizmos.color = Color.red;
-            foreach (var touch in activeTouches.Values)
-            {
-                Vector3 worldPos = mainCamera != null ?
-                    mainCamera.ScreenToWorldPoint(new Vector3(touch.currentPosition.x, touch.currentPosition.y, 5)) :
-                    Vector3.zero;
-                Gizmos.DrawSphere(worldPos, 0.5f);
-            }
-        }
-    }
-
-    void CreateInputVisualization(int lane, Vector2 screenPosition)
-    {
-        if (lane < 0 || lane >= laneCount) return;
-
-        // Create visual feedback for input (temporary sphere for hit effect)
-        GameObject feedback = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        feedback.name = "HitEffect";
-
-        // Position at exact lane center in world space
-        Vector3 worldPosition = laneWorldPositions[lane];
-        worldPosition.y = 0.5f; // Slightly above ground level
-        worldPosition.z = 3f; // At hit zone
-
-        feedback.transform.position = worldPosition;
-        feedback.transform.localScale = Vector3.one * 1.5f; // Larger for visibility
-
-        // Bright color for hit effect
-        Renderer renderer = feedback.GetComponent<Renderer>();
-        renderer.material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-        renderer.material.color = Color.yellow; // Bright yellow for visibility
-
-        // Remove collider to avoid physics
-        var collider = feedback.GetComponent<Collider>();
-        if (collider != null)
-        {
-            DestroyImmediate(collider);
-        }
-
-        // Auto cleanup after 0.5 seconds
-        Destroy(feedback, 0.5f);
-
-        if (showDebugInfo)
-            Debug.Log($"🎯 Hit effect created for lane {lane} at {worldPosition}");
-    }
 }
 
 [System.Serializable]

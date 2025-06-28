@@ -24,11 +24,9 @@ public class GameNoteCreator : MonoBehaviour
     [SerializeField] private bool enableAntiClustering = true;
     [SerializeField] private bool enableDirectionBalance = true;
 
-    [Header("📊 Debug & Analysis")]
-    [SerializeField] private bool showDebugInfo = false;
-    [SerializeField] private int totalNotesGenerated = 0;
-    [SerializeField] private int currentDirectionCnt = 0;
-    [SerializeField] private bool isRightDirection = true;
+    private int totalNotesGenerated = 0;
+    private int currentDirectionCnt = 0;
+    private bool isRightDirection = true;
 
     // Core algorithm state (from original Java)
     private float accumulatedDeltaTime = 0f;
@@ -54,10 +52,6 @@ public class GameNoteCreator : MonoBehaviour
 
     void Start()
     {
-        if (showDebugInfo)
-            Debug.Log("🎵 GameNoteCreator initialized with original algorithms");
-
-        // Debug can be enabled in inspector if needed
     }
 
     void InitializeNoteCreator()
@@ -164,9 +158,6 @@ public class GameNoteCreator : MonoBehaviour
                 {
                     // Adjust second note position (original logic)
                     note2.idx = (note2.idx + 1) % maxGameHeightLength;
-
-                    if (showDebugInfo)
-                        Debug.Log($"🎯 Applied spacing: Note moved from {notes[j].idx} to {note2.idx}");
                 }
 
                 // Check if notes are too close in time (using noteSpacingMinMs)
@@ -175,9 +166,6 @@ public class GameNoteCreator : MonoBehaviour
                 {
                     // Adjust timing to maintain minimum spacing
                     note2.timeMs = note1.timeMs + noteSpacingMinMs;
-
-                    if (showDebugInfo)
-                        Debug.Log($"🎯 Applied time spacing: {timeDifference:F1}ms → {noteSpacingMinMs}ms minimum");
                 }
             }
         }
@@ -228,8 +216,6 @@ public class GameNoteCreator : MonoBehaviour
                     note.idx = (note.idx + 2) % laneCount;
                 }
             }
-
-            // Complex rule applied successfully (debug removed)
         }
     }
 
@@ -271,9 +257,6 @@ public class GameNoteCreator : MonoBehaviour
             {
                 // Merge notes into chord
                 currentPackage.gameNoteInfos.AddRange(nextPackage.gameNoteInfos);
-
-                if (showDebugInfo)
-                    Debug.Log($"🎵 Merged chord: {timeDifference:F1}ms gap → {currentPackage.gameNoteInfos.Count} notes");
             }
             else
             {
@@ -416,28 +399,6 @@ public class GameNoteCreator : MonoBehaviour
             remainingPackages = finalGameNotePackages.Count,
             accumulatedTime = accumulatedDeltaTime
         };
-    }
-    #endregion
-
-    #region Debug & Visualization
-
-    void Update()
-    {
-        // Removed debug spam
-    }
-
-    void OnDrawGizmos()
-    {
-        if (showDebugInfo && Application.isPlaying)
-        {
-            // Draw direction indicator
-            Gizmos.color = isRightDirection ? Color.green : Color.red;
-            Vector3 center = transform.position;
-            Vector3 direction = isRightDirection ? Vector3.right : Vector3.left;
-
-            Gizmos.DrawRay(center, direction * 2f);
-            Gizmos.DrawSphere(center + direction * 2f, 0.2f);
-        }
     }
     #endregion
 }

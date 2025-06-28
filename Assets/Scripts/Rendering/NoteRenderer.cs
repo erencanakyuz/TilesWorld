@@ -33,7 +33,6 @@ public class NoteRenderer : MonoBehaviour
     [Header("📊 Performance & Debug")]
     [SerializeField] private bool enableObjectPooling = true;
     [SerializeField] private int poolSize = 50;
-    [SerializeField] private bool showDebugInfo = false; // Debug disabled for performance
     [SerializeField] private bool showHitZone = true;
 
     // Object pooling system (from MD analysis)
@@ -125,7 +124,7 @@ public class NoteRenderer : MonoBehaviour
             lanePositions[i] = new Vector3(xOffset, 0, 0);
         }
 
-        if (showDebugInfo)
+        if (showHitZone)
             Debug.Log($"🎯 Lanes setup: {laneCount} lanes, {laneWidth} width each, total world width: {worldWidth}");
     }
 
@@ -177,8 +176,6 @@ public class NoteRenderer : MonoBehaviour
         UpdateNoteTextures(deltaTime);
         UpdateActiveNotes(deltaTime);
         CleanupDestroyedNotes();
-
-        UpdateDebugInfo();
     }
 
     /// <summary>
@@ -368,8 +365,6 @@ public class NoteRenderer : MonoBehaviour
         // Note spawned successfully
     }
 
-
-
     GameObject GetPooledNote()
     {
         if (enableObjectPooling && notePool.Count > 0)
@@ -442,16 +437,10 @@ public class NoteRenderer : MonoBehaviour
             int score = CalculateScore(accuracy);
             GameManager.Instance.UpdateScore(score);
         }
-
-        if (showDebugInfo)
-            Debug.Log($"🎯 Note hit! Lane: {activeNote.noteInfo.idx}, Accuracy: {accuracy:F2}");
     }
 
     void HandleNoteMissed(RenderingNote activeNote)
     {
-        if (showDebugInfo)
-            Debug.Log($"❌ Note missed: Lane {activeNote.noteInfo.idx}");
-
         // Reset combo, reduce health, etc.
         if (GameManager.Instance != null)
         {
@@ -493,11 +482,6 @@ public class NoteRenderer : MonoBehaviour
         }
     }
 
-    void UpdateDebugInfo()
-    {
-        // Removed debug spam
-    }
-
     #region Public Interface
 
     public int GetActiveNoteCount() => activeNoteCount;
@@ -528,7 +512,7 @@ public class NoteRenderer : MonoBehaviour
 
     void OnDrawGizmos()
     {
-        if (!showHitZone && !showDebugInfo) return;
+        if (!showHitZone) return;
 
         // Draw hit zone
         if (showHitZone)
@@ -559,7 +543,7 @@ public class NoteRenderer : MonoBehaviour
         }
 
         // Draw active notes as spheres for debugging
-        if (showDebugInfo && activeNotes != null)
+        if (activeNotes != null)
         {
             Gizmos.color = Color.yellow;
             foreach (var note in activeNotes)
