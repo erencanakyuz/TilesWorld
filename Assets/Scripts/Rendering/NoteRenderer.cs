@@ -23,9 +23,9 @@ public class NoteRenderer : MonoBehaviour
     [SerializeField] private bool enablePerspectiveRotation = true;
 
     [Header("🎯 Hit Zone Configuration")]
-    [SerializeField] private float hitZoneZ = 3.0f;            // *** ORİJİNAL JAVA: 3.0F ***
+    [SerializeField] private float hitZoneZ = 0.0f;            // Hit line at Z=0 for easier calculation
     [SerializeField] private float hitZoneWidth = 2f;          // Reduced for better precision
-    [SerializeField] private float noteDestroyZ = -2f;         // Closer destruction for better performance
+    [SerializeField] private float noteDestroyZ = 2f;          // Notes destroyed after passing hit zone
 
     [Header("📊 Performance & Debug")]
     [SerializeField] private bool enableObjectPooling = true;
@@ -234,8 +234,8 @@ public class NoteRenderer : MonoBehaviour
             unityPosition.z = -activeNote.currentPosition.z; // Flip for Unity camera
             activeNote.gameObject.transform.position = unityPosition;
 
-            // *** EXACT JAVA: Remove missed notes (position.z > 2.0F) ***
-            if (activeNote.currentPosition.z > 2.0f)
+            // *** EXACT JAVA: Remove missed notes (position.z > noteDestroyZ) ***
+            if (activeNote.currentPosition.z > noteDestroyZ)
             {
                 HandleNoteMissed(activeNote);
                 ReturnNoteToPool(activeNote.gameObject);
@@ -508,30 +508,30 @@ public class NoteRenderer : MonoBehaviour
         Debug.Log($"🎯 BEST NOTE: Lane {lane}, Z-pos {hitPos:F2}, Hit Zone: {hitZoneZ}");
 
         // 🎯 ORIGINAL JAVA HIT DETECTION - LAYERED TIMING WINDOWS
-        // Hit windows are relative to hitZoneZ (3.0f)
+        // Hit windows are relative to hitZoneZ (0.0f = perfect hit line)
         // Calculate distance from hit zone center
-        float distanceFromHitZone = hitPos - hitZoneZ;
+        float distanceFromHitZone = Mathf.Abs(hitPos - hitZoneZ);
 
         HitAccuracy hitAccuracy;
         int score;
 
-        // Expanded hit windows for better playability
-        if (distanceFromHitZone >= -1.0f && distanceFromHitZone <= 1.0f)
+        // Layered hit windows - closer to hit zone = better accuracy
+        if (distanceFromHitZone <= 0.3f)
         {
-            // PERFECT hit zone (closest to hit line)
+            // PERFECT hit zone (very close to hit line)
             hitAccuracy = HitAccuracy.Perfect;
             score = 300;
         }
-        else if (distanceFromHitZone >= -2.0f && distanceFromHitZone <= 2.0f)
+        else if (distanceFromHitZone <= 0.6f)
         {
             // GOOD hit zone 
             hitAccuracy = HitAccuracy.Good;
             score = 200;
         }
-        else if (distanceFromHitZone >= -3.0f && distanceFromHitZone <= 3.0f)
+        else if (distanceFromHitZone <= 1.2f)
         {
-            // OKAY hit zone
-            hitAccuracy = HitAccuracy.Miss; // Using Miss for "Okay" since we don't have Okay enum
+            // OKAY hit zone (using Miss as placeholder)
+            hitAccuracy = HitAccuracy.Miss;
             score = 100;
         }
         else
@@ -590,11 +590,11 @@ public class NoteRenderer : MonoBehaviour
         {
             if (activeNote.noteInfo.idx == lane)
             {
-                // Expanded hit zone detection - allow notes in a wider range
+                // Hit zone detection - allow notes within reasonable hitting distance
                 float distanceFromHitZone = Mathf.Abs(activeNote.currentPosition.z - hitZoneZ);
 
-                // Allow notes within a reasonable distance (expanded for better detection)
-                if (distanceFromHitZone <= 5.0f) // Much larger detection zone
+                // Allow notes within expanded detection zone for better user experience
+                if (distanceFromHitZone <= 2.0f) // Reasonable detection zone
                 {
                     hitNotes.Add(activeNote);
                 }

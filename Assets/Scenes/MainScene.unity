@@ -752,9 +752,9 @@ MonoBehaviour:
   baseNoteSpeed: 5
   enablePerspectiveScaling: 1
   enablePerspectiveRotation: 1
-  hitZoneZ: 3
-  hitZoneWidth: 10
-  noteDestroyZ: -5
+  hitZoneZ: 0
+  hitZoneWidth: 2
+  noteDestroyZ: 2
   enableObjectPooling: 1
   poolSize: 50
   showHitZone: 1
