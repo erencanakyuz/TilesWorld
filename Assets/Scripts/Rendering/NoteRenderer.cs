@@ -1,9 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.Collections;
-using Unity.Jobs;
-using Unity.Burst;
 
 /// <summary>
 /// NoteRenderer - Visual Heart of the Game
@@ -185,6 +182,7 @@ public class NoteRenderer : MonoBehaviour
 
     /// <summary>
     /// Original Java: updateInvaders() - Note movement and perspective calculation
+    /// NOW USING ORIGINAL ACCELERATION ALGORITHM!
     /// </summary>
     void UpdateActiveNotes(float deltaTime)
     {
@@ -198,8 +196,24 @@ public class NoteRenderer : MonoBehaviour
             var activeNote = activeNotes[i];
             if (activeNote == null || activeNote.gameObject == null || !activeNote.gameObject.activeInHierarchy) continue;
 
-            // Move note towards player (positive Z to negative Z)
-            activeNote.currentPosition.z -= baseNoteSpeed * speedMultiplier * deltaTime;
+            // 🚀 ORIGINAL JAVA ACCELERATION ALGORITHM RESTORED!
+            // f = (invader.position.z - 3.0F) / -25.0F * this.speedMultiplier;
+            float currentSpeed;
+            if (activeNote.currentPosition.z < hitZoneZ) // Hit zonunu geçtiyse
+            {
+                // Orijinal formülün Unity'ye uyarlanmış hali
+                currentSpeed = (activeNote.currentPosition.z - hitZoneZ) / -worldDepth * baseNoteSpeed * speedMultiplier;
+            }
+            else // Henüz hit zonuna ulaşmadıysa
+            {
+                currentSpeed = baseNoteSpeed * speedMultiplier * 0.2f;
+            }
+
+            // Hızın çok yavaşlamasını veya tersine dönmesini engelle
+            currentSpeed = Mathf.Max(currentSpeed, baseNoteSpeed * speedMultiplier * 0.1f);
+
+            // Move note towards player with DYNAMIC SPEED (not constant!)
+            activeNote.currentPosition.z -= currentSpeed * deltaTime;
 
             // Keep note stable in X and Y (no drifting or falling)
             Vector3 stablePosition = activeNote.currentPosition;
@@ -220,17 +234,6 @@ public class NoteRenderer : MonoBehaviour
             // Apply perspective effects while moving
             ApplyPerspectiveEffects(activeNote, activeNote.currentPosition.z);
         }
-    }
-
-    /// <summary>
-    /// Original Java speed calculation: f = (invader.position.z - 3.0F) / -25.0F * this.speedMultiplier
-    /// Creates accelerating perspective effect as notes approach player
-    /// </summary>
-    float CalculateSpeedFactor(float zPosition)
-    {
-        // Original algorithm - speed increases as note approaches hit zone
-        float factor = (zPosition - hitZoneZ) / -worldDepth * speedMultiplier;
-        return Mathf.Max(0.1f, factor); // Prevent negative or zero speed
     }
 
     /// <summary>
@@ -454,16 +457,81 @@ public class NoteRenderer : MonoBehaviour
     void HandleLaneTapped(int lane, Vector2 screenPosition)
     {
         // Find notes in hit zone for this lane
-        var hitNotes = FindNotesInHitZone(lane);
+        var candidateNotes = FindNotesInHitZone(lane);
 
-        foreach (var activeNote in hitNotes)
+        if (candidateNotes.Count == 0) return;
+
+        // Get closest note (like original Java onTap logic)
+        var bestNote = candidateNotes.OrderBy(n => Mathf.Abs(n.currentPosition.z - hitZoneZ)).FirstOrDefault();
+        if (bestNote == null) return;
+
+        float hitPos = bestNote.currentPosition.z;
+
+        // 🎯 ORIGINAL JAVA HIT DETECTION - LAYERED TIMING WINDOWS
+        // PERFECT: z = -0.5 to 0.1, GOOD: z = -0.8 to 0.4, OKAY: z = -1.5 to 0.8
+        HitAccuracy hitAccuracy;
+        int score;
+
+        if (hitPos >= -0.5f && hitPos < 0.1f)
         {
-            HandleNoteHit(activeNote, screenPosition);
-            ReturnNoteToPool(activeNote.gameObject);
-            activeNotes.Remove(activeNote);
+            // PERFECT hit zone
+            hitAccuracy = HitAccuracy.Perfect;
+            score = 300;
+        }
+        else if (hitPos >= -0.8f && hitPos < 0.4f)
+        {
+            // GOOD hit zone 
+            hitAccuracy = HitAccuracy.Good;
+            score = 200;
+        }
+        else if (hitPos >= -1.5f && hitPos < 0.8f)
+        {
+            // OKAY hit zone
+            hitAccuracy = HitAccuracy.Miss; // Using Miss for "Okay" since we don't have Okay enum
+            score = 100;
+        }
+        else
+        {
+            // Outside hit window - no action taken (like original Java)
+            return;
+        }
 
-            // Trigger audio (interactive music creation from MD)
-            TriggerNoteAudio(activeNote.noteInfo);
+        // Process the hit with original Java timing precision
+        ProcessNoteHit(bestNote, score, hitAccuracy, screenPosition);
+
+        // Trigger audio (interactive music creation)
+        TriggerNoteAudio(bestNote.noteInfo);
+
+        // Remove note from game
+        ReturnNoteToPool(bestNote.gameObject);
+        activeNotes.Remove(bestNote);
+    }
+
+    /// <summary>
+    /// Process note hit with original Java accuracy calculation
+    /// </summary>
+    void ProcessNoteHit(RenderingNote activeNote, int score, HitAccuracy accuracy, Vector2 screenPosition)
+    {
+        // Update game stats like original Java
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.UpdateScore(score);
+
+            // Update combo based on accuracy
+            if (accuracy == HitAccuracy.Perfect || accuracy == HitAccuracy.Good)
+            {
+                GameManager.Instance.UpdateCombo(1); // Increase combo
+            }
+            else
+            {
+                GameManager.Instance.UpdateCombo(0); // Reset combo for poor hits
+            }
+        }
+
+        // Trigger visual effect 
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowHitEffect(accuracy, screenPosition);
         }
     }
 
@@ -482,27 +550,6 @@ public class NoteRenderer : MonoBehaviour
         }
 
         return hitNotes;
-    }
-
-    void HandleNoteHit(RenderingNote activeNote, Vector2 screenPosition)
-    {
-        // Calculate hit accuracy based on distance from perfect hit zone
-        float distance = Mathf.Abs(activeNote.currentPosition.z - hitZoneZ);
-        float accuracy = 1f - (distance / (hitZoneWidth * 0.5f));
-
-        // Update game stats
-        if (GameManager.Instance != null)
-        {
-            int score = CalculateScore(accuracy);
-            GameManager.Instance.UpdateScore(score);
-        }
-
-        // Trigger visual effect via UIManager
-        if (UIManager.Instance != null)
-        {
-            HitAccuracy accuracyEnum = accuracy > 0.9f ? HitAccuracy.Perfect : (accuracy > 0.7f ? HitAccuracy.Good : HitAccuracy.Miss);
-            UIManager.Instance.ShowHitEffect(accuracyEnum, screenPosition);
-        }
     }
 
     void HandleNoteMissed(RenderingNote activeNote)

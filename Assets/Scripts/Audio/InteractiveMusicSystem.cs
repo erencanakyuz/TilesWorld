@@ -133,37 +133,8 @@ public class InteractiveMusicSystem : MonoBehaviour
 
         if (noteInfo.isValid)
         {
-            // Play the actual sound (original playSound logic)
-            PlayMappedSound(noteInfo, velocity);
-
-            // Create musical event for analysis
-            var musicalEvent = new MusicalEvent
-            {
-                lane = lane,
-                noteInfo = noteInfo,
-                velocity = velocity,
-                timestamp = Time.time,
-                isPlayerTriggered = isPlayerTriggered
-            };
-
-            // Add to recent events for chord detection
-            recentMusicalEvents.Enqueue(musicalEvent);
-            CleanupOldMusicalEvents();
-
-            // Detect chords and harmonies
-            if (isPlayerTriggered)
-            {
-                CheckForChordCreation(musicalEvent);
-            }
-
-            // Track musical complexity
-            UpdateMelodyComplexity(musicalEvent);
-
-            // Update statistics
-            notesPlayedThisSession++;
-            laneLastPlayTime[lane] = Time.time;
-
-            OnMusicalEventCreated?.Invoke(musicalEvent);
+            // Use unified processing method
+            ProcessAndPlayNote(lane, noteInfo.midiNote, velocity, isPlayerTriggered, noteInfo.instrumentType);
         }
     }
 
@@ -212,18 +183,6 @@ public class InteractiveMusicSystem : MonoBehaviour
         }
 
         return noteInfo;
-    }
-
-    /// <summary>
-    /// Original Java: sndPool.play() enhanced with velocity and musical context
-    /// </summary>
-    void PlayMappedSound(MusicalNoteInfo noteInfo, float velocity)
-    {
-        if (audioManager != null)
-        {
-            // Use original sound index for compatibility
-            audioManager.PlayNote(noteInfo.instrumentType, noteInfo.soundIndex, velocity);
-        }
     }
 
     string GetNoteName(int midiNote)
@@ -441,24 +400,31 @@ public class InteractiveMusicSystem : MonoBehaviour
     /// </summary>
     public void TriggerNoteAudio(GameNoteInfo noteInfo)
     {
-        if (audioManager != null)
+        if (noteInfo == null) return;
+
+        // Enhanced volume calculation based on note duration from JSON
+        float noteVolume = CalculateNoteVolume(noteInfo.duration);
+
+#if UNITY_EDITOR
+        // Debug tracking to ensure only NoteRenderer calls this method
+        var stackTrace = new System.Diagnostics.StackTrace();
+        var callingMethod = stackTrace.GetFrame(1)?.GetMethod()?.Name ?? "Unknown";
+        var callingClass = stackTrace.GetFrame(1)?.GetMethod()?.DeclaringType?.Name ?? "Unknown";
+
+        if (showDebugInfo)
         {
-            // Enhanced volume calculation based on note duration from JSON
-            float noteVolume = CalculateNoteVolume(noteInfo.duration);
-
-            // Use audio manager for pitch-based playback
-            audioManager.PlayNote(
-                noteInfo.instrumentType,
-                noteInfo.pitch,
-                noteVolume
-            );
-
-            if (showDebugInfo)
-            {
-                Debug.Log($"🎵 Playing {noteInfo.instrumentType} pitch {noteInfo.pitch} " +
-                         $"duration {noteInfo.duration} volume {noteVolume:F2}");
-            }
+            Debug.Log($"🎵 TriggerNoteAudio called by {callingClass}.{callingMethod} - Note: {noteInfo.pitch}");
         }
+
+        // Alert if called from unexpected source
+        if (callingClass != "NoteRenderer")
+        {
+            Debug.LogWarning($"⚠️ TriggerNoteAudio called from unexpected source: {callingClass}.{callingMethod}");
+        }
+#endif
+
+        // Use unified processing method
+        ProcessAndPlayNote(noteInfo.idx, noteInfo.pitch, noteVolume, true, noteInfo.instrumentType);
     }
 
     /// <summary>
@@ -593,6 +559,55 @@ public class InteractiveMusicSystem : MonoBehaviour
     {
         // Removed input unsubscription since we no longer handle direct input
         GameManager.OnGameStateChanged -= HandleGameStateChange;
+    }
+
+    /// <summary>
+    /// UNIFIED NOTE PROCESSING - Eliminates code duplication
+    /// Handles all note playing, musical analysis, and event creation
+    /// </summary>
+    private void ProcessAndPlayNote(int lane, int pitch, float velocity, bool isPlayerTriggered, InstrumentType instrumentType)
+    {
+        // 1. Play the sound using AudioManager
+        if (audioManager != null)
+        {
+            audioManager.PlayNote(instrumentType, pitch, velocity);
+        }
+
+        // 2. Create musical event for analysis (only for interactive notes)
+        if (isPlayerTriggered)
+        {
+            var musicalEvent = new MusicalEvent
+            {
+                lane = lane,
+                noteInfo = CalculateMusicalNote(lane), // Recalculate for consistency
+                velocity = velocity,
+                timestamp = Time.time,
+                isPlayerTriggered = isPlayerTriggered
+            };
+
+            // Add to recent events for chord detection
+            recentMusicalEvents.Enqueue(musicalEvent);
+            CleanupOldMusicalEvents();
+
+            // Detect chords and harmonies
+            CheckForChordCreation(musicalEvent);
+
+            // Track musical complexity
+            UpdateMelodyComplexity(musicalEvent);
+
+            // Update statistics
+            notesPlayedThisSession++;
+            laneLastPlayTime[lane] = Time.time;
+
+            OnMusicalEventCreated?.Invoke(musicalEvent);
+        }
+
+        // 3. Debug logging (if enabled)
+        if (showDebugInfo)
+        {
+            Debug.Log($"🎵 Playing {instrumentType} pitch {pitch} " +
+                     $"lane {lane} volume {velocity:F2}");
+        }
     }
 }
 

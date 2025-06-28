@@ -396,6 +396,7 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
+#if UNITY_EDITOR
         // Debug: K tuşuna basınca oyun durumu bilgilerini göster
         if (Keyboard.current.kKey.wasPressedThisFrame)
         {
@@ -408,8 +409,7 @@ public class GameManager : MonoBehaviour
             Debug.Log("🎵 Switching to Song Selection state...");
             ChangeGameState(GameState.SongSelection);
         }
-
-
+#endif
     }
 
     void ShowGameStateDebug()

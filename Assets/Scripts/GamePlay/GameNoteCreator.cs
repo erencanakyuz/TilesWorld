@@ -1,284 +1,123 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.Collections;
-using Unity.Jobs;
 using System;
 
 /// <summary>
-/// GameNoteCreator - The Heart of the Game
-/// Based on original Java algorithms with modern Unity optimizations
-/// Implements: Anti-clustering, Direction-based placement, Note merging
+/// 🎹 ORIGINAL JAVA ALGORITHM RESTORED!
+/// GameNoteCreator - Generates notes using sequence-based timing like original game
+/// This is the heart of the note generation system
 /// </summary>
 public class GameNoteCreator : MonoBehaviour
 {
-    [Header("🎵 Note Generation Configuration")]
-    [SerializeField] private int laneCount = 6;
-    [SerializeField] private int maxGameHeightLength = 6;
+    [Header("🎵 Original Java Algorithm Settings")]
+    private const int FIRST_DELAY = 1000; // ms
+    private const int MAX_DIRECTION_INTERVAL = 10;
 
-    [SerializeField] private int maxDirectionInterval = 10;
+    [SerializeField] private float accDeltaTime = 0.0f; // Accumulated delta time (CRITICAL!)
+    [SerializeField] private int firstPassCnt = 3; // Skip first few frames
+    [SerializeField] private bool isAllCreated = false;
 
-    [Header("🎯 Algorithm Parameters")]
-    [SerializeField] private float noteSpacingMinMs = 150f;     // Minimum time between notes
-    [SerializeField] private float chordMergeThresholdMs = 50f; // Notes closer than this become chords
-    [SerializeField] private bool enableAntiClustering = true;
-    [SerializeField] private bool enableDirectionBalance = true;
+    [Header("🎼 Sequence Data")]
+    private IEnumerator<GameNoteInfoPackage> finalGameNotePackIterator;
+    private GameNoteInfoPackage returnGameNoteInfoPack;
+    private List<GameNoteInfoPackage> finalGameNotePackages;
 
-    private int totalNotesGenerated = 0;
-    private int currentDirectionCnt = 0;
-    private bool isRightDirection = true;
-
-    // Core algorithm state (from original Java)
-    private float accumulatedDeltaTime = 0f;
-    private int firstPassCount = 3;
-    private bool isAllCreated = false;
-
-    // Note generation data
-    private Queue<GameNoteInfoPackage> finalGameNotePackages;
-    private GameNoteInfoPackage currentReturnPackage;
-    private GameNoteInfoPackage lastAppliedGameNoteInfoPack;
-
-    // Original algorithm arrays (from MD analysis)
-    private static readonly int[] LINE_TO_MATCH = { 3, 5, 7, 11, 13, 17 };
+    [Header("🎯 Audio Timing (CRITICAL!)")]
+    private AudioSource audioSource;
+    private float songStartTime;
+    private bool usesAudioClock = true; // Use audio.time instead of deltaTime
 
     // Current song data
+    private SongData currentSong;
     private float currentSongBPM = 120f;
 
-    // Events for system integration
-    public static event Action<List<GameNoteInfo>> OnNotesGenerated;
-    public static event Action OnGenerationComplete;
-
-    void Awake()
-    {
-        InitializeNoteCreator();
-    }
+    // Events for system integration (RESTORED from original)
+    public static event System.Action<List<GameNoteInfo>> OnNotesGenerated;
+    public static event System.Action OnGenerationComplete;
 
     void Start()
     {
+        audioSource = FindFirstObjectByType<AudioSource>();
     }
-
-    void InitializeNoteCreator()
-    {
-        finalGameNotePackages = new Queue<GameNoteInfoPackage>();
-        ResetGenerationState();
-    }
-
-    void ResetGenerationState()
-    {
-        accumulatedDeltaTime = 0f;
-        firstPassCount = 3;
-        isAllCreated = false;
-        currentDirectionCnt = 0;
-        isRightDirection = true;
-        totalNotesGenerated = 0;
-        lastAppliedGameNoteInfoPack = null;
-    }
-
-    #region Core Algorithm - Ported from Original Java
 
     /// <summary>
-    /// Main note generation method - Original Java: getNote(float paramFloat)
-    /// Returns notes when timing is right, null otherwise
+    /// 🎹 ORIGINAL JAVA: getNote(float deltaTime)
+    /// This is the EXACT algorithm from original GameNoteCreator!
     /// </summary>
     public List<GameNoteInfo> GetNote(float deltaTime)
     {
-        if (isAllCreated || currentReturnPackage == null) return new List<GameNoteInfo>();
-
-        // Original firstPassDelay logic
-        if (firstPassCount > 0)
+        // Handle first pass delay (original Java behavior)
+        if (firstPassCnt > 0)
         {
-            firstPassCount--;
-            return new List<GameNoteInfo>();
+            firstPassCnt--;
+            return null;
         }
 
-        accumulatedDeltaTime += deltaTime;
-
-        if (currentReturnPackage != null &&
-            currentReturnPackage.oneNote <= accumulatedDeltaTime * 1000f)
+        // Check if all notes created
+        if (isAllCreated)
         {
-            var packageToProcess = currentReturnPackage;
-            accumulatedDeltaTime = 0f;
+            return null;
+        }
 
-            if (finalGameNotePackages.Count > 0)
+        // 🎵 CRITICAL: Use audio clock OR accumulated delta time
+        float timeSource;
+        if (usesAudioClock && audioSource != null && audioSource.clip != null)
+        {
+            // Use audio clock in milliseconds (only if clip is loaded)
+            timeSource = audioSource.time * 1000f;
+        }
+        else
+        {
+            // Fallback to accumulated delta time
+            accDeltaTime += deltaTime;
+            timeSource = accDeltaTime * 1000f;
+        }
+
+        // 🎼 ORIGINAL ALGORITHM: Check if enough time passed for next sequence
+        if (returnGameNoteInfoPack != null &&
+            returnGameNoteInfoPack.oneNote <= timeSource)
+        {
+            if (usesAudioClock && audioSource != null && audioSource.clip != null)
             {
-                currentReturnPackage = finalGameNotePackages.Dequeue();
+                // Reset based on audio time
+                songStartTime = audioSource.time * 1000f;
             }
             else
             {
-                currentReturnPackage = null;
+                accDeltaTime = 0.0f; // Reset accumulated time
+            }
+
+            // Get next sequence package
+            if (finalGameNotePackIterator != null && finalGameNotePackIterator.MoveNext())
+            {
+                GameNoteInfoPackage gameNoteInfoPackage = finalGameNotePackIterator.Current;
+                returnGameNoteInfoPack = gameNoteInfoPackage;
+
+                Debug.Log($"🎵 Next sequence ready! oneNote: {gameNoteInfoPackage.oneNote}ms, notes: {gameNoteInfoPackage.gameNoteInfos.Count}");
+
+                // Trigger event for system integration
+                OnNotesGenerated?.Invoke(gameNoteInfoPackage.gameNoteInfos);
+
+                return gameNoteInfoPackage.gameNoteInfos; // Return the notes from the sequence
+            }
+            else
+            {
                 isAllCreated = true;
+                Debug.Log("🎵 All sequences created!");
+
+                // Trigger completion event
                 OnGenerationComplete?.Invoke();
+
+                return null;
             }
-
-            var notesToReturn = ProcessNotePackage(packageToProcess);
-
-            // OnNotesGenerated event working correctly
-
-            OnNotesGenerated?.Invoke(notesToReturn);
-
-            totalNotesGenerated += notesToReturn.Count;
-            return notesToReturn;
         }
 
-        return new List<GameNoteInfo>();
+        return null; // Not time yet for next sequence
     }
 
     /// <summary>
-    /// Process and apply original algorithms to note package
-    /// </summary>
-    List<GameNoteInfo> ProcessNotePackage(GameNoteInfoPackage package)
-    {
-        var notes = new List<GameNoteInfo>(package.gameNoteInfos);
-
-        // Apply original algorithms in sequence
-        if (enableAntiClustering)
-            ApplySpacing(notes);
-
-        if (enableDirectionBalance)
-            ApplyComplexRule(notes);
-
-        // Store for next iteration
-        lastAppliedGameNoteInfoPack = package;
-
-        return notes;
-    }
-
-    /// <summary>
-    /// Original Java: applySpace() - Anti-clustering algorithm
-    /// Prevents notes from overlapping or clustering too closely
-    /// </summary>
-    void ApplySpacing(List<GameNoteInfo> notes)
-    {
-        for (int i = 0; i < notes.Count; i++)
-        {
-            for (int j = i + 1; j < notes.Count; j++)
-            {
-                GameNoteInfo note1 = notes[i];
-                GameNoteInfo note2 = notes[j];
-
-                // Check if notes are too close in lane position (original algorithm)
-                if (Mathf.Abs(note1.idx - note2.idx) == 1)
-                {
-                    // Adjust second note position (original logic)
-                    note2.idx = (note2.idx + 1) % maxGameHeightLength;
-                }
-
-                // Check if notes are too close in time (using noteSpacingMinMs)
-                float timeDifference = Mathf.Abs(note1.timeMs - note2.timeMs);
-                if (timeDifference < noteSpacingMinMs)
-                {
-                    // Adjust timing to maintain minimum spacing
-                    note2.timeMs = note1.timeMs + noteSpacingMinMs;
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Original Java: applyComplexRule() - Direction-based placement algorithm
-    /// The "secret sauce" that makes gameplay feel natural and flowing
-    /// </summary>
-    void ApplyComplexRule(List<GameNoteInfo> notes)
-    {
-        // Direction management (original algorithm)
-        if (currentDirectionCnt >= maxDirectionInterval)
-        {
-            isRightDirection = false;
-            currentDirectionCnt = maxDirectionInterval;
-        }
-        else if (currentDirectionCnt <= 0)
-        {
-            isRightDirection = true;
-            currentDirectionCnt = 0;
-        }
-
-        // Apply directional bias to notes
-        foreach (var note in notes)
-        {
-            int originalIdx = note.idx;
-
-            // Apply direction-based adjustment
-            if (isRightDirection)
-            {
-                note.idx = Mathf.Min(note.idx + 1, laneCount - 1);
-                currentDirectionCnt++;
-            }
-            else
-            {
-                note.idx = Mathf.Max(note.idx - 1, 0);
-                currentDirectionCnt--;
-            }
-
-            // Prevent repetition with last package (original anti-repetition logic)
-            if (lastAppliedGameNoteInfoPack != null)
-            {
-                bool conflicts = CheckConflictWithLastPackage(note);
-                if (conflicts)
-                {
-                    // Adjust to avoid repetition
-                    note.idx = (note.idx + 2) % laneCount;
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Check if note conflicts with previous package (anti-repetition)
-    /// </summary>
-    bool CheckConflictWithLastPackage(GameNoteInfo note)
-    {
-        if (lastAppliedGameNoteInfoPack == null) return false;
-
-        foreach (var lastNote in lastAppliedGameNoteInfoPack.gameNoteInfos)
-        {
-            if (Mathf.Abs(lastNote.idx - note.idx) <= 1)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// Original Java: mergeGameNoteInfoPackage() - Chord creation algorithm
-    /// Merges notes that are very close in time to create chords
-    /// </summary>
-    void MergeGameNoteInfoPackage(List<GameNoteInfoPackage> packages)
-    {
-        if (packages.Count < 2) return;
-
-        var mergedPackages = new List<GameNoteInfoPackage>();
-        var currentPackage = packages[0];
-
-        for (int i = 1; i < packages.Count; i++)
-        {
-            var nextPackage = packages[i];
-            float timeDifference = nextPackage.oneNote - currentPackage.oneNote;
-
-            // If notes are close enough, merge them (original threshold logic)
-            if (timeDifference <= chordMergeThresholdMs)
-            {
-                // Merge notes into chord
-                currentPackage.gameNoteInfos.AddRange(nextPackage.gameNoteInfos);
-            }
-            else
-            {
-                mergedPackages.Add(currentPackage);
-                currentPackage = nextPackage;
-            }
-        }
-
-        mergedPackages.Add(currentPackage);
-        packages.Clear();
-        packages.AddRange(mergedPackages);
-    }
-    #endregion
-
-    #region Song Data Loading & Processing
-
-    /// <summary>
-    /// Load song data and prepare note packages
-    /// Modern Unity approach for data loading
+    /// Load song data and prepare note packages using ORIGINAL ALGORITHM
     /// </summary>
     public void LoadSongData(SongData songData)
     {
@@ -291,245 +130,51 @@ public class GameNoteCreator : MonoBehaviour
         // Reset state for new song
         ResetGenerationState();
 
-        // Store song BPM for tempo calculations
+        // Store song data
+        currentSong = songData;
         currentSongBPM = songData.bpm;
-        Debug.Log($"🎵 Song BPM set to: {currentSongBPM}");
+        songStartTime = 0f;
 
-        // Load note chart using songKey instead of noteChartPath
+        Debug.Log($"🎵 Loading song: {songData.songName} by {songData.artist} (BPM: {songData.bpm})");
+
+        // Load note chart using songKey
         var rawNoteData = LoadNotesFromJSON(songData.songKey);
 
-        // Convert raw data to note packages using original algorithms
+        // Convert raw data to note packages using ORIGINAL ALGORITHMS
         var notePackages = ConvertRawDataToPackages(rawNoteData, songData.bpm);
 
-        // Apply original merging algorithm
-        MergeGameNoteInfoPackage(notePackages);
+        // Apply original Java algorithms
+        var processedPackages = ApplyOriginalAlgorithms(notePackages);
 
-        // Count total notes in packages for debugging
-        int totalNotesInPackages = 0;
-        foreach (var package in notePackages)
+        // Store final packages
+        finalGameNotePackages = processedPackages;
+        finalGameNotePackIterator = finalGameNotePackages.GetEnumerator();
+
+        // Initialize first package
+        if (finalGameNotePackIterator.MoveNext())
         {
-            totalNotesInPackages += package.gameNoteInfos.Count;
-            finalGameNotePackages.Enqueue(package);
+            returnGameNoteInfoPack = finalGameNotePackIterator.Current;
+            Debug.Log($"🎵 First sequence initialized: {returnGameNoteInfoPack.oneNote}ms delay");
         }
 
-        Debug.Log($"🎵 Created {notePackages.Count} note packages with {totalNotesInPackages} total notes");
-
-        // Set first package as current
-        if (finalGameNotePackages.Count > 0)
-        {
-            currentReturnPackage = finalGameNotePackages.Dequeue();
-        }
+        Debug.Log($"🎵 Song loaded: {finalGameNotePackages.Count} sequences generated");
     }
 
     /// <summary>
-    /// Load note chart data from file - supports JSON, binary, or other formats
-    /// </summary>
-    List<RawNoteData> LoadNoteChartData(string chartPath)
-    {
-        // Try to load actual chart data from Resources
-        TextAsset chartAsset = Resources.Load<TextAsset>(chartPath);
-        if (chartAsset != null)
-        {
-            Debug.Log($"🎵 Chart file found: {chartPath}, loading real data!");
-            float songBPM = GetCurrentSongBPM(); // Get BPM from current song
-            return ParseJsonChartData(chartAsset.text, songBPM);
-        }
-
-        // Try alternative paths for known songs
-        string[] alternatePaths = {
-            "Song_Note_Jsons/cannon_notes",
-            "Song_Note_Jsons/all_songs_notes"
-        };
-
-        foreach (string altPath in alternatePaths)
-        {
-            chartAsset = Resources.Load<TextAsset>(altPath);
-            if (chartAsset != null)
-            {
-                Debug.Log($"🎵 Chart file found at alternate path: {altPath}");
-                return ParseJsonChartData(chartAsset.text);
-            }
-        }
-
-        // Generate demo data for testing
-        Debug.LogWarning($"🎵 Chart file not found: {chartPath}, generating demo data");
-        return GenerateDemoNoteData();
-    }
-
-    /// <summary>
-    /// Parse JSON chart data into raw note data
-    /// </summary>
-    List<RawNoteData> ParseJsonChartData(string jsonText, float songBPM = 120f)
-    {
-        List<RawNoteData> notes = new List<RawNoteData>();
-
-        try
-        {
-            // Simple JSON parsing for song sequences
-            JsonSequenceArray wrapper = JsonUtility.FromJson<JsonSequenceArray>(
-                "{\"sequences\":" + jsonText + "}"
-            );
-            JsonSongSequence[] sequences = wrapper.sequences;
-
-            float currentTime = 0f;
-            float stepDuration = (60f / songBPM) / 4f; // Use actual song BPM!
-
-            foreach (var sequence in sequences) // Load all sequences for full song
-            {
-                float sequenceStartTime = currentTime;
-
-                // Process each lane
-                string[] lines = { sequence.line1, sequence.line2, sequence.line3,
-                                  sequence.line4, sequence.line5, sequence.line6 };
-
-                for (int lane = 0; lane < lines.Length; lane++)
-                {
-                    if (string.IsNullOrEmpty(lines[lane])) continue;
-
-                    var laneNotes = ParseNoteLine(lines[lane], lane, sequenceStartTime, stepDuration);
-                    notes.AddRange(laneNotes);
-                }
-
-                // Estimate sequence duration
-                currentTime += stepDuration * 60; // Roughly 60 steps per sequence
-            }
-
-            Debug.Log($"🎵 Parsed {notes.Count} notes from JSON data");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"🎵 JSON parsing failed: {e.Message}");
-            return GenerateDemoNoteData();
-        }
-
-        return notes;
-    }
-
-    /// <summary>
-    /// Parse a single note line from JSON
-    /// </summary>
-    List<RawNoteData> ParseNoteLine(string noteLine, int lane, float startTime, float stepDuration)
-    {
-        List<RawNoteData> notes = new List<RawNoteData>();
-
-        string[] steps = noteLine.Split('/');
-
-        for (int stepIndex = 0; stepIndex < steps.Length; stepIndex++)
-        {
-            string step = steps[stepIndex].Trim();
-            if (string.IsNullOrEmpty(step) || step == "_,_") continue;
-
-            // Parse "pitch,duration" format
-            string[] parts = step.Split(',');
-            if (parts.Length == 2 && parts[0] != "_")
-            {
-                if (int.TryParse(parts[0], out int pitch) && int.TryParse(parts[1], out int duration))
-                {
-                    // Validate pitch range (AudioManager supports 0-44)
-                    if (pitch >= 0 && pitch <= 44)
-                    {
-                        var noteData = new RawNoteData
-                        {
-                            timeMs = startTime + (stepIndex * stepDuration * 1000f),
-                            lane = lane,
-                            noteType = NoteType.Single,
-                            pitch = pitch,
-                            duration = duration
-                        };
-                        notes.Add(noteData);
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"🎵 Pitch {pitch} out of range (0-44), skipping note");
-                    }
-                }
-            }
-        }
-
-        return notes;
-    }
-
-    /// <summary>
-    /// Generate demo note data for testing
-    /// </summary>
-    List<RawNoteData> GenerateDemoNoteData()
-    {
-        List<RawNoteData> demoNotes = new List<RawNoteData>();
-
-        // Generate simple demo pattern with full pitch range
-        for (int i = 0; i < 20; i++)
-        {
-            var note = new RawNoteData
-            {
-                timeMs = i * 500f, // Every 0.5 seconds
-                lane = i % laneCount,
-                noteType = NoteType.Single,
-                pitch = UnityEngine.Random.Range(0, 45), // Full range (0-44) to use all available audio files
-                duration = 4
-            };
-            demoNotes.Add(note);
-        }
-
-        Debug.Log($"🎵 Generated {demoNotes.Count} demo notes with full pitch range (0-44)");
-        return demoNotes;
-    }
-
-    /// <summary>
-    /// Convert raw note data to game note packages with timing
-    /// </summary>
-    List<GameNoteInfoPackage> ConvertRawDataToPackages(List<RawNoteData> rawData, float bpm)
-    {
-        var packages = new List<GameNoteInfoPackage>();
-
-        // Group notes by time
-        var groupedNotes = rawData.GroupBy(note => Mathf.RoundToInt(note.timeMs / 50f) * 50f);
-
-        foreach (var group in groupedNotes)
-        {
-            var package = new GameNoteInfoPackage
-            {
-                oneNote = group.Key,
-                gameNoteInfos = new List<GameNoteInfo>()
-            };
-
-            foreach (var rawNote in group)
-            {
-                var gameNote = new GameNoteInfo
-                {
-                    idx = rawNote.lane,
-                    timeMs = rawNote.timeMs,
-                    noteType = rawNote.noteType,
-                    instrumentType = GameManager.Instance?.GetSelectedInstrument() ?? InstrumentType.Piano,
-                    pitch = rawNote.pitch >= 0 ? rawNote.pitch : (24 + rawNote.lane * 2), // Use JSON pitch or fallback
-                    duration = rawNote.duration
-                };
-
-                package.gameNoteInfos.Add(gameNote);
-            }
-
-            packages.Add(package);
-        }
-
-        return packages.OrderBy(p => p.oneNote).ToList();
-    }
-
-    /// <summary>
-    /// Load note data from JSON file based on song key
+    /// 🎼 Parse JSON data exactly like original format
+    /// Format: "pitch,duration/_,_/5,2" etc.
     /// </summary>
     List<RawNoteData> LoadNotesFromJSON(string songKey)
     {
         try
         {
-            // Validate songKey
             if (string.IsNullOrEmpty(songKey))
             {
                 Debug.LogError("❌ songKey is null or empty! Using demo notes.");
                 return GenerateDemoNoteData();
             }
 
-            // Map song key to correct JSON file
             string jsonPath = GetJSONPathForSong(songKey);
-
             Debug.Log($"🎼 Loading notes from: {jsonPath} (songKey: '{songKey}')");
 
             TextAsset jsonFile = Resources.Load<TextAsset>(jsonPath);
@@ -539,17 +184,430 @@ public class GameNoteCreator : MonoBehaviour
                 return GenerateDemoNoteData();
             }
 
-            // Use existing ParseJsonChartData method with current song BPM
-            List<RawNoteData> notes = ParseJsonChartData(jsonFile.text, currentSongBPM);
+            // Parse JSON with ORIGINAL FORMAT
+            List<RawNoteData> notes = ParseOriginalJSONFormat(jsonFile.text, currentSongBPM);
 
-            Debug.Log($"🎵 Loaded {notes.Count} notes from {jsonPath}");
+            Debug.Log($"🎼 Loaded {notes.Count} raw notes from JSON");
             return notes;
         }
-        catch (System.Exception e)
+        catch (Exception e)
         {
-            Debug.LogError($"❌ Error loading JSON for '{songKey}': {e.Message}");
+            Debug.LogError($"❌ Error loading JSON for {songKey}: {e.Message}");
             return GenerateDemoNoteData();
         }
+    }
+
+    /// <summary>
+    /// 🎼 Parse original JSON format: Array of sequences with music_id
+    /// Format: [{"music_id": 1, "seq": 0, "line1": "pitch,duration/_,_/...", ...}]
+    /// </summary>
+    List<RawNoteData> ParseOriginalJSONFormat(string jsonText, float bpm)
+    {
+        var notesList = new List<RawNoteData>();
+
+        try
+        {
+            // Parse JSON as array of sequence objects
+            JsonSongSequence[] allSequences = JsonUtility.FromJson<JsonSequenceArray>("{\"sequences\":" + jsonText + "}").sequences;
+
+            if (allSequences == null || allSequences.Length == 0)
+            {
+                Debug.LogWarning("⚠️ No sequences found in JSON");
+                return GenerateDemoNoteData();
+            }
+
+            // Filter sequences by song (currentSong should have music_id)
+            int targetMusicId = GetMusicIdFromSong(currentSong);
+            var sequences = allSequences.Where(s => s.music_id == targetMusicId).OrderBy(s => s.seq).ToArray();
+
+            if (sequences.Length == 0)
+            {
+                Debug.LogWarning($"⚠️ No sequences found for music_id {targetMusicId}, using first available");
+                sequences = allSequences.Take(10).ToArray(); // Use first 10 sequences as fallback
+            }
+
+            float currentTime = 0f;
+            float beatDuration = (60f / bpm) * 1000f; // ms per beat
+
+            Debug.Log($"🎼 Processing {sequences.Length} sequences for music_id {targetMusicId}");
+
+            foreach (var sequence in sequences)
+            {
+                // Process each line (lane) in the sequence
+                string[] lines = { sequence.line1, sequence.line2, sequence.line3, sequence.line4, sequence.line5, sequence.line6 };
+
+                for (int lane = 0; lane < lines.Length; lane++)
+                {
+                    if (string.IsNullOrEmpty(lines[lane])) continue;
+
+                    var notesInLine = lines[lane].Split('/');
+                    float lineTime = currentTime;
+
+                    foreach (string noteData in notesInLine)
+                    {
+                        if (noteData.Trim() == "_,_") // Rest/empty note
+                        {
+                            lineTime += beatDuration / 8f; // 8th note rest
+                            continue;
+                        }
+
+                        // Parse "pitch,duration" format
+                        var parts = noteData.Split(',');
+                        if (parts.Length == 2)
+                        {
+                            if (int.TryParse(parts[0], out int pitch) &&
+                                int.TryParse(parts[1], out int duration))
+                            {
+                                var note = new RawNoteData
+                                {
+                                    timeMs = lineTime,
+                                    lane = lane, // 0-5 lanes
+                                    pitch = pitch,
+                                    duration = duration,
+                                    noteType = NoteType.Single
+                                };
+
+                                notesList.Add(note);
+                                lineTime += (beatDuration * duration) / 8f; // Duration in 8th notes
+                            }
+                        }
+                    }
+                }
+
+                // Move to next sequence with gap
+                currentTime += beatDuration * 2f; // 2 beats gap between sequences
+            }
+
+            Debug.Log($"🎼 Successfully parsed {notesList.Count} notes from {sequences.Length} sequences");
+            return notesList;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"❌ Error parsing JSON format: {e.Message}");
+            return GenerateDemoNoteData();
+        }
+    }
+
+    /// <summary>
+    /// Map song name to music_id (from CSV database analysis)
+    /// </summary>
+    int GetMusicIdFromSong(SongData song)
+    {
+        if (song == null) return 1; // Default to music_id 1
+
+        // Map song names to music_id based on database
+        switch (song.songName.ToLower())
+        {
+            case "cannon":
+            case "pachelbel": return 1;
+            case "the entertainer":
+            case "scott joplin": return 2;
+            case "air on a g string":
+            case "bach": return 3;
+            case "vidalita": return 4;
+            case "minuet": return 5;
+            case "romance": return 6;
+            case "toccata and fugue": return 7;
+            case "moon light":
+            case "moonlight":
+            case "beethoven": return 8;
+            case "noel": return 9;
+            case "turkish delight":
+            case "mozart": return 10;
+            case "fur elise":
+            case "für elise": return 11;  // Fur Elise is music_id 11!
+            default:
+                Debug.LogWarning($"⚠️ Unknown song: {song.songName}, using music_id 1");
+                return 1;
+        }
+    }
+
+    /// <summary>
+    /// 🎯 Convert raw notes to GameNoteInfoPackages (sequences)
+    /// This groups notes by timing windows, like original Java
+    /// </summary>
+    List<GameNoteInfoPackage> ConvertRawDataToPackages(List<RawNoteData> rawNotes, float bpm)
+    {
+        var packages = new List<GameNoteInfoPackage>();
+
+        if (rawNotes == null || rawNotes.Count == 0)
+        {
+            Debug.LogWarning("⚠️ No raw notes to convert");
+            return packages;
+        }
+
+        // Group notes by timing windows (original Java behavior)
+        float sequenceWindow = (60f / bpm) * 250f; // Quarter note in ms
+        var noteGroups = new Dictionary<int, List<RawNoteData>>();
+
+        foreach (var note in rawNotes)
+        {
+            int timeSlot = Mathf.FloorToInt(note.timeMs / sequenceWindow);
+
+            if (!noteGroups.ContainsKey(timeSlot))
+                noteGroups[timeSlot] = new List<RawNoteData>();
+
+            noteGroups[timeSlot].Add(note);
+        }
+
+        // Convert groups to packages
+        var sortedTimeSlots = noteGroups.Keys.OrderBy(k => k).ToList();
+
+        for (int i = 0; i < sortedTimeSlots.Count; i++)
+        {
+            int timeSlot = sortedTimeSlots[i];
+            var notesInSlot = noteGroups[timeSlot];
+
+            var package = new GameNoteInfoPackage();
+
+            // Calculate timing to next package (original Java: oneNote)
+            if (i < sortedTimeSlots.Count - 1)
+            {
+                int nextTimeSlot = sortedTimeSlots[i + 1];
+                package.oneNote = (nextTimeSlot - timeSlot) * sequenceWindow;
+            }
+            else
+            {
+                package.oneNote = sequenceWindow; // Default gap for last package
+            }
+
+            // Add notes to package using proper list
+            foreach (var rawNote in notesInSlot)
+            {
+                var gameNote = new GameNoteInfo
+                {
+                    idx = rawNote.lane,
+                    pitch = rawNote.pitch,
+                    duration = rawNote.duration,
+                    timeMs = rawNote.timeMs,
+                    instrumentType = InstrumentType.Piano
+                };
+
+                package.gameNoteInfos.Add(gameNote);
+            }
+
+            packages.Add(package);
+        }
+
+        Debug.Log($"🎯 Converted {rawNotes.Count} notes to {packages.Count} packages");
+        return packages;
+    }
+
+    /// <summary>
+    /// 🎼 Apply original Java algorithms: merging, spacing, direction rules
+    /// Based on MD analysis: Anti-clustering, Direction balance, Chord merging
+    /// </summary>
+    List<GameNoteInfoPackage> ApplyOriginalAlgorithms(List<GameNoteInfoPackage> packages)
+    {
+        if (packages == null || packages.Count == 0)
+        {
+            return packages;
+        }
+
+        Debug.Log($"🎼 Applying original Java algorithms to {packages.Count} packages");
+
+        // 1. Merge close packages into chords (original: mergeGameNoteInfoPackage)
+        var mergedPackages = MergeGameNoteInfoPackage(packages);
+
+        // 2. Apply direction balance and lane optimization (original: applyComplexRule)  
+        var directionBalanced = ApplyComplexRule(mergedPackages);
+
+        // 3. Apply spacing rules to prevent clustering (original: applySpace)
+        var spacedPackages = ApplySpace(directionBalanced);
+
+        Debug.Log($"🎼 Original algorithms applied: {packages.Count} → {spacedPackages.Count} packages");
+        return spacedPackages;
+    }
+
+    /// <summary>
+    /// 🎼 Original Java: mergeGameNoteInfoPackage()
+    /// Merges packages that are very close in time to create chords
+    /// </summary>
+    List<GameNoteInfoPackage> MergeGameNoteInfoPackage(List<GameNoteInfoPackage> packages)
+    {
+        if (packages.Count < 2) return packages;
+
+        var mergedPackages = new List<GameNoteInfoPackage>();
+        var currentPackage = packages[0];
+        float chordMergeThreshold = 100f; // ms - notes closer than this become chords
+
+        for (int i = 1; i < packages.Count; i++)
+        {
+            var nextPackage = packages[i];
+
+            // Calculate time difference between packages
+            float timeDifference = Mathf.Abs(nextPackage.oneNote - currentPackage.oneNote);
+
+            // If packages are close enough in time, merge them
+            if (timeDifference <= chordMergeThreshold)
+            {
+                // Merge notes into chord
+                foreach (var note in nextPackage.gameNoteInfos)
+                {
+                    currentPackage.gameNoteInfos.Add(note);
+                }
+
+                Debug.Log($"🎼 Merged chord: {currentPackage.gameNoteInfos.Count} notes, time diff: {timeDifference}ms");
+            }
+            else
+            {
+                // Time difference too large, finalize current package
+                mergedPackages.Add(currentPackage);
+                currentPackage = nextPackage;
+            }
+        }
+
+        // Add the last package
+        mergedPackages.Add(currentPackage);
+
+        Debug.Log($"🎼 Chord merging complete: {packages.Count} → {mergedPackages.Count} packages");
+        return mergedPackages;
+    }
+
+    /// <summary>
+    /// 🎼 Original Java: applyComplexRule()
+    /// Direction-based placement algorithm - ensures natural hand movement
+    /// "The secret sauce" from MD analysis
+    /// </summary>
+    List<GameNoteInfoPackage> ApplyComplexRule(List<GameNoteInfoPackage> packages)
+    {
+        int currentDirectionCnt = 0;
+        bool isRightDirection = true;
+        GameNoteInfoPackage lastAppliedPackage = null;
+
+        foreach (var package in packages)
+        {
+            // Direction management (original algorithm from MD)
+            if (currentDirectionCnt >= MAX_DIRECTION_INTERVAL)
+            {
+                isRightDirection = false;
+                currentDirectionCnt = MAX_DIRECTION_INTERVAL;
+            }
+            else if (currentDirectionCnt <= 0)
+            {
+                isRightDirection = true;
+                currentDirectionCnt = 0;
+            }
+
+            // Apply directional bias to notes in this package
+            foreach (var note in package.gameNoteInfos)
+            {
+                int originalIdx = note.idx;
+
+                // Apply direction-based adjustment (original Java logic)
+                if (isRightDirection)
+                {
+                    note.idx = Mathf.Min(note.idx + 1, 5); // Lane 0-5, move right
+                    currentDirectionCnt++;
+                }
+                else
+                {
+                    note.idx = Mathf.Max(note.idx - 1, 0); // Lane 0-5, move left  
+                    currentDirectionCnt--;
+                }
+
+                // Prevent repetition with last package (anti-repetition from MD)
+                if (lastAppliedPackage != null)
+                {
+                    bool conflicts = CheckConflictWithLastPackage(note, lastAppliedPackage);
+                    if (conflicts)
+                    {
+                        // Adjust to avoid repetition (original logic)
+                        note.idx = (note.idx + 2) % 6; // Shift by 2 lanes
+                        Debug.Log($"🎼 Resolved lane conflict: {originalIdx} → {note.idx}");
+                    }
+                }
+            }
+
+            lastAppliedPackage = package;
+        }
+
+        Debug.Log($"🎼 Direction balance applied: Right bias changes applied");
+        return packages;
+    }
+
+    /// <summary>
+    /// Check if note conflicts with previous package (anti-repetition)
+    /// </summary>
+    bool CheckConflictWithLastPackage(GameNoteInfo note, GameNoteInfoPackage lastPackage)
+    {
+        foreach (var lastNote in lastPackage.gameNoteInfos)
+        {
+            // Check if notes are in adjacent lanes (creates conflict)
+            if (Mathf.Abs(lastNote.idx - note.idx) <= 1)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 🎼 Original Java: applySpace()
+    /// Anti-clustering algorithm - prevents notes from overlapping
+    /// </summary>
+    List<GameNoteInfoPackage> ApplySpace(List<GameNoteInfoPackage> packages)
+    {
+        float noteSpacingMinMs = 150f; // Minimum time between notes
+
+        foreach (var package in packages)
+        {
+            var notes = package.gameNoteInfos;
+
+            for (int i = 0; i < notes.Count; i++)
+            {
+                for (int j = i + 1; j < notes.Count; j++)
+                {
+                    var note1 = notes[i];
+                    var note2 = notes[j];
+
+                    // Check if notes are too close in lane position
+                    if (Mathf.Abs(note1.idx - note2.idx) <= 1)
+                    {
+                        // Adjust second note position (original logic)
+                        note2.idx = (note2.idx + 1) % 6;
+                        Debug.Log($"🎼 Lane spacing applied: moved note from lane {note1.idx} to {note2.idx}");
+                    }
+
+                    // Check if notes are too close in time  
+                    float timeDifference = Mathf.Abs(note1.timeMs - note2.timeMs);
+                    if (timeDifference < noteSpacingMinMs)
+                    {
+                        // Adjust timing to maintain minimum spacing
+                        note2.timeMs = note1.timeMs + noteSpacingMinMs;
+                        Debug.Log($"🎼 Time spacing applied: {timeDifference}ms → {noteSpacingMinMs}ms");
+                    }
+                }
+            }
+        }
+
+        Debug.Log($"🎼 Anti-clustering applied: Notes spaced properly");
+        return packages;
+    }
+
+    /// <summary>
+    /// Generate demo note data for testing
+    /// </summary>
+    List<RawNoteData> GenerateDemoNoteData()
+    {
+        List<RawNoteData> demoNotes = new List<RawNoteData>();
+
+        // Generate simple demo pattern with spaced timing
+        for (int i = 0; i < 8; i++) // Reduced from 20 to 8 for better spacing
+        {
+            var note = new RawNoteData
+            {
+                timeMs = i * 1000f, // Every 1 second instead of 0.5
+                lane = i % 6,
+                noteType = NoteType.Single,
+                pitch = i % 12, // Reduced pitch range for demo
+                duration = 4
+            };
+            demoNotes.Add(note);
+        }
+
+        Debug.Log($"🎵 Generated {demoNotes.Count} demo notes with proper spacing");
+        return demoNotes;
     }
 
     /// <summary>
@@ -557,30 +615,33 @@ public class GameNoteCreator : MonoBehaviour
     /// </summary>
     string GetJSONPathForSong(string songKey)
     {
-        // songKey format: "music_1", "music_2", etc.
-        if (songKey.StartsWith("music_"))
+        // Direct mapping for known songs
+        switch (songKey.ToLower())
         {
-            string musicId = songKey.Substring(6); // Remove "music_" prefix
-
-            // Check for specific named files first
-            switch (musicId)
-            {
-                case "1":
-                    return "Song_Note_Jsons/cannon_notes"; // Pachelbel's Cannon
-                case "4":
-                    return "Song_Note_Jsons/vidalita_notes"; // Vidalita (if exists)
-                case "7":
-                    return "Song_Note_Jsons/toccata_notes"; // Toccata and Fugue (if exists)
-                default:
-                    // Try generic format first
-                    return $"Song_Note_Jsons/music_{musicId}_notes";
-            }
+            case "cannon":
+                return "Song_Note_Jsons/cannon_notes";
+            case "all_songs":
+                return "Song_Note_Jsons/all_songs_notes";
+            default:
+                // Try as-is first
+                return $"Song_Note_Jsons/{songKey}_notes";
         }
-
-        // Fallback to old format for backwards compatibility
-        return $"Song_Note_Jsons/{songKey}_notes";
     }
-    #endregion
+
+    void ResetGenerationState()
+    {
+        accDeltaTime = 0.0f;
+        firstPassCnt = 3;
+        isAllCreated = false;
+        songStartTime = 0f;
+
+        finalGameNotePackIterator?.Dispose();
+        finalGameNotePackIterator = null;
+        finalGameNotePackages?.Clear();
+        returnGameNoteInfoPack = null;
+
+        Debug.Log("🎵 Note generation state reset");
+    }
 
     #region Public Interface
 
@@ -600,9 +661,22 @@ public class GameNoteCreator : MonoBehaviour
     public void CompleteGeneration()
     {
         isAllCreated = true;
-        OnGenerationComplete?.Invoke();
+    }
+
+    public void SetDifficulty(DifficultyLevel difficulty)
+    {
+        // Adjust generation parameters based on difficulty
+    }
+
+    public void StopGeneration()
+    {
+        isAllCreated = true;
     }
     #endregion
+
+    /// <summary>
+    /// Helper classes for JSON parsing
+    /// </summary>
 }
 
 #region Data Structures (Based on Original Java)

@@ -44,7 +44,10 @@ public class GameplayManager : MonoBehaviour
     private bool isGameActive = false;
     private bool isGamePaused = false;
     private bool isSongLoaded = false;
-    private bool isCountingDown = false;
+    private bool _isCountingDown = false;
+
+    // Public property for countdown state
+    public bool IsCountingDown => _isCountingDown;
 
     // Timing synchronization (Original World.java timing logic)
     private float gameStartTime = 0f;
@@ -271,7 +274,7 @@ public class GameplayManager : MonoBehaviour
 
     IEnumerator ShowCountdown()
     {
-        isCountingDown = true;
+        _isCountingDown = true;
 
         for (int i = (int)countdownDuration; i > 0; i--)
         {
@@ -300,7 +303,7 @@ public class GameplayManager : MonoBehaviour
             UIManager.Instance.HideCountdown();
         }
 
-        isCountingDown = false;
+        _isCountingDown = false;
     }
 
     IEnumerator LoadAndStartSong()
