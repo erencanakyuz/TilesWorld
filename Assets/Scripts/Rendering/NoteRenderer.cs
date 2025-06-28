@@ -314,19 +314,8 @@ public class NoteRenderer : MonoBehaviour
         GameObject noteObject = GetPooledNote();
         if (noteObject == null)
         {
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
-            Debug.LogWarning("🎨 [DEV] No pooled note available! Creating fallback cube...");
-            // Create a fallback cube note if no prefab is available
-            noteObject = CreateFallbackNote();
-            if (noteObject == null)
-            {
-                Debug.LogError("🎨 [DEV] Failed to create fallback note!");
-                return;
-            }
-#else
-            Debug.LogError("🎨 [PRODUCTION] No pooled note available and no fallback in production builds!");
+            Debug.LogError("🎨 No pooled note available! Check notePrefab assignment and noteParent setup.");
             return;
-#endif
         }
 
         // Set up note renderer
@@ -379,32 +368,7 @@ public class NoteRenderer : MonoBehaviour
         // Note spawned successfully
     }
 
-    GameObject CreateFallbackNote()
-    {
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
-        // Create a simple cube as fallback note for development
-        GameObject fallbackNote = GameObject.CreatePrimitive(PrimitiveType.Cube);
 
-        // Set up parent if available
-        if (noteParent != null)
-        {
-            fallbackNote.transform.SetParent(noteParent);
-        }
-
-        // Remove collider to avoid physics issues
-        var collider = fallbackNote.GetComponent<Collider>();
-        if (collider != null)
-        {
-            DestroyImmediate(collider);
-        }
-
-        fallbackNote.name = "DevFallbackNote";
-        return fallbackNote;
-#else
-        // No fallback note creation in production builds
-        return null;
-#endif
-    }
 
     GameObject GetPooledNote()
     {

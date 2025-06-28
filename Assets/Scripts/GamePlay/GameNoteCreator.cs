@@ -335,32 +335,16 @@ public class GameNoteCreator : MonoBehaviour
     List<RawNoteData> LoadNoteChartData(string chartPath)
     {
         // Try to load actual chart data from Resources or StreamingAssets
-        // TextAsset chartAsset = Resources.Load<TextAsset>(chartPath);
-        // if (chartAsset != null) {
-        //     return ParseChartData(chartAsset.text);
-        // }
-
-#if DEVELOPMENT_BUILD || UNITY_EDITOR
-        // Development fallback: Generate sample notes for testing
-        Debug.LogWarning($"🎵 [DEV] Using generated test chart for: {chartPath}");
-        var sampleData = new List<RawNoteData>();
-
-        // Generate sample notes for testing - more frequent for visible gameplay
-        for (int i = 0; i < 60; i++) // 60 notes over 30 seconds
+        TextAsset chartAsset = Resources.Load<TextAsset>(chartPath);
+        if (chartAsset != null)
         {
-            sampleData.Add(new RawNoteData
-            {
-                timeMs = i * 500f, // Every 0.5 seconds
-                lane = UnityEngine.Random.Range(0, laneCount),
-                noteType = NoteType.Single
-            });
+            // TODO: Implement ParseChartData method for JSON/XML parsing
+            // return ParseChartData(chartAsset.text);
+            Debug.LogWarning($"🎵 Chart asset found but parsing not implemented: {chartPath}");
         }
 
-        return sampleData;
-#else
-        Debug.LogError($"🎵 [PRODUCTION] Chart file not found: {chartPath}");
+        Debug.LogError($"🎵 Chart file not found: {chartPath}");
         return new List<RawNoteData>();
-#endif
     }
 
     /// <summary>
