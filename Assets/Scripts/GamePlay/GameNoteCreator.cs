@@ -34,12 +34,7 @@ public class GameNoteCreator : MonoBehaviour
     [SerializeField] private int laneCount = 6;
     [SerializeField] private int maxDirectionInterval = 10;
 
-    // oldgame.md Algoritma Değişkenleri
-    private float accumulatedTime = 0f;
-    private bool isGenerationComplete = false;
-    private GameNoteInfoPackage currentPackage;
-    private Queue<GameNoteInfoPackage> notePackageQueue = new Queue<GameNoteInfoPackage>();
-
+    // Direction tracking for rules (used by LoadAndPrepareSong)
     private int directionCounter = 0;
     private bool isFlowingRight = true;
 
@@ -54,7 +49,6 @@ public class GameNoteCreator : MonoBehaviour
     private float currentSongBPM = 120f;
 
     // Events
-    public static event System.Action<List<GameNoteInfo>> OnNotesGenerated;
     public static event System.Action OnGenerationComplete;
 
     void Start()
@@ -88,10 +82,9 @@ public class GameNoteCreator : MonoBehaviour
                 accDeltaTime = 0.0f;
                 isSecondRequest = false;
 
-                // Fire Unity event
+                // Return notes directly (no event)
                 if (returnGameNoteInfoPack != null)
                 {
-                    OnNotesGenerated?.Invoke(returnGameNoteInfoPack.gameNoteInfos);
                     return returnGameNoteInfoPack.gameNoteInfos;
                 }
                 return null;
@@ -109,8 +102,7 @@ public class GameNoteCreator : MonoBehaviour
                 GameNoteInfoPackage gameNoteInfoPackage = finalGameNotePackIterator.Current;
                 returnGameNoteInfoPack = gameNoteInfoPackage;
 
-                // Fire Unity event
-                OnNotesGenerated?.Invoke(gameNoteInfoPackage.gameNoteInfos);
+                // Return notes directly (no event)
                 return gameNoteInfoPackage.gameNoteInfos;
             }
 
@@ -267,46 +259,7 @@ public class GameNoteCreator : MonoBehaviour
         Debug.Log($"🎵 EXACT JAVA: Song ready! {finalGameNotePackages?.Count ?? 0} packages.");
     }
 
-    /// <summary>
-    /// *** oldgame.md'deki Tick metodu (CRITICAL!) ***
-    /// Alternative to GetNote for queue-based approach
-    /// </summary>
-    public void Tick(float deltaTime)
-    {
-        if (isGenerationComplete || currentPackage == null)
-        {
-            return; // Removed spam debug log
-        }
-
-        accumulatedTime += deltaTime * 1000f;
-
-        // Only log when close to spawning to reduce spam
-        if (accumulatedTime >= currentPackage.oneNote * 0.8f)
-        {
-            Debug.Log($"🔍 TICK: accTime={accumulatedTime:F1}ms, needed={currentPackage.oneNote:F1}ms, notes={currentPackage.gameNoteInfos.Count}");
-        }
-
-        if (accumulatedTime >= currentPackage.oneNote)
-        {
-            accumulatedTime -= currentPackage.oneNote;
-
-            Debug.Log($"🎵 TICK: Spawning {currentPackage.gameNoteInfos.Count} notes, remaining queue: {notePackageQueue.Count}");
-            OnNotesGenerated?.Invoke(currentPackage.gameNoteInfos);
-
-            if (notePackageQueue.Count > 0)
-            {
-                currentPackage = notePackageQueue.Dequeue();
-                Debug.Log($"🔍 TICK: Next package loaded, delay={currentPackage.oneNote:F1}ms, notes={currentPackage.gameNoteInfos.Count}");
-            }
-            else
-            {
-                currentPackage = null;
-                isGenerationComplete = true;
-                OnGenerationComplete?.Invoke();
-                Debug.Log("🎵 TICK: All packages complete!");
-            }
-        }
-    }
+    // *** TICK METHOD REMOVED - Using GetNote() stream-based approach only ***
 
     /// <summary>
     /// Public interface for existing code
@@ -644,12 +597,9 @@ public class GameNoteCreator : MonoBehaviour
         finalGameNotePackIterator = null;
         finalGameNotePackages = null;
 
-        // Legacy reset (for compatibility)
-        accumulatedTime = 0f;
-        isGenerationComplete = false;
+        // Legacy reset removed - using GetNote() only
         directionCounter = 0;
         isFlowingRight = true;
-        notePackageQueue.Clear();
         accDeltaTime = 0.0f;
         firstPassCnt = 3;
         isSecondRequest = true;

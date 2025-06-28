@@ -162,7 +162,7 @@ public class NoteRenderer : MonoBehaviour
 
     void SubscribeToEvents()
     {
-        GameNoteCreator.OnNotesGenerated += HandleNotesGenerated;
+        // Using direct call from GameplayManager instead of events
         InputManager.OnLaneTapped += HandleLaneTapped;
     }
 
@@ -380,10 +380,9 @@ public class NoteRenderer : MonoBehaviour
 
     #region Note Management
 
-    void HandleNotesGenerated(List<GameNoteInfo> notes)
+    public void SpawnNotes(List<GameNoteInfo> notes)
     {
-        // Processing notes (debug removed for performance)
-
+        // Called directly from GameplayManager (no events)
         foreach (var note in notes)
         {
             SpawnNote(note);
@@ -725,7 +724,6 @@ public class NoteRenderer : MonoBehaviour
     void OnDestroy()
     {
         // Unsubscribe from events
-        GameNoteCreator.OnNotesGenerated -= HandleNotesGenerated;
         InputManager.OnLaneTapped -= HandleLaneTapped;
     }
 }

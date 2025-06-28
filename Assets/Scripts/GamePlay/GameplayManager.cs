@@ -105,8 +105,7 @@ public class GameplayManager : MonoBehaviour
 
     void SubscribeToEvents()
     {
-        // GameNoteCreator events - *** ORİJİNAL JAVA OLAYI SİSTEMİ ***
-        GameNoteCreator.OnNotesGenerated += HandleNotesGenerated;
+        // GameNoteCreator events - GetNote() stream-based approach (no events)
         GameNoteCreator.OnGenerationComplete += HandleSongComplete;
 
         // InteractiveMusicSystem events
@@ -181,13 +180,16 @@ public class GameplayManager : MonoBehaviour
     /// </summary>
     void UpdateNoteGeneration(float deltaTime)
     {
-        if (noteCreator == null) return;
+        if (noteCreator == null || noteRenderer == null) return;
 
         // *** EXACT JAVA: Call getNote() every frame like original ***
         List<GameNoteInfo> newNotes = noteCreator.GetNote(deltaTime);
 
-        // GetNote() already fires OnNotesGenerated event, so no need to handle here
-        // This matches the original Java flow exactly
+        // If notes returned, send directly to renderer (no events)
+        if (newNotes != null && newNotes.Count > 0)
+        {
+            noteRenderer.SpawnNotes(newNotes);
+        }
     }
 
     #region Song Management & Game Flow
@@ -473,11 +475,7 @@ public class GameplayManager : MonoBehaviour
 
     #region Event Handlers (Original World.java onTap logic)
 
-    void HandleNotesGenerated(List<GameNoteInfo> notes)
-    {
-        // Notes are handled by NoteRenderer through events
-        // This can be used for additional processing if needed
-    }
+    // HandleNotesGenerated removed - using direct SpawnNotes call
 
     void HandleSongComplete()
     {
@@ -638,7 +636,6 @@ public class GameplayManager : MonoBehaviour
     void OnDestroy()
     {
         // Unsubscribe from events
-        GameNoteCreator.OnNotesGenerated -= HandleNotesGenerated;
         GameNoteCreator.OnGenerationComplete -= HandleSongComplete;
         InteractiveMusicSystem.OnChordDetected -= HandleChordDetected;
         InteractiveMusicSystem.OnMusicalEventCreated -= HandleMusicalEvent;
