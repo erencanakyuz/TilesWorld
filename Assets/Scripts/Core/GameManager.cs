@@ -409,19 +409,7 @@ public class GameManager : MonoBehaviour
             ChangeGameState(GameState.SongSelection);
         }
 
-        // Debug: R tuşuna basınca UI refresh (sadece hata varsa)
-        if (Keyboard.current.rKey.wasPressedThisFrame)
-        {
-            Debug.Log("🔄 Refreshing UIManager... (Manual trigger)");
-            if (UIManager.Instance != null)
-            {
-                UIManager.Instance.RefreshUIElements();
-            }
-            else
-            {
-                Debug.LogError("❌ UIManager.Instance is NULL!");
-            }
-        }
+
     }
 
     void ShowGameStateDebug()
@@ -454,7 +442,6 @@ public class GameManager : MonoBehaviour
 
         // Test: Switch to Song Selection state
         Debug.Log("🎵 Testing Song Selection - Press S to switch to SongSelection state");
-        Debug.Log("🔄 Press R to refresh UIManager Canvas detection");
         Debug.Log("🎮 Press K to show this debug info");
     }
 }
