@@ -200,6 +200,7 @@ public class GameplayManager : MonoBehaviour
         currentSong.bpm = songData.bpm;
         currentSong.audioFilePath = songData.audioFilePath;
         currentSong.noteChartPath = songData.chartFilePath;
+        currentSong.songKey = songData.songKey;
 
         Debug.Log($"🎮 Starting gameplay sequence for: {currentSong.songName} by {currentSong.artist}");
         StartCoroutine(StartGameplaySequence());

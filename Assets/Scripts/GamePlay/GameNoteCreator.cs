@@ -520,10 +520,17 @@ public class GameNoteCreator : MonoBehaviour
     {
         try
         {
+            // Validate songKey
+            if (string.IsNullOrEmpty(songKey))
+            {
+                Debug.LogError("❌ songKey is null or empty! Using demo notes.");
+                return GenerateDemoNoteData();
+            }
+
             // Map song key to correct JSON file
             string jsonPath = GetJSONPathForSong(songKey);
 
-            Debug.Log($"🎼 Loading notes from: {jsonPath}");
+            Debug.Log($"🎼 Loading notes from: {jsonPath} (songKey: '{songKey}')");
 
             TextAsset jsonFile = Resources.Load<TextAsset>(jsonPath);
             if (jsonFile == null)
@@ -540,7 +547,7 @@ public class GameNoteCreator : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ Error loading JSON for {songKey}: {e.Message}");
+            Debug.LogError($"❌ Error loading JSON for '{songKey}': {e.Message}");
             return GenerateDemoNoteData();
         }
     }

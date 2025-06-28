@@ -98,7 +98,7 @@ public class SongSelectionManager : MonoBehaviour
                             duration = CalculateDuration(bpm), // Estimate based on BPM
                             difficulty = difficulty,
                             bpm = bpm,
-                            songKey = $"music_{musicId}" // JSON file key
+                            songKey = GetSongKeyFromTitle(cleanTitle, musicId) // Proper JSON mapping
                         };
 
                         songList.Add(songData);
@@ -349,7 +349,8 @@ public class SongSelectionManager : MonoBehaviour
             duration = ParseDurationToSeconds(selectedSong.duration),
             bpm = selectedSong.bpm,
             audioFilePath = $"Music/{selectedSong.songKey}",
-            chartFilePath = $"Song_Note_Jsons/{selectedSong.songKey}_notes"
+            chartFilePath = $"Song_Note_Jsons/{selectedSong.songKey}_notes", // This path matches actual JSON files
+            songKey = selectedSong.songKey
         };
 
         // Start gameplay directly with song data
@@ -400,6 +401,7 @@ public class SongSelectionManager : MonoBehaviour
         public int bpm;
         public string audioFilePath;
         public string chartFilePath;
+        public string songKey; // CRITICAL: For JSON loading!
     }
 
     private void GoBack()
@@ -435,5 +437,19 @@ public class SongSelectionManager : MonoBehaviour
 
         if (backButton != null)
             backButton.onClick.RemoveAllListeners();
+    }
+
+    private string GetSongKeyFromTitle(string title, int musicId)
+    {
+        // Map specific songs to their JSON files
+        string titleLower = title.ToLower();
+
+        // Cannon has its own JSON file
+        if (titleLower.Contains("cannon"))
+            return "cannon";
+
+        // For now, all other songs use the main collection
+        // TODO: Add individual JSON files for each song
+        return "all_songs";
     }
 }
