@@ -74,7 +74,7 @@ public class JsonMusicParser : MonoBehaviour
         ProcessAllSequences();
         GenerateSongDatabase();
 
-        LogDebug($"🎵 Loaded {availableSongs.Count} songs with {GetTotalNoteCount()} total notes");
+        
     }
 
     /// <summary>

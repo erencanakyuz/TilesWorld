@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 /// <summary>
 /// GameplayManager - The Conductor of the Symphony
-/// Based on original World.java - coordinates all game systems
+/// Based on original World.java - coordinates all game systems with EXACT timing
 /// Implements: Game loop, timing sync, system coordination, song management
 /// "The maestro that makes all systems work in harmony"
 /// </summary>
@@ -53,7 +53,6 @@ public class GameplayManager : MonoBehaviour
     private float gameStartTime = 0f;
     private float currentGameTime = 0f;
     private float songDuration = 0f;
-    private bool isUsingAudioSync = true;
 
     // Events for system coordination
     public static System.Action OnGameplayStarted;
@@ -106,7 +105,7 @@ public class GameplayManager : MonoBehaviour
 
     void SubscribeToEvents()
     {
-        // GameNoteCreator events
+        // GameNoteCreator events - *** ORİJİNAL JAVA OLAYI SİSTEMİ ***
         GameNoteCreator.OnNotesGenerated += HandleNotesGenerated;
         GameNoteCreator.OnGenerationComplete += HandleSongComplete;
 
@@ -133,18 +132,28 @@ public class GameplayManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// *** ORİJİNAL JAVA ALGORİTMASI RESTORE EDİLDİ! ***
+    /// Update - Main Game Loop (like original World.java)
+    /// CRITICAL: Sürekli noteCreator.GetNote() çağırması!
+    /// </summary>
     void Update()
     {
         if (!isGameActive || isGamePaused) return;
 
         float deltaTime = Time.deltaTime;
+
+        // *** ORİJİNAL JAVA: Ana zamanlama döngüsü ***
         UpdateGameTiming(deltaTime);
+
+        // *** CRITICAL: Sürekli nota generation çağrısı! ***
+        // Bu oldgame.md'deki en önemli mekanik!
         UpdateNoteGeneration(deltaTime);
     }
 
     void UpdateGameTiming(float deltaTime)
     {
-        if (isUsingAudioSync && audioManager != null && audioManager.IsMusicPlaying)
+        if (useAudioTimeSync && audioManager != null && audioManager.IsMusicPlaying)
         {
             currentGameTime = audioManager.CurrentMusicTime;
         }
@@ -167,19 +176,17 @@ public class GameplayManager : MonoBehaviour
     }
 
     /// <summary>
+    /// *** ORİJİNAL JAVA ALGORİTMASI RESTORE EDİLDİ! ***
     /// Original Java: noteCreator.getNote() calls in main loop
+    /// Bu sistem oldgame.md'de detaylı açıklanıyor!
     /// </summary>
     void UpdateNoteGeneration(float deltaTime)
     {
-        if (noteCreator != null)
-        {
-            var newNotes = noteCreator.GetNote(deltaTime);
+        if (noteCreator == null) return;
 
-            if (newNotes != null && newNotes.Count > 0)
-            {
-                // Notes will be handled by NoteRenderer through events
-            }
-        }
+        // *** ORİJİNAL JAVA ALGORİTMASI: Sadece Tick() sistemi kullan ***
+        // GetNote() kaldırıldı çünkü çifte işleme sorunu yaratıyordu
+        noteCreator.Tick(deltaTime);
     }
 
     #region Song Management & Game Flow
@@ -242,15 +249,28 @@ public class GameplayManager : MonoBehaviour
         BeginActiveGameplay();
     }
 
+    /// <summary>
+    /// *** ORİJİNAL JAVA ALGORİTMASI RESTORE EDİLDİ! ***
+    /// PrepareGameplaySystems - oldgame.md'deki sırayla sistem hazırlığı
+    /// </summary>
     void PrepareGameplaySystems()
     {
         // Reset all stats
         ResetGameplayStats();
 
-        // Load song into note creator (NEW INDIVIDUAL JSON SYSTEM)
+        // *** CRITICAL: Load song into note creator (ORİJİNAL JAVA SİSTEMİ) ***
         if (noteCreator != null)
         {
+            Debug.Log($"🎵 LOADING SONG: {currentSong.songName} into noteCreator");
+
+            // *** oldgame.md approach: Use LoadSong which calls LoadAndPrepareSong internally ***
             noteCreator.LoadSong(currentSong);
+
+            Debug.Log($"🎵 SONG LOADED: noteCreator hazır!");
+        }
+        else
+        {
+            Debug.LogError("🚨 noteCreator is NULL! Bu kritik bir hata!");
         }
 
         // Set instrument for music system
@@ -270,6 +290,8 @@ public class GameplayManager : MonoBehaviour
         {
             GameManager.Instance.ChangeGameState(GameState.Playing);
         }
+
+        Debug.Log("🎮 Tüm sistemler hazırlandı!");
     }
 
     IEnumerator ShowCountdown()
@@ -310,42 +332,69 @@ public class GameplayManager : MonoBehaviour
     {
         isSongLoaded = false; // Mark as loading
 
-        // Load audio clip (this would be enhanced with actual asset loading)
-        if (audioManager != null && !string.IsNullOrEmpty(currentSong.audioFilePath))
-        {
-            // For now, we'll use a placeholder - in real implementation,
-            // this would load the actual audio file
-            Debug.Log($"🎵 Loading audio: {currentSong.audioFilePath}");
+        // Basic song setup - no audio loading required here
+        // Audio will be handled in BeginActiveGameplay
+        yield return new WaitForSeconds(0.1f); // Small delay for setup
 
-            yield return new WaitForSeconds(0.1f); // Simulate loading time
-
-            // Apply song start delay before audio playback
-            if (songStartDelay > 0)
-            {
-                Debug.Log($"🎵 Applying song start delay: {songStartDelay}s");
-                yield return new WaitForSeconds(songStartDelay);
-            }
-
-            // Start audio playback
-            // audioManager.PlayMusic(loadedClip, songStartDelay);
-            isUsingAudioSync = useAudioTimeSync;
-        }
-
+        isSongLoaded = true;
         songDuration = currentSong.duration;
-        isSongLoaded = true; // Mark as loaded
-        Debug.Log($"🎵 Song loaded successfully (isSongLoaded: {isSongLoaded})");
+
+        Debug.Log($"🎮 Song loaded: {currentSong.songName} (Duration: {songDuration}s)");
     }
 
+    /// <summary>
+    /// *** ORİJİNAL JAVA ALGORİTMASI RESTORE EDİLDİ! ***
+    /// BeginActiveGameplay - Oyunun aktif başlatılması
+    /// </summary>
     void BeginActiveGameplay()
     {
+        if (!isSongLoaded)
+        {
+            Debug.LogWarning("🎮 Song not fully loaded yet, delaying gameplay start...");
+            StartCoroutine(DelayedGameStartCoroutine(songStartDelay));
+            return;
+        }
+
         gameStartTime = Time.time;
-        currentGameTime = 0f;
-        isGameActive = true;
+        isGameActive = true;  // *** CRITICAL: Bu satır olmadan Update() çalışmaz! ***
         isGamePaused = false;
 
+        Debug.Log("🎮 *** GAMEPLAY AKTİF! *** Update() döngüsü başladı!");
+
+        // Start music with configured delay
+        StartCoroutine(StartMusicWithDelay());
+
+        // Trigger event for other systems  
         OnGameplayStarted?.Invoke();
 
-        Debug.Log("🎮 Gameplay started! Let the music begin!");
+        Debug.Log("🎮 Gameplay başarıyla başlatıldı! Notalar gelmeye başlayacak...");
+    }
+
+    IEnumerator StartMusicWithDelay()
+    {
+        // Apply song start delay if configured
+        if (songStartDelay > 0)
+        {
+            Debug.Log($"🎵 Applying song start delay: {songStartDelay}s");
+            yield return new WaitForSeconds(songStartDelay);
+        }
+
+        // Start music (using existing AudioManager functionality)
+        if (audioManager != null && !string.IsNullOrEmpty(currentSong.audioFilePath))
+        {
+            // Try to load audio clip from Resources
+            AudioClip musicClip = Resources.Load<AudioClip>(currentSong.audioFilePath);
+            if (musicClip != null)
+            {
+                audioManager.PlayMusic(musicClip, 0f);
+                Debug.Log($"🎵 Müzik başlatıldı: {musicClip.name}");
+            }
+            else
+            {
+                // Background music not found - this is normal, game works with note-based music only
+                Debug.Log($"🎵 Background music not available: {currentSong.audioFilePath} (Playing with note-based music only)");
+            }
+        }
     }
 
     public void PauseGameplay()
@@ -601,24 +650,4 @@ public class GameplayManager : MonoBehaviour
     }
 }
 
-#region Data Structures
-
-[System.Serializable]
-public struct GameplayStats
-{
-    public int totalNotesHit;
-    public int perfectHits;
-    public int goodHits;
-    public int missedNotes;
-    public int maxCombo;
-    public float accuracy;
-    public string songName;
-
-    public override string ToString()
-    {
-        return $"Song: {songName}, Accuracy: {accuracy:F1}%, Max Combo: {maxCombo}, " +
-               $"Perfect: {perfectHits}, Good: {goodHits}, Miss: {missedNotes}";
-    }
-}
-
-#endregion
+// GameplayStats moved to DataStructures.cs to avoid duplicates

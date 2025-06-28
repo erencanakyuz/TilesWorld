@@ -236,9 +236,25 @@ public class InputManager : MonoBehaviour
             // Calculate screen position for the lane center
             Vector2 lanePosition = LaneToScreenPosition(lane);
 
+            Debug.Log($"🎮 KEY PRESSED: Lane {lane} (Key: {GetKeyForLane(lane)}), Screen Pos: {lanePosition}");
+
             // Fire lane tapped event
             OnLaneTapped?.Invoke(lane, lanePosition);
         }
+    }
+
+    string GetKeyForLane(int lane)
+    {
+        return lane switch
+        {
+            0 => "Q",
+            1 => "W",
+            2 => "E",
+            3 => "R",
+            4 => "T",
+            5 => "Y",
+            _ => "Unknown"
+        };
     }
 
     void ProcessNewTouch(UnityEngine.InputSystem.Controls.TouchControl touch)

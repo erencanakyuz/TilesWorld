@@ -1015,10 +1015,4 @@ public class UIManager : MonoBehaviour
     }
 }
 
-// Supporting enums
-public enum HitAccuracy
-{
-    Miss,
-    Good,
-    Perfect
-}
+// HitAccuracy enum moved to DataStructures.cs

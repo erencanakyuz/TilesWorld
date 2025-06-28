@@ -446,25 +446,7 @@ public class GameManager : MonoBehaviour
     }
 }
 
-// Enums and Data Structures
-[System.Serializable]
-public enum GameState
-{
-    MainMenu,
-    SongSelection,
-    Playing,
-    Paused,
-    GameOver
-}
-
-[System.Serializable]
-public enum InstrumentType
-{
-    Piano,
-    Harp,
-    Guitar
-}
-
+// Game-specific Data Structures (enums moved to DataStructures.cs)
 [System.Serializable]
 public class PlayerData
 {
@@ -501,15 +483,6 @@ public class SongData : ScriptableObject
     public string noteChartPath;
     public string songKey;
     public DifficultyLevel difficulty;
-}
-
-[System.Serializable]
-public enum DifficultyLevel
-{
-    Easy,
-    Medium,
-    Hard,
-    Expert
 }
 
 [System.Serializable]

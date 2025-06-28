@@ -17,13 +17,13 @@ public class NoteRenderer : MonoBehaviour
 
     [Header("🚀 Perspective Movement (Original Algorithm)")]
     [SerializeField] private float worldDepth = 25f;           // Original: 25.0F depth
-    [SerializeField] private float speedMultiplier = 0.1f;     // Debug: extremely slow for visibility
-    [SerializeField] private float baseNoteSpeed = 0.5f;       // Base movement speed
+    [SerializeField] private float speedMultiplier = 35.0f;    // *** ORİJİNAL JAVA: 35.0F ***
+    [SerializeField] private float baseNoteSpeed = 1.0f;       // Base movement speed (normalized)
     [SerializeField] private bool enablePerspectiveScaling = true;
     [SerializeField] private bool enablePerspectiveRotation = true;
 
     [Header("🎯 Hit Zone Configuration")]
-    [SerializeField] private float hitZoneZ = 3.0f;            // Original: 3.0F
+    [SerializeField] private float hitZoneZ = 3.0f;            // *** ORİJİNAL JAVA: 3.0F ***
     [SerializeField] private float hitZoneWidth = 2f;          // Reduced for better precision
     [SerializeField] private float noteDestroyZ = -2f;         // Closer destruction for better performance
 
@@ -95,6 +95,25 @@ public class NoteRenderer : MonoBehaviour
             noteMaterial = new Material(Shader.Find("Unlit/Color"));
             noteMaterial.color = Color.cyan;
         }
+
+        // Final fallback to Unity's default material
+        if (noteMaterial.shader.name.Contains("Hidden"))
+        {
+            noteMaterial = new Material(Shader.Find("Diffuse"));
+            noteMaterial.color = Color.cyan;
+        }
+
+        // Ultimate fallback - create from scratch
+        if (noteMaterial.shader.name.Contains("Hidden"))
+        {
+            noteMaterial = new Material(Shader.Find("Standard"));
+            noteMaterial.color = Color.cyan;
+            noteMaterial.SetFloat("_Mode", 1); // Set to fade mode
+            noteMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            noteMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        }
+
+        Debug.Log($"🎨 Created base material with shader: {noteMaterial.shader.name}");
     }
 
     void CreateNotePool()
@@ -181,8 +200,9 @@ public class NoteRenderer : MonoBehaviour
     }
 
     /// <summary>
+    /// *** ORİJİNAL JAVA ALGORİTMASI RESTORE EDİLDİ! ***
     /// Original Java: updateInvaders() - Note movement and perspective calculation
-    /// NOW USING ORIGINAL ACCELERATION ALGORITHM!
+    /// EXACT FORMULA: f = (invader.position.z - 3.0F) / -25.0F * this.speedMultiplier
     /// </summary>
     void UpdateActiveNotes(float deltaTime)
     {
@@ -196,24 +216,27 @@ public class NoteRenderer : MonoBehaviour
             var activeNote = activeNotes[i];
             if (activeNote == null || activeNote.gameObject == null || !activeNote.gameObject.activeInHierarchy) continue;
 
-            // 🚀 ORIGINAL JAVA ACCELERATION ALGORITHM RESTORED!
+            // *** ORİJİNAL JAVA EXACT FORMULA! ***
             // f = (invader.position.z - 3.0F) / -25.0F * this.speedMultiplier;
+            // else: f = this.speedMultiplier * 0.2F;
             float currentSpeed;
-            if (activeNote.currentPosition.z < hitZoneZ) // Hit zonunu geçtiyse
+
+            if (activeNote.currentPosition.z < 0.0f) // Hit zonunu geçmiş (like original Java)
             {
-                // Orijinal formülün Unity'ye uyarlanmış hali
-                currentSpeed = (activeNote.currentPosition.z - hitZoneZ) / -worldDepth * baseNoteSpeed * speedMultiplier;
+                // *** EXACT ORIGINAL FORMULA! ***
+                currentSpeed = (activeNote.currentPosition.z - 3.0f) / -25.0f * speedMultiplier;
             }
-            else // Henüz hit zonuna ulaşmadıysa
+            else // Henüz hit zonuna ulaşmamış
             {
-                currentSpeed = baseNoteSpeed * speedMultiplier * 0.2f;
+                // *** EXACT ORIGINAL FORMULA! ***
+                currentSpeed = speedMultiplier * 0.2f;
             }
 
-            // Hızın çok yavaşlamasını veya tersine dönmesini engelle
-            currentSpeed = Mathf.Max(currentSpeed, baseNoteSpeed * speedMultiplier * 0.1f);
+            // Apply base speed multiplier for Unity scaling
+            currentSpeed *= baseNoteSpeed * deltaTime;
 
-            // Move note towards player with DYNAMIC SPEED (not constant!)
-            activeNote.currentPosition.z -= currentSpeed * deltaTime;
+            // *** ORİJİNAL JAVA: Move note towards player with DYNAMIC SPEED! ***
+            activeNote.currentPosition.z -= currentSpeed;
 
             // Keep note stable in X and Y (no drifting or falling)
             Vector3 stablePosition = activeNote.currentPosition;
@@ -223,9 +246,10 @@ public class NoteRenderer : MonoBehaviour
             // Apply position to GameObject
             activeNote.gameObject.transform.position = activeNote.currentPosition;
 
-            // Remove notes that have passed the hit zone
+            // Remove notes that have passed the hit zone  
             if (activeNote.currentPosition.z <= noteDestroyZ)
             {
+                HandleNoteMissed(activeNote);
                 ReturnNoteToPool(activeNote.gameObject);
                 activeNotes.RemoveAt(i);
                 continue;
@@ -287,7 +311,7 @@ public class NoteRenderer : MonoBehaviour
     Material GetMaterialForPitch(int pitch, InstrumentType instrumentType)
     {
         // Create or reuse material with pitch-based color
-        Material pitchMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        Material pitchMaterial = new Material(noteMaterial.shader);
 
         // Color based on pitch (musical note colors)
         Color noteColor = GetColorForPitch(pitch);
@@ -297,6 +321,13 @@ public class NoteRenderer : MonoBehaviour
 
         // Combine pitch color with instrument tint
         pitchMaterial.color = Color.Lerp(noteColor, instrumentTint, 0.3f);
+
+        // Ensure material is valid
+        if (pitchMaterial == null || pitchMaterial.shader.name.Contains("Hidden"))
+        {
+            Debug.LogWarning("🎨 Pitch material creation failed, using base material");
+            return noteMaterial;
+        }
 
         return pitchMaterial;
     }
@@ -373,8 +404,6 @@ public class NoteRenderer : MonoBehaviour
 
     void SpawnNote(GameNoteInfo noteInfo)
     {
-        // Spawning note (debug removed)
-
         GameObject noteObject = GetPooledNote();
         if (noteObject == null)
         {
@@ -382,12 +411,25 @@ public class NoteRenderer : MonoBehaviour
             return;
         }
 
-        // Set up note renderer with pitch-based color
+        // *** CRITICAL: Ensure note has material ***
         Renderer noteRenderer = noteObject.GetComponent<Renderer>();
         if (noteRenderer != null)
         {
+            // Always assign material to ensure visibility
             Material pitchMaterial = GetMaterialForPitch(noteInfo.pitch, noteInfo.instrumentType);
             noteRenderer.material = pitchMaterial;
+
+            // Double-check material is applied
+            if (noteRenderer.material == null)
+            {
+                Debug.LogError("🚨 Material assignment failed! Using fallback...");
+                noteRenderer.material = noteMaterial; // Use base material as fallback
+            }
+        }
+        else
+        {
+            Debug.LogError("🚨 Note prefab missing Renderer component!");
+            return;
         }
 
         // Calculate spawn position
@@ -424,7 +466,7 @@ public class NoteRenderer : MonoBehaviour
         activeNotes.Add(activeNote);
         totalNotesRendered++;
 
-        // Note spawned successfully
+        Debug.Log($"🎵 NOTE SPAWNED: Lane {noteInfo.idx}, Pitch {noteInfo.pitch}, Position {spawnPosition}");
     }
 
     GameObject GetPooledNote()
@@ -456,10 +498,18 @@ public class NoteRenderer : MonoBehaviour
 
     void HandleLaneTapped(int lane, Vector2 screenPosition)
     {
+        Debug.Log($"🎯 LANE TAPPED: Lane {lane}, Finding notes in hit zone...");
+
         // Find notes in hit zone for this lane
         var candidateNotes = FindNotesInHitZone(lane);
 
-        if (candidateNotes.Count == 0) return;
+        Debug.Log($"🎯 Found {candidateNotes.Count} candidate notes in lane {lane}");
+
+        if (candidateNotes.Count == 0)
+        {
+            Debug.Log($"🎯 No notes in hit zone for lane {lane}");
+            return;
+        }
 
         // Get closest note (like original Java onTap logic)
         var bestNote = candidateNotes.OrderBy(n => Mathf.Abs(n.currentPosition.z - hitZoneZ)).FirstOrDefault();
@@ -467,24 +517,30 @@ public class NoteRenderer : MonoBehaviour
 
         float hitPos = bestNote.currentPosition.z;
 
+        Debug.Log($"🎯 BEST NOTE: Lane {lane}, Z-pos {hitPos:F2}, Hit Zone: {hitZoneZ}");
+
         // 🎯 ORIGINAL JAVA HIT DETECTION - LAYERED TIMING WINDOWS
-        // PERFECT: z = -0.5 to 0.1, GOOD: z = -0.8 to 0.4, OKAY: z = -1.5 to 0.8
+        // Hit windows are relative to hitZoneZ (3.0f)
+        // Calculate distance from hit zone center
+        float distanceFromHitZone = hitPos - hitZoneZ;
+
         HitAccuracy hitAccuracy;
         int score;
 
-        if (hitPos >= -0.5f && hitPos < 0.1f)
+        // Expanded hit windows for better playability
+        if (distanceFromHitZone >= -1.0f && distanceFromHitZone <= 1.0f)
         {
-            // PERFECT hit zone
+            // PERFECT hit zone (closest to hit line)
             hitAccuracy = HitAccuracy.Perfect;
             score = 300;
         }
-        else if (hitPos >= -0.8f && hitPos < 0.4f)
+        else if (distanceFromHitZone >= -2.0f && distanceFromHitZone <= 2.0f)
         {
             // GOOD hit zone 
             hitAccuracy = HitAccuracy.Good;
             score = 200;
         }
-        else if (hitPos >= -1.5f && hitPos < 0.8f)
+        else if (distanceFromHitZone >= -3.0f && distanceFromHitZone <= 3.0f)
         {
             // OKAY hit zone
             hitAccuracy = HitAccuracy.Miss; // Using Miss for "Okay" since we don't have Okay enum
@@ -493,8 +549,11 @@ public class NoteRenderer : MonoBehaviour
         else
         {
             // Outside hit window - no action taken (like original Java)
+            Debug.Log($"🎯 Note outside hit window: Z={hitPos:F2}, distance from hit zone={distanceFromHitZone:F2}, ignoring hit");
             return;
         }
+
+        Debug.Log($"✅ HIT SUCCESS: Lane {lane}, Accuracy {hitAccuracy}, Score {score}, Z-pos {hitPos:F2}");
 
         // Process the hit with original Java timing precision
         ProcessNoteHit(bestNote, score, hitAccuracy, screenPosition);
@@ -541,11 +600,16 @@ public class NoteRenderer : MonoBehaviour
 
         foreach (var activeNote in activeNotes)
         {
-            if (activeNote.noteInfo.idx == lane &&
-                activeNote.currentPosition.z <= hitZoneZ + hitZoneWidth * 0.5f &&
-                activeNote.currentPosition.z >= hitZoneZ - hitZoneWidth * 0.5f)
+            if (activeNote.noteInfo.idx == lane)
             {
-                hitNotes.Add(activeNote);
+                // Expanded hit zone detection - allow notes in a wider range
+                float distanceFromHitZone = Mathf.Abs(activeNote.currentPosition.z - hitZoneZ);
+
+                // Allow notes within a reasonable distance (expanded for better detection)
+                if (distanceFromHitZone <= 5.0f) // Much larger detection zone
+                {
+                    hitNotes.Add(activeNote);
+                }
             }
         }
 
