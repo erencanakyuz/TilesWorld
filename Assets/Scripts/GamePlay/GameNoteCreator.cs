@@ -317,17 +317,143 @@ public class GameNoteCreator : MonoBehaviour
     /// </summary>
     List<RawNoteData> LoadNoteChartData(string chartPath)
     {
-        // Try to load actual chart data from Resources or StreamingAssets
+        // Try to load actual chart data from Resources
         TextAsset chartAsset = Resources.Load<TextAsset>(chartPath);
         if (chartAsset != null)
         {
-            // TODO: Implement ParseChartData method for JSON/XML parsing
-            // return ParseChartData(chartAsset.text);
-            Debug.LogWarning($"🎵 Chart asset found but parsing not implemented: {chartPath}");
+            Debug.Log($"🎵 Chart file found: {chartPath}, loading real data!");
+            return ParseJsonChartData(chartAsset.text);
         }
 
-        Debug.LogError($"🎵 Chart file not found: {chartPath}");
-        return new List<RawNoteData>();
+        // Try alternative paths for known songs
+        string[] alternatePaths = {
+            "Song_Note_Jsons/cannon_notes",
+            "Song_Note_Jsons/all_songs_notes"
+        };
+
+        foreach (string altPath in alternatePaths)
+        {
+            chartAsset = Resources.Load<TextAsset>(altPath);
+            if (chartAsset != null)
+            {
+                Debug.Log($"🎵 Chart file found at alternate path: {altPath}");
+                return ParseJsonChartData(chartAsset.text);
+            }
+        }
+
+        // Generate demo data for testing
+        Debug.LogWarning($"🎵 Chart file not found: {chartPath}, generating demo data");
+        return GenerateDemoNoteData();
+    }
+
+    /// <summary>
+    /// Parse JSON chart data into raw note data
+    /// </summary>
+    List<RawNoteData> ParseJsonChartData(string jsonText)
+    {
+        List<RawNoteData> notes = new List<RawNoteData>();
+
+        try
+        {
+            // Simple JSON parsing for song sequences
+            JsonSequenceArray wrapper = JsonUtility.FromJson<JsonSequenceArray>(
+                "{\"sequences\":" + jsonText + "}"
+            );
+            JsonSongSequence[] sequences = wrapper.sequences;
+
+            float currentTime = 0f;
+            float stepDuration = (60f / 120f) / 4f; // 1/16 note at 120 BPM
+
+            foreach (var sequence in sequences.Take(5)) // Limit for testing
+            {
+                float sequenceStartTime = currentTime;
+
+                // Process each lane
+                string[] lines = { sequence.line1, sequence.line2, sequence.line3,
+                                  sequence.line4, sequence.line5, sequence.line6 };
+
+                for (int lane = 0; lane < lines.Length; lane++)
+                {
+                    if (string.IsNullOrEmpty(lines[lane])) continue;
+
+                    var laneNotes = ParseNoteLine(lines[lane], lane, sequenceStartTime, stepDuration);
+                    notes.AddRange(laneNotes);
+                }
+
+                // Estimate sequence duration
+                currentTime += stepDuration * 60; // Roughly 60 steps per sequence
+            }
+
+            Debug.Log($"🎵 Parsed {notes.Count} notes from JSON data");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"🎵 JSON parsing failed: {e.Message}");
+            return GenerateDemoNoteData();
+        }
+
+        return notes;
+    }
+
+    /// <summary>
+    /// Parse a single note line from JSON
+    /// </summary>
+    List<RawNoteData> ParseNoteLine(string noteLine, int lane, float startTime, float stepDuration)
+    {
+        List<RawNoteData> notes = new List<RawNoteData>();
+
+        string[] steps = noteLine.Split('/');
+
+        for (int stepIndex = 0; stepIndex < steps.Length; stepIndex++)
+        {
+            string step = steps[stepIndex].Trim();
+            if (string.IsNullOrEmpty(step) || step == "_,_") continue;
+
+            // Parse "pitch,duration" format
+            string[] parts = step.Split(',');
+            if (parts.Length == 2 && parts[0] != "_")
+            {
+                if (int.TryParse(parts[0], out int pitch) && int.TryParse(parts[1], out int duration))
+                {
+                    var noteData = new RawNoteData
+                    {
+                        timeMs = startTime + (stepIndex * stepDuration * 1000f),
+                        lane = lane,
+                        noteType = NoteType.Single,
+                        pitch = pitch,
+                        duration = duration
+                    };
+                    notes.Add(noteData);
+                }
+            }
+        }
+
+        return notes;
+    }
+
+    /// <summary>
+    /// Generate demo note data for testing
+    /// </summary>
+    List<RawNoteData> GenerateDemoNoteData()
+    {
+        List<RawNoteData> demoNotes = new List<RawNoteData>();
+
+        // Generate simple demo pattern
+        for (int i = 0; i < 20; i++)
+        {
+            var note = new RawNoteData
+            {
+                timeMs = i * 500f, // Every 0.5 seconds
+                lane = i % laneCount,
+                noteType = NoteType.Single,
+                pitch = UnityEngine.Random.Range(0, 12), // C major scale
+                duration = 4
+            };
+            demoNotes.Add(note);
+        }
+
+        Debug.Log($"🎵 Generated {demoNotes.Count} demo notes");
+        return demoNotes;
     }
 
     /// <summary>
@@ -356,7 +482,8 @@ public class GameNoteCreator : MonoBehaviour
                     timeMs = rawNote.timeMs,
                     noteType = rawNote.noteType,
                     instrumentType = GameManager.Instance?.GetSelectedInstrument() ?? InstrumentType.Piano,
-                    pitch = 24 + rawNote.lane * 2 // Simple pitch mapping
+                    pitch = rawNote.pitch >= 0 ? rawNote.pitch : (24 + rawNote.lane * 2), // Use JSON pitch or fallback
+                    duration = rawNote.duration
                 };
 
                 package.gameNoteInfos.Add(gameNote);
@@ -406,6 +533,7 @@ public class GameNoteInfo
     public NoteType noteType;          // Single, Hold, etc.
     public InstrumentType instrumentType; // Piano, Harp, Guitar
     public int pitch;                  // Musical pitch (for audio)
+    public int duration;               // Note duration from JSON
     public bool alreadyHit;           // Hit state tracking
 }
 
@@ -415,6 +543,27 @@ public class RawNoteData
     public float timeMs;
     public int lane;
     public NoteType noteType;
+    public int pitch;        // Musical pitch (0-26)
+    public int duration;     // Note duration (1-9)
+}
+
+[System.Serializable]
+public class JsonSongSequence
+{
+    public int music_id;
+    public int seq;
+    public string line1;
+    public string line2;
+    public string line3;
+    public string line4;
+    public string line5;
+    public string line6;
+}
+
+[System.Serializable]
+public class JsonSequenceArray
+{
+    public JsonSongSequence[] sequences;
 }
 
 [System.Serializable]

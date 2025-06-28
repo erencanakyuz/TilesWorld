@@ -871,6 +871,129 @@ public class UIManager : MonoBehaviour
     }
     #endregion
 
+    #region Countdown System
+    private GameObject countdownUI;
+    private TextMeshProUGUI countdownText;
+
+    public void ShowCountdown(int number)
+    {
+        CreateCountdownUIIfNeeded();
+
+        if (countdownText != null)
+        {
+            if (number > 0)
+            {
+                countdownText.text = number.ToString();
+                countdownText.color = Color.white;
+                countdownText.fontSize = 120;
+            }
+            else
+            {
+                countdownText.text = "GO!";
+                countdownText.color = Color.green;
+                countdownText.fontSize = 100;
+            }
+
+            // Animate countdown number
+            StartCoroutine(CountdownPulseEffect());
+        }
+
+        if (countdownUI != null)
+        {
+            countdownUI.SetActive(true);
+        }
+    }
+
+    public void HideCountdown()
+    {
+        if (countdownUI != null)
+        {
+            countdownUI.SetActive(false);
+        }
+    }
+
+    private void CreateCountdownUIIfNeeded()
+    {
+        if (countdownUI != null) return;
+
+        // Create countdown UI on the HUD Canvas
+        Transform parentCanvas = hudCanvas != null ? hudCanvas.transform : mainCanvas?.transform;
+        if (parentCanvas == null) return;
+
+        // Create main countdown GameObject
+        countdownUI = new GameObject("CountdownUI");
+        countdownUI.transform.SetParent(parentCanvas, false);
+
+        // Add RectTransform
+        RectTransform rectTransform = countdownUI.AddComponent<RectTransform>();
+        rectTransform.anchorMin = Vector2.zero;
+        rectTransform.anchorMax = Vector2.one;
+        rectTransform.offsetMin = Vector2.zero;
+        rectTransform.offsetMax = Vector2.zero;
+
+        // Create countdown text
+        GameObject textObj = new GameObject("CountdownText");
+        textObj.transform.SetParent(countdownUI.transform, false);
+
+        countdownText = textObj.AddComponent<TextMeshProUGUI>();
+        countdownText.text = "3";
+        countdownText.fontSize = 120;
+        countdownText.color = Color.white;
+        countdownText.alignment = TextAlignmentOptions.Center;
+        // Use TextMeshPro default font or load from Resources
+        TMP_FontAsset font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+        if (font != null)
+        {
+            countdownText.font = font;
+        }
+        // If font is null, TextMeshPro will use default font
+
+        // Position countdown text in center
+        RectTransform textRect = textObj.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        // Initially hidden
+        countdownUI.SetActive(false);
+
+        Debug.Log("🎯 Countdown UI created successfully!");
+    }
+
+    private IEnumerator CountdownPulseEffect()
+    {
+        if (countdownText == null) yield break;
+
+        Vector3 originalScale = countdownText.transform.localScale;
+        Vector3 largeScale = originalScale * 1.3f;
+
+        // Scale up quickly
+        float elapsed = 0f;
+        float duration = 0.1f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / duration;
+            countdownText.transform.localScale = Vector3.Lerp(originalScale, largeScale, progress);
+            yield return null;
+        }
+
+        // Scale down
+        elapsed = 0f;
+        duration = 0.2f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / duration;
+            countdownText.transform.localScale = Vector3.Lerp(largeScale, originalScale, progress);
+            yield return null;
+        }
+
+        countdownText.transform.localScale = originalScale;
+    }
+    #endregion
+
     void OnDestroy()
     {
         // Unsubscribe from events

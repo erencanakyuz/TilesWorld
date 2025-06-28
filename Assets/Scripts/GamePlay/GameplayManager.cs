@@ -184,6 +184,28 @@ public class GameplayManager : MonoBehaviour
     /// <summary>
     /// Start gameplay with a song - Main entry point
     /// </summary>
+    public void StartGameplay(SongSelectionManager.GameplaySongData songData)
+    {
+        if (songData == null)
+        {
+            Debug.LogError("🎮 Cannot start gameplay with null song!");
+            return;
+        }
+
+        // Convert to internal SongData format using ScriptableObject
+        currentSong = ScriptableObject.CreateInstance<SongData>();
+        currentSong.songName = songData.songName;
+        currentSong.artist = songData.artist;
+        currentSong.duration = songData.duration;
+        currentSong.bpm = songData.bpm;
+        currentSong.audioFilePath = songData.audioFilePath;
+        currentSong.noteChartPath = songData.chartFilePath;
+
+        Debug.Log($"🎮 Starting gameplay sequence for: {currentSong.songName} by {currentSong.artist}");
+        StartCoroutine(StartGameplaySequence());
+    }
+
+    // Overload for backward compatibility
     public void StartGameplay(SongData song)
     {
         if (song == null)
@@ -254,13 +276,27 @@ public class GameplayManager : MonoBehaviour
         {
             Debug.Log($"🎮 Starting in {i}...");
 
-            // Show countdown UI - using isCountingDown state
-            if (UIManager.Instance != null && isCountingDown)
+            // Show countdown UI number
+            if (UIManager.Instance != null)
             {
-                // UIManager would show countdown number based on isCountingDown
+                UIManager.Instance.ShowCountdown(i);
             }
 
             yield return new WaitForSeconds(1f);
+        }
+
+        // Show "GO!" or "Start!" message
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowCountdown(0); // 0 = GO!
+        }
+
+        yield return new WaitForSeconds(0.5f); // Brief pause for "GO!" message
+
+        // Hide countdown UI
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.HideCountdown();
         }
 
         isCountingDown = false;

@@ -44,44 +44,98 @@ public class SongSelectionManager : MonoBehaviour
 
     private void InitializeSongData()
     {
-        // Demo song data
+        // Real song data from ClassicPlayer database
         availableSongs = new SongData[]
         {
             new SongData
             {
-                title = "Piano Dreams",
-                artist = "Classical Composer",
-                duration = "3:45",
+                title = "Cannon",
+                artist = "Pachelbel",
+                duration = "3:00",
                 difficulty = DifficultyLevel.Easy,
-                bpm = 120,
-                songKey = "piano_dreams"
+                bpm = 77,
+                songKey = "cannon"
             },
             new SongData
             {
-                title = "Guitar Hero",
-                artist = "Rock Band",
-                duration = "4:12",
+                title = "The Entertainer",
+                artist = "Scott Joplin",
+                duration = "3:20",
                 difficulty = DifficultyLevel.Medium,
+                bpm = 80,
+                songKey = "entertainer"
+            },
+            new SongData
+            {
+                title = "Air on a G String",
+                artist = "Bach",
+                duration = "2:40",
+                difficulty = DifficultyLevel.Easy,
+                bpm = 65,
+                songKey = "air_g_string"
+            },
+            new SongData
+            {
+                title = "Vidalita",
+                artist = "Traditional",
+                duration = "2:30",
+                difficulty = DifficultyLevel.Medium,
+                bpm = 120,
+                songKey = "vidalita"
+            },
+            new SongData
+            {
+                title = "Minuet",
+                artist = "Bach",
+                duration = "2:00",
+                difficulty = DifficultyLevel.Easy,
                 bpm = 140,
-                songKey = "guitar_hero"
+                songKey = "minuet"
             },
             new SongData
             {
-                title = "Harp Fantasy",
-                artist = "Celtic Musicians",
-                duration = "5:30",
-                difficulty = DifficultyLevel.Hard,
-                bpm = 85,
-                songKey = "harp_fantasy"
+                title = "Romance",
+                artist = "Tarrega",
+                duration = "3:00",
+                difficulty = DifficultyLevel.Medium,
+                bpm = 120,
+                songKey = "romance"
             },
             new SongData
             {
-                title = "Jazz Fusion",
-                artist = "Jazz Collective",
-                duration = "6:18",
+                title = "Toccata and Fugue",
+                artist = "Bach",
+                duration = "5:00",
                 difficulty = DifficultyLevel.Expert,
-                bpm = 180,
-                songKey = "jazz_fusion"
+                bpm = 110,
+                songKey = "toccata_fugue"
+            },
+            new SongData
+            {
+                title = "Moonlight Sonata",
+                artist = "Beethoven",
+                duration = "4:00",
+                difficulty = DifficultyLevel.Easy,
+                bpm = 50,
+                songKey = "moonlight"
+            },
+            new SongData
+            {
+                title = "Fur Elise",
+                artist = "Beethoven",
+                duration = "3:00",
+                difficulty = DifficultyLevel.Medium,
+                bpm = 62,
+                songKey = "fur_elise"
+            },
+            new SongData
+            {
+                title = "Turkish Delight",
+                artist = "Mozart",
+                duration = "3:20",
+                difficulty = DifficultyLevel.Expert,
+                bpm = 140,
+                songKey = "turkish_delight"
             }
         };
     }
@@ -140,11 +194,14 @@ public class SongSelectionManager : MonoBehaviour
 
     private string GetSongIcon(string songTitle)
     {
-        if (songTitle.Contains("Piano")) return "♪";
-        if (songTitle.Contains("Guitar")) return "♫";
-        if (songTitle.Contains("Harp")) return "♬";
-        if (songTitle.Contains("Jazz")) return "♩";
-        return "♪";
+        // Use ASCII-safe music symbols instead of Unicode
+        if (songTitle.Contains("Piano") || songTitle.Contains("Sonata") || songTitle.Contains("Minuet")) return "*";
+        if (songTitle.Contains("Guitar") || songTitle.Contains("Romance")) return "#";
+        if (songTitle.Contains("Harp") || songTitle.Contains("Air")) return "+";
+        if (songTitle.Contains("Jazz") || songTitle.Contains("Entertainer")) return "&";
+        if (songTitle.Contains("Bach") || songTitle.Contains("Toccata")) return "@";
+        if (songTitle.Contains("Beethoven") || songTitle.Contains("Fur")) return "%";
+        return "*"; // Default piano symbol
     }
 
     private void SetupEventListeners()
@@ -168,22 +225,22 @@ public class SongSelectionManager : MonoBehaviour
 
         SongData selectedSong = availableSongs[songIndex];
 
-        // Rich text format ile tek text component'inde tüm bilgileri göster
-        string formattedDetails = $@"♪ <size=28><color=#FFD700>Song Details</color></size>
+        // Rich text format ile tek text component'inde tüm bilgileri göster - ASCII safe
+        string formattedDetails = $@"* <size=28><color=#FFD700>Song Details</color></size>
 
-<size=20><color=#87CEEB>♫ Title:</color></size>
+<size=20><color=#87CEEB># Title:</color></size>
 <color=#FFFFFF>{selectedSong.title}</color>
 
-<size=20><color=#87CEEB>♪ Artist:</color></size>
+<size=20><color=#87CEEB>* Artist:</color></size>
 <color=#FFFFFF>{selectedSong.artist}</color>
 
-<size=20><color=#87CEEB>♬ Duration:</color></size>
+<size=20><color=#87CEEB>+ Duration:</color></size>
 <color=#FFFFFF>{selectedSong.duration}</color>
 
-<size=20><color=#87CEEB>♦ Difficulty:</color></size>
+<size=20><color=#87CEEB>@ Difficulty:</color></size>
 {GetDifficultyColoredText(selectedSong.difficulty)}
 
-<size=20><color=#87CEEB>♫ BPM:</color></size>
+<size=20><color=#87CEEB># BPM:</color></size>
 <color=#FFFFFF>{selectedSong.bpm}</color>";
 
         songDetails.text = formattedDetails;
@@ -209,13 +266,14 @@ public class SongSelectionManager : MonoBehaviour
 
     private string GetDifficultyIcon(DifficultyLevel difficulty)
     {
+        // ASCII-safe difficulty icons
         return difficulty switch
         {
-            DifficultyLevel.Easy => "●",
-            DifficultyLevel.Medium => "●",
-            DifficultyLevel.Hard => "●",
-            DifficultyLevel.Expert => "●",
-            _ => "○"
+            DifficultyLevel.Easy => "*",      // Easy = 1 star
+            DifficultyLevel.Medium => "**",   // Medium = 2 stars  
+            DifficultyLevel.Hard => "***",   // Hard = 3 stars
+            DifficultyLevel.Expert => "****", // Expert = 4 stars
+            _ => "-"
         };
     }
 
@@ -228,15 +286,65 @@ public class SongSelectionManager : MonoBehaviour
 
         Debug.Log($"► Starting song: {selectedSong.title} ({selectedSong.difficulty})");
 
-        // GameManager'a selected song bilgisini gönder ve gameplay'e geç
-        if (GameManager.Instance != null)
+        // Convert SongSelectionManager.SongData to GameplayManager's expected format
+        var gameplaySongData = new GameplaySongData
         {
-            // Selected song data'sını GameManager'a set et
-            // GameManager.Instance.SetSelectedSong(selectedSong); // Bu method'u eklemen gerekebilir
+            songName = selectedSong.title,
+            artist = selectedSong.artist,
+            duration = ParseDurationToSeconds(selectedSong.duration),
+            bpm = selectedSong.bpm,
+            audioFilePath = $"Music/{selectedSong.songKey}",
+            chartFilePath = $"Song_Note_Jsons/{selectedSong.songKey}_notes"
+        };
 
-            // Playing state'ine geç
-            GameManager.Instance.ChangeGameState(GameState.Playing);
+        // Start gameplay directly with song data
+        GameplayManager gameplayManager = FindFirstObjectByType<GameplayManager>();
+        if (gameplayManager != null)
+        {
+            gameplayManager.StartGameplay(gameplaySongData);
         }
+        else
+        {
+            Debug.LogError("❌ GameplayManager not found!");
+            // Fallback - just change state
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.ChangeGameState(GameState.Playing);
+            }
+        }
+    }
+
+    private float ParseDurationToSeconds(string duration)
+    {
+        // Parse "3:45" format to seconds
+        try
+        {
+            string[] parts = duration.Split(':');
+            if (parts.Length == 2)
+            {
+                int minutes = int.Parse(parts[0]);
+                int seconds = int.Parse(parts[1]);
+                return minutes * 60 + seconds;
+            }
+        }
+        catch
+        {
+            Debug.LogWarning($"⚠️ Could not parse duration: {duration}");
+        }
+
+        return 180f; // Default 3 minutes
+    }
+
+    // Helper class to match GameplayManager's expected SongData format
+    [System.Serializable]
+    public class GameplaySongData
+    {
+        public string songName;
+        public string artist;
+        public float duration;
+        public int bpm;
+        public string audioFilePath;
+        public string chartFilePath;
     }
 
     private void GoBack()

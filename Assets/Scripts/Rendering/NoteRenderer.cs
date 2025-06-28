@@ -272,9 +272,87 @@ public class NoteRenderer : MonoBehaviour
         var renderer = noteObject.GetComponent<Renderer>();
         if (renderer != null)
         {
-            // Simple highlight effect - could be enhanced with materials
-            renderer.material.color = highlight ? Color.white : Color.gray;
+            // Simple highlight effect - enhance existing color
+            Color baseColor = renderer.material.color;
+            renderer.material.color = highlight ? Color.Lerp(baseColor, Color.white, 0.3f) : baseColor;
         }
+    }
+
+    /// <summary>
+    /// Get material for specific pitch and instrument
+    /// </summary>
+    Material GetMaterialForPitch(int pitch, InstrumentType instrumentType)
+    {
+        // Create or reuse material with pitch-based color
+        Material pitchMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+
+        // Color based on pitch (musical note colors)
+        Color noteColor = GetColorForPitch(pitch);
+
+        // Tint based on instrument
+        Color instrumentTint = GetColorForInstrument(instrumentType);
+
+        // Combine pitch color with instrument tint
+        pitchMaterial.color = Color.Lerp(noteColor, instrumentTint, 0.3f);
+
+        return pitchMaterial;
+    }
+
+    /// <summary>
+    /// Get color based on musical pitch (chromatic scale)
+    /// </summary>
+    Color GetColorForPitch(int pitch)
+    {
+        // Map pitch to color wheel (12-tone chromatic scale)
+        int chromaticNote = pitch % 12;
+
+        switch (chromaticNote)
+        {
+            case 0: return Color.red;       // C
+            case 1: return Color.Lerp(Color.red, Color.yellow, 0.5f);   // C#
+            case 2: return Color.yellow;    // D
+            case 3: return Color.Lerp(Color.yellow, Color.green, 0.5f); // D#
+            case 4: return Color.green;     // E
+            case 5: return Color.cyan;      // F
+            case 6: return Color.Lerp(Color.cyan, Color.blue, 0.5f);    // F#
+            case 7: return Color.blue;      // G
+            case 8: return Color.Lerp(Color.blue, Color.magenta, 0.5f); // G#
+            case 9: return Color.magenta;   // A
+            case 10: return Color.Lerp(Color.magenta, Color.red, 0.5f);  // A#
+            case 11: return Color.white;     // B
+            default: return Color.gray;
+        }
+    }
+
+    /// <summary>
+    /// Get color tint for instrument type
+    /// </summary>
+    Color GetColorForInstrument(InstrumentType instrumentType)
+    {
+        switch (instrumentType)
+        {
+            case InstrumentType.Piano: return new Color(1f, 1f, 1f, 1f);     // White (neutral)
+            case InstrumentType.Harp: return new Color(0.8f, 1f, 0.9f, 1f); // Light green
+            case InstrumentType.Guitar: return new Color(1f, 0.9f, 0.7f, 1f); // Warm yellow
+            default: return Color.white;
+        }
+    }
+
+    /// <summary>
+    /// Show pitch indicator at specific position
+    /// </summary>
+    public void ShowPitchIndicator(int pitch, Vector3 position)
+    {
+        // Create temporary visual indicator for pitch
+        GameObject indicator = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        indicator.transform.position = position + Vector3.up * 2f;
+        indicator.transform.localScale = Vector3.one * 0.3f;
+
+        Renderer indicatorRenderer = indicator.GetComponent<Renderer>();
+        indicatorRenderer.material = GetMaterialForPitch(pitch, InstrumentType.Piano);
+
+        // Auto-destroy after 1 second
+        Destroy(indicator, 1f);
     }
     #endregion
 
@@ -301,17 +379,12 @@ public class NoteRenderer : MonoBehaviour
             return;
         }
 
-        // Set up note renderer
+        // Set up note renderer with pitch-based color
         Renderer noteRenderer = noteObject.GetComponent<Renderer>();
-        if (noteRenderer != null && noteMaterial != null)
+        if (noteRenderer != null)
         {
-            noteRenderer.material = noteMaterial;
-        }
-        else if (noteRenderer != null)
-        {
-            // Fallback material
-            noteRenderer.material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-            noteRenderer.material.color = Color.cyan;
+            Material pitchMaterial = GetMaterialForPitch(noteInfo.pitch, noteInfo.instrumentType);
+            noteRenderer.material = pitchMaterial;
         }
 
         // Calculate spawn position
@@ -443,9 +516,15 @@ public class NoteRenderer : MonoBehaviour
 
     void TriggerNoteAudio(GameNoteInfo noteInfo)
     {
-        // Interactive music creation (MD's "secret sauce")
-        if (AudioManager.Instance != null)
+        // Interactive music creation (MD's "secret sauce") - Enhanced with JSON
+        if (InteractiveMusicSystem.Instance != null)
         {
+            // Use enhanced music system with JSON pitch data
+            InteractiveMusicSystem.Instance.TriggerNoteAudio(noteInfo);
+        }
+        else if (AudioManager.Instance != null)
+        {
+            // Fallback to direct audio manager
             AudioManager.Instance.PlayNote(
                 noteInfo.instrumentType,
                 noteInfo.pitch,

@@ -409,10 +409,10 @@ public class GameManager : MonoBehaviour
             ChangeGameState(GameState.SongSelection);
         }
 
-        // Debug: R tuşuna basınca UI refresh
+        // Debug: R tuşuna basınca UI refresh (sadece hata varsa)
         if (Keyboard.current.rKey.wasPressedThisFrame)
         {
-            Debug.Log("🔄 Refreshing UIManager...");
+            Debug.Log("🔄 Refreshing UIManager... (Manual trigger)");
             if (UIManager.Instance != null)
             {
                 UIManager.Instance.RefreshUIElements();

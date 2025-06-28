@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
+using System.Linq;
 
 /// <summary>
 /// InteractiveMusicSystem - The Soul of the Game
@@ -10,9 +11,13 @@ using System.Collections;
 /// </summary>
 public class InteractiveMusicSystem : MonoBehaviour
 {
+    public static InteractiveMusicSystem Instance { get; private set; }
+
     [Header("🎵 Interactive Music Configuration")]
     [SerializeField] private InstrumentType currentInstrument = InstrumentType.Piano;
     [SerializeField] private MusicalScale currentScale = MusicalScale.CMajor;
+    [SerializeField] private bool enableJsonBasedMusic = true;  // Use JSON note data
+    [SerializeField] private bool showDebugInfo = true;         // Debug note playing
 
     [Header("🎼 Musical Mapping (Original SOUND_RESOURCE_IDXS)")]
     [SerializeField] private int baseOctave = 4;
@@ -64,7 +69,16 @@ public class InteractiveMusicSystem : MonoBehaviour
 
     void Awake()
     {
-        InitializeInteractiveMusic();
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+            InitializeInteractiveMusic();
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
     void Start()
@@ -415,6 +429,128 @@ public class InteractiveMusicSystem : MonoBehaviour
     public void SetInstrument(InstrumentType instrument)
     {
         currentInstrument = instrument;
+
+        if (enableJsonBasedMusic && showDebugInfo)
+        {
+            Debug.Log($"🎵 JSON-based music enabled for {instrument}");
+        }
+    }
+
+    /// <summary>
+    /// Enhanced note playing with JSON pitch data (for NoteRenderer integration)
+    /// </summary>
+    public void TriggerNoteAudio(GameNoteInfo noteInfo)
+    {
+        if (audioManager != null)
+        {
+            // Enhanced volume calculation based on note duration from JSON
+            float noteVolume = CalculateNoteVolume(noteInfo.duration);
+
+            // Use audio manager for pitch-based playback
+            audioManager.PlayNote(
+                noteInfo.instrumentType,
+                noteInfo.pitch,
+                noteVolume
+            );
+
+            if (showDebugInfo)
+            {
+                Debug.Log($"🎵 Playing {noteInfo.instrumentType} pitch {noteInfo.pitch} " +
+                         $"duration {noteInfo.duration} volume {noteVolume:F2}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Calculate note volume based on JSON duration value
+    /// </summary>
+    float CalculateNoteVolume(int duration)
+    {
+        // Duration from JSON (1-9) maps to volume (0.3-1.0)
+        return Mathf.Lerp(0.3f, 1.0f, (duration - 1) / 8f);
+    }
+
+    /// <summary>
+    /// Play multiple notes simultaneously (chord) - enhanced with JSON data
+    /// </summary>
+    public void PlayChord(List<GameNoteInfo> chordNotes)
+    {
+        if (chordNotes == null || chordNotes.Count == 0) return;
+
+        if (showDebugInfo)
+        {
+            Debug.Log($"🎵 Playing chord with {chordNotes.Count} notes");
+        }
+
+        foreach (var note in chordNotes)
+        {
+            TriggerNoteAudio(note);
+        }
+
+        // Detect and classify chord using JSON pitch data
+        var pitches = chordNotes.Select(n => n.pitch).ToList();
+        ChordType detectedChord = DetectEnhancedChordType(pitches);
+
+        if (detectedChord != ChordType.None)
+        {
+            OnChordDetected?.Invoke(detectedChord);
+
+            if (showDebugInfo)
+            {
+                Debug.Log($"🎵 Enhanced chord detected: {detectedChord}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enhanced chord detection with JSON pitch data
+    /// </summary>
+    ChordType DetectEnhancedChordType(List<int> pitches)
+    {
+        if (pitches.Count < 2) return ChordType.None;
+
+        // Convert to chromatic notes (0-11)
+        var chromaticNotes = pitches.Select(p => p % 12).Distinct().OrderBy(n => n).ToList();
+
+        if (chromaticNotes.Count < 2) return ChordType.Unison;
+
+        // Check for intervals first (2 notes)
+        if (chromaticNotes.Count == 2)
+        {
+            int interval = (chromaticNotes[1] - chromaticNotes[0] + 12) % 12;
+            switch (interval)
+            {
+                case 3: return ChordType.Minor3rd;
+                case 4: return ChordType.Major3rd;
+                case 7: return ChordType.Perfect5th;
+                default: return ChordType.Unison;
+            }
+        }
+
+        // Check common chord patterns (3+ notes)
+        var intervals = new List<int>();
+        for (int i = 1; i < chromaticNotes.Count; i++)
+        {
+            intervals.Add((chromaticNotes[i] - chromaticNotes[0] + 12) % 12);
+        }
+
+        // Major chord (0, 4, 7)
+        if (intervals.Contains(4) && intervals.Contains(7))
+            return ChordType.Major;
+
+        // Minor chord (0, 3, 7)
+        if (intervals.Contains(3) && intervals.Contains(7))
+            return ChordType.Minor;
+
+        // Diminished chord (0, 3, 6)
+        if (intervals.Contains(3) && intervals.Contains(6))
+            return ChordType.Diminished;
+
+        // Augmented chord (0, 4, 8)
+        if (intervals.Contains(4) && intervals.Contains(8))
+            return ChordType.Augmented;
+
+        return ChordType.None;
     }
 
     public void SetMusicalScale(MusicalScale scale)
