@@ -3606,18 +3606,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mainCanvas: {fileID: 433745370}
-  overlayCanvas: {fileID: 0}
+  overlayCanvas: {fileID: 1359653917}
   hudCanvas: {fileID: 1655431784}
   scoreText: {fileID: 1039200593}
   comboText: {fileID: 255449991}
   multiplierText: {fileID: 0}
   healthBar: {fileID: 1025536580}
   instrumentIcon: {fileID: 0}
-  mainMenuPanel: {fileID: 0}
-  songSelectionPanel: {fileID: 0}
-  gameplayPanel: {fileID: 0}
-  pausePanel: {fileID: 0}
-  gameOverPanel: {fileID: 0}
+  mainMenuPanel: {fileID: 319038966}
+  songSelectionPanel: {fileID: 1255484127}
+  gameplayPanel: {fileID: 1913383894}
+  pausePanel: {fileID: 1757483944}
+  gameOverPanel: {fileID: 582969085}
   settingsPanel: {fileID: 0}
   perfectHitEffect: {fileID: 7980075456805444894, guid: c6a05dccfcea9fb4a93b60cd6011f9d3, type: 3}
   goodHitEffect: {fileID: 5801645551642291797, guid: b67a591a03e01684983a26cfc3466c77, type: 3}

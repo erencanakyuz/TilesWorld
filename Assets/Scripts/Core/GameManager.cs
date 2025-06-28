@@ -63,7 +63,14 @@ public class GameManager : MonoBehaviour
 
     void InitializeCoreComponents()
     {
-        // Core systems are initialized by their Awake() methods
+        // If references are not set in the inspector, find them automatically using the singleton pattern.
+        if (audioManager == null)
+            audioManager = AudioManager.Instance;
+        if (inputManager == null)
+            inputManager = InputManager.Instance;
+        if (uiManager == null)
+            uiManager = UIManager.Instance;
+
         // This just verifies they're working
         if (AudioManager.Instance != null &&
             UIManager.Instance != null &&
