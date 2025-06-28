@@ -247,10 +247,10 @@ public class GameplayManager : MonoBehaviour
         // Reset all stats
         ResetGameplayStats();
 
-        // Load song into note creator
+        // Load song into note creator (NEW INDIVIDUAL JSON SYSTEM)
         if (noteCreator != null)
         {
-            noteCreator.LoadSongData(currentSong);
+            noteCreator.LoadSong(currentSong);
         }
 
         // Set instrument for music system

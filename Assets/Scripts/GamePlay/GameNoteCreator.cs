@@ -117,209 +117,213 @@ public class GameNoteCreator : MonoBehaviour
     }
 
     /// <summary>
-    /// Load song data and prepare note packages using ORIGINAL ALGORITHM
+    /// 🎵 Load song from individual JSON file (NEW SYSTEM!)
+    /// Uses new Individual JSON files: song_artist.json format
     /// </summary>
-    public void LoadSongData(SongData songData)
+    public void LoadSong(SongData song)
     {
-        if (songData == null)
+        if (song == null)
         {
-            Debug.LogError("🎵 Cannot load null song data");
+            Debug.LogError("❌ Song data is null!");
             return;
         }
 
-        // Reset state for new song
-        ResetGenerationState();
+        currentSong = song;
+        currentSongBPM = song.bpm;
 
-        // Store song data
-        currentSong = songData;
-        currentSongBPM = songData.bpm;
-        songStartTime = 0f;
+        Debug.Log($"🎵 Loading song: {song.songName} (BPM: {song.bpm})");
 
-        Debug.Log($"🎵 Loading song: {songData.songName} by {songData.artist} (BPM: {songData.bpm})");
+        // NEW: Get individual JSON file path
+        string jsonFileName = GetIndividualJsonFileName(song);
+        string jsonPath = $"Song_Note_Jsons/Individual/{jsonFileName}";
 
-        // Load note chart using songKey
-        var rawNoteData = LoadNotesFromJSON(songData.songKey);
+        Debug.Log($"🎵 Loading individual JSON: {jsonPath}");
 
-        // Convert raw data to note packages using ORIGINAL ALGORITHMS
-        var notePackages = ConvertRawDataToPackages(rawNoteData, songData.bpm);
-
-        // Apply original Java algorithms
-        var processedPackages = ApplyOriginalAlgorithms(notePackages);
-
-        // Store final packages
-        finalGameNotePackages = processedPackages;
-        finalGameNotePackIterator = finalGameNotePackages.GetEnumerator();
-
-        // Initialize first package
-        if (finalGameNotePackIterator.MoveNext())
+        // Load individual JSON file
+        TextAsset jsonFile = Resources.Load<TextAsset>(jsonPath);
+        if (jsonFile == null)
         {
-            returnGameNoteInfoPack = finalGameNotePackIterator.Current;
-            Debug.Log($"🎵 First sequence initialized: {returnGameNoteInfoPack.oneNote}ms delay");
+            Debug.LogError($"❌ Could not load individual JSON: {jsonPath}");
+            // Fallback to demo data
+            var demoNotes = GenerateDemoNoteData();
+            var demoPackages = ConvertRawDataToPackages(demoNotes, currentSongBPM);
+            InitializePackageIterator(demoPackages);
+            return;
         }
 
-        Debug.Log($"🎵 Song loaded: {finalGameNotePackages.Count} sequences generated");
-    }
-
-    /// <summary>
-    /// 🎼 Parse JSON data exactly like original format
-    /// Format: "pitch,duration/_,_/5,2" etc.
-    /// </summary>
-    List<RawNoteData> LoadNotesFromJSON(string songKey)
-    {
+        // Parse individual JSON (same format, but filtered to one song)
         try
         {
-            if (string.IsNullOrEmpty(songKey))
+            var sequences = ParseIndividualJson(jsonFile.text);
+            Debug.Log($"🎵 Loaded {sequences.Count} sequences from individual JSON");
+
+            if (sequences.Count == 0)
             {
-                Debug.LogError("❌ songKey is null or empty! Using demo notes.");
-                return GenerateDemoNoteData();
+                Debug.LogWarning("⚠️ No sequences found in individual JSON, using demo data");
+                var demoNotes = GenerateDemoNoteData();
+                var demoPackages = ConvertRawDataToPackages(demoNotes, currentSongBPM);
+                InitializePackageIterator(demoPackages);
+                return;
             }
 
-            string jsonPath = GetJSONPathForSong(songKey);
-            Debug.Log($"🎼 Loading notes from: {jsonPath} (songKey: '{songKey}')");
+            // Convert to raw notes
+            var rawNotes = ConvertSequencesToRawNotes(sequences, currentSongBPM);
+            Debug.Log($"🎯 Converted to {rawNotes.Count} raw notes");
 
-            TextAsset jsonFile = Resources.Load<TextAsset>(jsonPath);
-            if (jsonFile == null)
-            {
-                Debug.LogWarning($"⚠️ JSON file not found: {jsonPath}, using demo notes");
-                return GenerateDemoNoteData();
-            }
+            // Convert to packages and apply algorithms
+            var packages = ConvertRawDataToPackages(rawNotes, currentSongBPM);
+            var finalPackages = ApplyOriginalAlgorithms(packages);
 
-            // Parse JSON with ORIGINAL FORMAT
-            List<RawNoteData> notes = ParseOriginalJSONFormat(jsonFile.text, currentSongBPM);
+            Debug.Log($"🎵 Song loaded: {finalPackages.Count} sequences generated");
 
-            Debug.Log($"🎼 Loaded {notes.Count} raw notes from JSON");
-            return notes;
+            // Initialize iterator for note generation
+            InitializePackageIterator(finalPackages);
         }
         catch (Exception e)
         {
-            Debug.LogError($"❌ Error loading JSON for {songKey}: {e.Message}");
-            return GenerateDemoNoteData();
+            Debug.LogError($"❌ Error loading individual JSON: {e.Message}");
+            // Fallback to demo data
+            var demoNotes = GenerateDemoNoteData();
+            var demoPackages = ConvertRawDataToPackages(demoNotes, currentSongBPM);
+            InitializePackageIterator(demoPackages);
         }
     }
 
     /// <summary>
-    /// 🎼 Parse original JSON format: Array of sequences with music_id
-    /// Format: [{"music_id": 1, "seq": 0, "line1": "pitch,duration/_,_/...", ...}]
+    /// 🎯 Get individual JSON filename from song data
+    /// Format: song_artist.json (generated by SongJSONSplitter)
     /// </summary>
-    List<RawNoteData> ParseOriginalJSONFormat(string jsonText, float bpm)
+    string GetIndividualJsonFileName(SongData song)
+    {
+        if (song == null || string.IsNullOrEmpty(song.songName))
+        {
+            return "cannon_pachelbel.json"; // Default fallback
+        }
+
+        // Create filename based on song name and artist
+        string songName = song.songName.ToLower()
+            .Replace(" ", "_")
+            .Replace("★", "")
+            .Replace("☆", "")
+            .Replace(".", "")
+            .Replace(",", "")
+            .Replace("'", "")
+            .Replace("`", "")
+            .Replace("ü", "u")
+            .Replace("é", "e")
+            .Replace("ñ", "n");
+
+        string artist = (!string.IsNullOrEmpty(song.artist) ? song.artist : "unknown").ToLower()
+            .Replace(" ", "_")
+            .Replace(".", "")
+            .Replace(",", "");
+
+        string filename = $"{songName}_{artist}.json";
+
+        Debug.Log($"🎯 Generated filename: {filename} for song: {song.songName}");
+        return filename;
+    }
+
+    /// <summary>
+    /// 🎼 Parse individual JSON file (same format as all_songs but for one song)
+    /// </summary>
+    List<JsonSongSequence> ParseIndividualJson(string jsonText)
+    {
+        try
+        {
+            // Individual JSON format: {"sequences": [...]}
+            JsonSequenceArray wrapper = JsonUtility.FromJson<JsonSequenceArray>("{\"sequences\":" + jsonText + "}");
+
+            if (wrapper?.sequences == null)
+            {
+                // Try alternative parsing
+                var root = JsonUtility.FromJson<JsonSequenceRoot>(jsonText);
+                if (root?.sequences != null)
+                {
+                    return root.sequences.ToList();
+                }
+
+                Debug.LogError("❌ Failed to parse individual JSON - no sequences found");
+                return new List<JsonSongSequence>();
+            }
+
+            return wrapper.sequences.ToList();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"❌ Error parsing individual JSON: {e.Message}");
+            return new List<JsonSongSequence>();
+        }
+    }
+
+    /// <summary>
+    /// 🎵 Convert sequences to raw note data (enhanced for individual JSONs)
+    /// </summary>
+    List<RawNoteData> ConvertSequencesToRawNotes(List<JsonSongSequence> sequences, float bpm)
     {
         var notesList = new List<RawNoteData>();
 
-        try
+        if (sequences == null || sequences.Count == 0)
         {
-            // Parse JSON as array of sequence objects
-            JsonSongSequence[] allSequences = JsonUtility.FromJson<JsonSequenceArray>("{\"sequences\":" + jsonText + "}").sequences;
+            Debug.LogWarning("⚠️ No sequences to convert");
+            return notesList;
+        }
 
-            if (allSequences == null || allSequences.Length == 0)
+        float beatDuration = (60f / bpm) * 1000f; // ms per beat
+        float currentTime = 0f;
+
+        // Sort sequences by sequence number
+        sequences.Sort((a, b) => a.seq.CompareTo(b.seq));
+
+        foreach (var sequence in sequences)
+        {
+            float sequenceStartTime = currentTime;
+            string[] lines = { sequence.line1, sequence.line2, sequence.line3, sequence.line4, sequence.line5, sequence.line6 };
+
+            for (int lane = 0; lane < lines.Length; lane++)
             {
-                Debug.LogWarning("⚠️ No sequences found in JSON");
-                return GenerateDemoNoteData();
-            }
+                if (string.IsNullOrEmpty(lines[lane])) continue;
 
-            // Filter sequences by song (currentSong should have music_id)
-            int targetMusicId = GetMusicIdFromSong(currentSong);
-            var sequences = allSequences.Where(s => s.music_id == targetMusicId).OrderBy(s => s.seq).ToArray();
+                float lineTime = sequenceStartTime;
+                var noteParts = lines[lane].Split('/');
 
-            if (sequences.Length == 0)
-            {
-                Debug.LogWarning($"⚠️ No sequences found for music_id {targetMusicId}, using first available");
-                sequences = allSequences.Take(10).ToArray(); // Use first 10 sequences as fallback
-            }
-
-            float currentTime = 0f;
-            float beatDuration = (60f / bpm) * 1000f; // ms per beat
-
-            Debug.Log($"🎼 Processing {sequences.Length} sequences for music_id {targetMusicId}");
-
-            foreach (var sequence in sequences)
-            {
-                // Process each line (lane) in the sequence
-                string[] lines = { sequence.line1, sequence.line2, sequence.line3, sequence.line4, sequence.line5, sequence.line6 };
-
-                for (int lane = 0; lane < lines.Length; lane++)
+                foreach (var noteData in noteParts)
                 {
-                    if (string.IsNullOrEmpty(lines[lane])) continue;
-
-                    var notesInLine = lines[lane].Split('/');
-                    float lineTime = currentTime;
-
-                    foreach (string noteData in notesInLine)
+                    if (string.IsNullOrEmpty(noteData) || noteData.Trim() == "_,_")
                     {
-                        if (noteData.Trim() == "_,_") // Rest/empty note
-                        {
-                            lineTime += beatDuration / 8f; // 8th note rest
-                            continue;
-                        }
+                        lineTime += beatDuration / 8f; // 1/8 note step
+                        continue;
+                    }
 
-                        // Parse "pitch,duration" format
-                        var parts = noteData.Split(',');
-                        if (parts.Length == 2)
+                    // Parse "pitch,duration" format
+                    var parts = noteData.Split(',');
+                    if (parts.Length == 2)
+                    {
+                        if (int.TryParse(parts[0], out int pitch) &&
+                            int.TryParse(parts[1], out int duration))
                         {
-                            if (int.TryParse(parts[0], out int pitch) &&
-                                int.TryParse(parts[1], out int duration))
+                            var note = new RawNoteData
                             {
-                                var note = new RawNoteData
-                                {
-                                    timeMs = lineTime,
-                                    lane = lane, // 0-5 lanes
-                                    pitch = pitch,
-                                    duration = duration,
-                                    noteType = NoteType.Single
-                                };
+                                timeMs = lineTime,
+                                lane = lane, // 0-5 lanes
+                                pitch = pitch,
+                                duration = duration,
+                                noteType = NoteType.Single
+                            };
 
-                                notesList.Add(note);
-                                lineTime += (beatDuration * duration) / 8f; // Duration in 8th notes
-                            }
+                            notesList.Add(note);
+                            lineTime += (beatDuration * duration) / 8f; // Duration in 8th notes
                         }
                     }
                 }
-
-                // Move to next sequence with gap
-                currentTime += beatDuration * 2f; // 2 beats gap between sequences
             }
 
-            Debug.Log($"🎼 Successfully parsed {notesList.Count} notes from {sequences.Length} sequences");
-            return notesList;
+            // Move to next sequence with gap
+            currentTime += beatDuration * 2f; // 2 beats gap between sequences
         }
-        catch (Exception e)
-        {
-            Debug.LogError($"❌ Error parsing JSON format: {e.Message}");
-            return GenerateDemoNoteData();
-        }
-    }
 
-    /// <summary>
-    /// Map song name to music_id (from CSV database analysis)
-    /// </summary>
-    int GetMusicIdFromSong(SongData song)
-    {
-        if (song == null) return 1; // Default to music_id 1
-
-        // Map song names to music_id based on database
-        switch (song.songName.ToLower())
-        {
-            case "cannon":
-            case "pachelbel": return 1;
-            case "the entertainer":
-            case "scott joplin": return 2;
-            case "air on a g string":
-            case "bach": return 3;
-            case "vidalita": return 4;
-            case "minuet": return 5;
-            case "romance": return 6;
-            case "toccata and fugue": return 7;
-            case "moon light":
-            case "moonlight":
-            case "beethoven": return 8;
-            case "noel": return 9;
-            case "turkish delight":
-            case "mozart": return 10;
-            case "fur elise":
-            case "für elise": return 11;  // Fur Elise is music_id 11!
-            default:
-                Debug.LogWarning($"⚠️ Unknown song: {song.songName}, using music_id 1");
-                return 1;
-        }
+        Debug.Log($"🎼 Successfully converted {notesList.Count} notes from {sequences.Count} sequences");
+        return notesList;
     }
 
     /// <summary>
@@ -610,24 +614,31 @@ public class GameNoteCreator : MonoBehaviour
         return demoNotes;
     }
 
+
+
     /// <summary>
-    /// Map song key to correct JSON file path
+    /// 🎯 Initialize package iterator for note generation
     /// </summary>
-    string GetJSONPathForSong(string songKey)
+    void InitializePackageIterator(List<GameNoteInfoPackage> packages)
     {
-        // Direct mapping for known songs
-        switch (songKey.ToLower())
+        // Reset state for new song
+        ResetGenerationState();
+
+        // Store final packages
+        finalGameNotePackages = packages;
+        finalGameNotePackIterator = finalGameNotePackages.GetEnumerator();
+
+        // Initialize first package
+        if (finalGameNotePackIterator.MoveNext())
         {
-            case "cannon":
-                return "Song_Note_Jsons/cannon_notes";
-            case "all_songs":
-                return "Song_Note_Jsons/all_songs_notes";
-            default:
-                // Try as-is first
-                return $"Song_Note_Jsons/{songKey}_notes";
+            returnGameNoteInfoPack = finalGameNotePackIterator.Current;
+            Debug.Log($"🎵 First sequence initialized: {returnGameNoteInfoPack.oneNote}ms delay");
         }
     }
 
+    /// <summary>
+    /// 🔄 Reset generation state for new song
+    /// </summary>
     void ResetGenerationState()
     {
         accDeltaTime = 0.0f;
@@ -635,12 +646,15 @@ public class GameNoteCreator : MonoBehaviour
         isAllCreated = false;
         songStartTime = 0f;
 
-        finalGameNotePackIterator?.Dispose();
-        finalGameNotePackIterator = null;
-        finalGameNotePackages?.Clear();
-        returnGameNoteInfoPack = null;
+        // Clear existing data
+        if (finalGameNotePackIterator != null)
+        {
+            finalGameNotePackIterator.Dispose();
+            finalGameNotePackIterator = null;
+        }
 
-        Debug.Log("🎵 Note generation state reset");
+        returnGameNoteInfoPack = null;
+        finalGameNotePackages?.Clear();
     }
 
     #region Public Interface
@@ -715,6 +729,27 @@ public class RawNoteData
     public int duration;     // Note duration (1-9)
 }
 
+/// <summary>
+/// Helper wrapper for JSON sequences array
+/// </summary>
+[System.Serializable]
+public class JsonSequenceArray
+{
+    public JsonSongSequence[] sequences;
+}
+
+/// <summary>
+/// Alternative JSON root structure
+/// </summary>
+[System.Serializable]
+public class JsonSequenceRoot
+{
+    public JsonSongSequence[] sequences;
+}
+
+/// <summary>
+/// Individual JSON sequence structure (same as original)
+/// </summary>
 [System.Serializable]
 public class JsonSongSequence
 {
@@ -726,12 +761,6 @@ public class JsonSongSequence
     public string line4;
     public string line5;
     public string line6;
-}
-
-[System.Serializable]
-public class JsonSequenceArray
-{
-    public JsonSongSequence[] sequences;
 }
 
 [System.Serializable]
