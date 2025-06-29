@@ -22,7 +22,7 @@ public class AudioManager : MonoBehaviour
     [Range(0f, 1f)]
     [SerializeField] private float sfxVolume = 0.9f;
     [SerializeField] private bool enableNoteFadeOut = true;
-    [SerializeField] private float noteFadeDuration = 3.0f; // TEST: Değeri geçici olarak 3 saniyeye çıkardık.
+    [SerializeField] private float noteFadeDuration = 0.4f; // Değeri orijinal haline geri getirdik.
 
     [Header("🔧 Debugging")]
     [SerializeField] private bool showDebugLogs = false;
@@ -435,7 +435,7 @@ public class AudioManager : MonoBehaviour
 
         if (showDebugLogs)
         {
-            Debug.Log($"🎵 FADE START: '{source.clip.name}' klibi {fadeTime} saniye içinde sönümleniyor. (Beklenen süre: {waitTime:F2}s)");
+            // Debug.Log($"🎵 FADE START: '{source.clip.name}' klibi {fadeTime} saniye içinde sönümleniyor. (Beklenen süre: {waitTime:F2}s)");
         }
 
         float startVol = source.volume;
@@ -444,6 +444,12 @@ public class AudioManager : MonoBehaviour
         {
             t += Time.deltaTime;
             source.volume = Mathf.Lerp(startVol, 0f, t / fadeTime);
+            /*
+            if (showDebugLogs)
+            {
+                Debug.Log($"   > Fading '{source.clip.name}': Time={t:F2}s, Volume={source.volume:F3}");
+            }
+            */
             yield return null;
         }
 

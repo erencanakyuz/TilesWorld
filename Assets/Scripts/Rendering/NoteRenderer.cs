@@ -443,7 +443,7 @@ public class NoteRenderer : MonoBehaviour
 
         // Set note properties - fit exactly to lane width
         float noteScale = laneWidth * 0.7f; // %70 of lane width for nice fit
-        noteObject.transform.localScale = new Vector3(noteScale, 1.0f, noteScale);
+        noteObject.transform.localScale = new Vector3(noteScale, 1.0f, noteScale * noteLengthMultiplier);
         noteObject.transform.position = spawnPosition;
         noteObject.SetActive(true);
 
