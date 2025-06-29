@@ -200,7 +200,40 @@ public class GameplayManager : MonoBehaviour
     #region Song Management & Game Flow
 
     /// <summary>
-    /// Start gameplay with a song - Main entry point
+    /// Start gameplay with a song - NEW: Uses SongDatabase system as planned
+    /// </summary>
+    public void StartGameplay(int musicId)
+    {
+        if (SongDatabase.Instance == null || !SongDatabase.Instance.IsLoaded())
+        {
+            Debug.LogError("🎮 SongDatabase not available! Cannot start gameplay.");
+            return;
+        }
+
+        // NEW SYSTEM: Get song data from centralized database as planned
+        SongDatabaseInfo songInfo = SongDatabase.Instance.GetSongById(musicId);
+        if (songInfo == null)
+        {
+            Debug.LogError($"🎮 Song with ID {musicId} not found in database!");
+            return;
+        }
+
+        // Convert to internal SongData format using ScriptableObject
+        currentSong = ScriptableObject.CreateInstance<SongData>();
+        currentSong.songName = songInfo.title;
+        currentSong.artist = songInfo.artist;
+        currentSong.duration = EstimateDuration(songInfo.tempo); // Estimate based on tempo
+        currentSong.bpm = songInfo.tempo;
+        currentSong.audioFilePath = $"Music/{songInfo.songKey}";
+        currentSong.noteChartPath = $"Song_Note_Jsons/Individual/{songInfo.songKey}";
+        currentSong.songKey = songInfo.songKey;
+
+        Debug.Log($"🎮 Starting gameplay via SongDatabase: {currentSong.songName} by {currentSong.artist} (Tempo: {songInfo.tempo})");
+        StartCoroutine(StartGameplaySequence());
+    }
+
+    /// <summary>
+    /// BACKWARD COMPATIBILITY: Start gameplay with GameplaySongData (for existing UI)
     /// </summary>
     public void StartGameplay(SongSelectionManager.GameplaySongData songData)
     {
@@ -209,6 +242,21 @@ public class GameplayManager : MonoBehaviour
             Debug.LogError("🎮 Cannot start gameplay with null song!");
             return;
         }
+
+        // Try to find the song in database first for consistency
+        if (SongDatabase.Instance != null && SongDatabase.Instance.IsLoaded())
+        {
+            var dbSong = SongDatabase.Instance.GetSongByKey(songData.songKey);
+            if (dbSong != null)
+            {
+                Debug.Log("🎵 Found song in database, using SongDatabase system...");
+                StartGameplay(dbSong.musicId);
+                return;
+            }
+        }
+
+        // Fallback to old system if not found in database
+        Debug.LogWarning("🎵 Song not found in SongDatabase, using legacy system...");
 
         // Convert to internal SongData format using ScriptableObject
         currentSong = ScriptableObject.CreateInstance<SongData>();
@@ -220,7 +268,6 @@ public class GameplayManager : MonoBehaviour
         currentSong.noteChartPath = songData.chartFilePath;
         currentSong.songKey = songData.songKey;
 
-        //Debug.Log($"🎮 Starting gameplay sequence for: {currentSong.songName} by {currentSong.artist}");
         StartCoroutine(StartGameplaySequence());
     }
 
@@ -274,7 +321,13 @@ public class GameplayManager : MonoBehaviour
         {
             try
             {
-                noteCreator.LoadSong(currentSong); // Bu metod kendi JSON loading'ini yapıyor
+                // NEW: Pass tempo information to GameNoteCreator as planned
+                noteCreator.LoadSong(currentSong); // This will use compatibility layer
+
+                // TODO: When GameNoteCreator is refactored per RefactorParse.md,
+                // this should become: noteCreator.LoadAndPrepareSong(chartData, currentSong.bpm);
+
+                Debug.Log($"🎵 Song prepared with tempo: {currentSong.bpm} BPM");
             }
             catch (System.Exception e)
             {
@@ -295,6 +348,22 @@ public class GameplayManager : MonoBehaviour
         {
             GameManager.Instance.ChangeGameState(GameState.Playing);
         }
+    }
+
+    /// <summary>
+    /// Estimate song duration based on tempo (BPM)
+    /// </summary>
+    private float EstimateDuration(int tempo)
+    {
+        // Simple heuristic: slower songs are generally longer
+        // This is a rough estimation until we have actual duration data
+        float baseSeconds = 180f; // 3 minutes base
+
+        if (tempo < 60) return 240f;      // Very slow: 4 minutes
+        if (tempo < 80) return 210f;      // Slow: 3.5 minutes  
+        if (tempo < 120) return 180f;     // Moderate: 3 minutes
+        if (tempo < 140) return 150f;     // Fast: 2.5 minutes
+        return 120f;                      // Very fast: 2 minutes
     }
 
     IEnumerator ShowCountdown()

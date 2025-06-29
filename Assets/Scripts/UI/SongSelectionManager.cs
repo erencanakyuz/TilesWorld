@@ -49,69 +49,75 @@ public class SongSelectionManager : MonoBehaviour
     {
         try
         {
-            // Load MUSIC.csv from Resources
-            TextAsset musicCsv = Resources.Load<TextAsset>("Database csv/MUSIC");
-            if (musicCsv == null)
+            // NEW SYSTEM: Use centralized SongDatabase instead of direct CSV reading
+            if (SongDatabase.Instance != null && SongDatabase.Instance.IsLoaded())
             {
-                Debug.LogError("❌ MUSIC.csv not found in Resources/Database csv/");
-                CreateFallbackSongs();
-                return;
+                LoadFromSongDatabase();
             }
-
-            var songList = new List<SongData>();
-            string[] lines = musicCsv.text.Split('\n');
-
-            // Skip header line (line 0)
-            for (int i = 1; i < lines.Length; i++)
+            else
             {
-                string line = lines[i].Trim();
-                if (string.IsNullOrEmpty(line)) continue;
-
-                string[] values = ParseCSVLine(line);
-                if (values.Length >= 4)
-                {
-                    try
-                    {
-                        int musicId = int.Parse(values[0].Trim('"'));
-                        string title = values[2].Trim('"');
-                        string artist = values[3].Trim('"');
-                        int bpm = int.Parse(values[4].Trim('"'));
-
-                        // Determine difficulty from stars in title
-                        DifficultyLevel difficulty = GetDifficultyFromTitle(title);
-
-                        // Clean title (remove stars)
-                        string cleanTitle = title.Replace("★", "").Replace("☆", "").Trim();
-
-                        var songData = new SongData
-                        {
-                            musicId = musicId,
-                            title = cleanTitle,
-                            artist = artist,
-                            duration = CalculateDuration(bpm), // Estimate based on BPM
-                            difficulty = difficulty,
-                            bpm = bpm,
-                            songKey = GetSongKeyFromTitle(cleanTitle, musicId) // Proper JSON mapping
-                        };
-
-                        songList.Add(songData);
-                        // Debug.Log($"🎵 Loaded: {cleanTitle} by {artist} (BPM: {bpm}, Difficulty: {difficulty})");
-                    }
-                    catch (System.Exception e)
-                    {
-                        Debug.LogWarning($"⚠️ Failed to parse song line {i}: {e.Message}");
-                    }
-                }
+                Debug.LogWarning("🎵 SongDatabase not ready yet, subscribing to load event...");
+                SongDatabase.OnDatabaseLoaded += LoadFromSongDatabase;
+                SongDatabase.OnDatabaseError += HandleDatabaseError;
             }
-
-            availableSongs = songList.ToArray();
-            // Debug.Log($"🎼 Successfully loaded {availableSongs.Length} songs from database");
         }
         catch (System.Exception e)
         {
             Debug.LogError($"❌ Error loading songs from database: {e.Message}");
             CreateFallbackSongs();
         }
+    }
+
+    /// <summary>
+    /// NEW: Load songs from centralized SongDatabase
+    /// </summary>
+    private void LoadFromSongDatabase()
+    {
+        // Unsubscribe from events (in case we came from event)
+        SongDatabase.OnDatabaseLoaded -= LoadFromSongDatabase;
+        SongDatabase.OnDatabaseError -= HandleDatabaseError;
+
+        if (SongDatabase.Instance == null || !SongDatabase.Instance.IsLoaded())
+        {
+            Debug.LogError("❌ SongDatabase not available!");
+            CreateFallbackSongs();
+            return;
+        }
+
+        // Get all songs from centralized database
+        var databaseSongs = SongDatabase.Instance.GetAllSongs();
+        var songList = new List<SongData>();
+
+        foreach (var dbSong in databaseSongs)
+        {
+            var songData = new SongData
+            {
+                musicId = dbSong.musicId,
+                title = dbSong.title,
+                artist = dbSong.artist,
+                duration = CalculateDuration(dbSong.tempo),
+                difficulty = dbSong.difficulty,
+                bpm = dbSong.tempo,
+                songKey = dbSong.songKey
+            };
+
+            songList.Add(songData);
+        }
+
+        availableSongs = songList.ToArray();
+        Debug.Log($"✅ Successfully loaded {availableSongs.Length} songs from SongDatabase!");
+    }
+
+    /// <summary>
+    /// Handle database loading errors
+    /// </summary>
+    private void HandleDatabaseError(string error)
+    {
+        SongDatabase.OnDatabaseLoaded -= LoadFromSongDatabase;
+        SongDatabase.OnDatabaseError -= HandleDatabaseError;
+
+        Debug.LogError($"❌ SongDatabase error: {error}");
+        CreateFallbackSongs();
     }
 
     private string[] ParseCSVLine(string line)
@@ -430,6 +436,10 @@ public class SongSelectionManager : MonoBehaviour
 
         if (backButton != null)
             backButton.onClick.RemoveAllListeners();
+
+        // SongDatabase event'lerini temizle
+        SongDatabase.OnDatabaseLoaded -= LoadFromSongDatabase;
+        SongDatabase.OnDatabaseError -= HandleDatabaseError;
     }
 
     private string GetSongKeyFromTitle(string title, int musicId)
