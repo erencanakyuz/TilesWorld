@@ -16,7 +16,7 @@ public class InputManager : MonoBehaviour
 
     [Header("🎯 Lane Configuration")]
     [SerializeField] private int laneCount = 6;
-    private float laneWidth = 1.8f;
+    private float laneWidth = 2.4f;        // Updated to match NoteRenderer
 
     // Input Events
     public static event Action<int, Vector2> OnLaneTapped;     // lane, position

@@ -13,7 +13,7 @@ public class NoteRenderer : MonoBehaviour
     [SerializeField] private GameObject notePrefab;
     [SerializeField] private Transform noteParent;
     [SerializeField] private int laneCount = 6;
-    [SerializeField] private float laneWidth = 1.8f;
+    [SerializeField] private float laneWidth = 2.4f;       // Genişletildi: 1.8f → 2.4f
 
     [Header("🚀 Perspective Movement (Original Algorithm)")]
     [SerializeField] private float worldDepth = 25f;           // Original: 25.0F depth
@@ -23,8 +23,8 @@ public class NoteRenderer : MonoBehaviour
 
     [Header("🎯 Hit Zone Configuration")]
     [SerializeField] private float hitZoneZ = 0.0f;            // Hit line at Z=0 for easier calculation
-    [SerializeField] private float hitZoneWidth = 2f;          // Reduced for better precision
-    [SerializeField] private float noteDestroyZ = -2f;         // Notes destroyed AFTER passing hit zone (negative Z)
+    [SerializeField] private float hitZoneWidth = 2f;          // Will be set to laneWidth dynamically
+    [SerializeField] private float noteDestroyZ = -20f;        // Far behind: Notes destroyed at -20f (much later)
 
     [Header("📊 Performance & Debug")]
     [SerializeField] private bool enableObjectPooling = true;
@@ -136,6 +136,9 @@ public class NoteRenderer : MonoBehaviour
         worldWidth = laneCount * laneWidth;
         lanePositions = new Vector3[laneCount];
 
+        // Set hit zone width to match lane width exactly
+        hitZoneWidth = laneWidth;
+
         for (int i = 0; i < laneCount; i++)
         {
             // Center lanes around world origin
@@ -144,7 +147,7 @@ public class NoteRenderer : MonoBehaviour
         }
 
         if (showHitZone)
-            Debug.Log($"🎯 Lanes setup: {laneCount} lanes, {laneWidth} width each, total world width: {worldWidth}");
+            Debug.Log($"🎯 Lanes setup: {laneCount} lanes, {laneWidth} width each, hitZone: {hitZoneWidth}, total world width: {worldWidth}");
     }
 
     void SetupCamera()
@@ -244,18 +247,20 @@ public class NoteRenderer : MonoBehaviour
             // Update Unity transform directly (no coordinate conversion needed)
             activeNote.gameObject.transform.position = activeNote.currentPosition;
 
-            // *** UNITY COORDINATE: Destroy notes that passed player ***
+            // *** OTOMATIK DESTROY KAPATILDI! (TEST AMAÇLI) ***
+            /*
             if (activeNote.currentPosition.z < noteDestroyZ)
             {
                 if (totalNotesRendered <= 15)
                 {
-                    Debug.Log($"💥 NOTE DESTROYED: Z={activeNote.currentPosition.z:F1}, destroyZ={noteDestroyZ}");
+                    Debug.Log($"💥 NOTE DESTROYED: Z={activeNote.currentPosition.z:F1}, destroyZ={noteDestroyZ} (notes pass -20f)");
                 }
                 HandleNoteMissed(activeNote);
                 ReturnNoteToPool(activeNote.gameObject);
                 activeNotes.RemoveAt(i);
                 continue;
             }
+            */
 
             // Apply perspective effects
             ApplyPerspectiveEffects(activeNote, activeNote.currentPosition.z);
@@ -398,7 +403,7 @@ public class NoteRenderer : MonoBehaviour
     {
         // *** DEBUG: Kim çağırıyor? ***
         string caller = System.Environment.StackTrace.Split('\n')[1].Trim();
-        Debug.Log($"🔥 SpawnNotes CALLED! Received {notes.Count} notes. CALLER: {caller}");
+
 
         // Called directly from GameplayManager (no events)
         foreach (var note in notes)
@@ -406,7 +411,7 @@ public class NoteRenderer : MonoBehaviour
             SpawnNote(note);
         }
 
-        Debug.Log($"🔥 SpawnNotes COMPLETED! Total spawned this call: {notes.Count}");
+
     }
 
     void SpawnNote(GameNoteInfo noteInfo)
@@ -447,8 +452,8 @@ public class NoteRenderer : MonoBehaviour
         }
         else
         {
-            float laneWidth = 1.8f;
-            float xOffset = (noteInfo.idx - 2.5f) * laneWidth;
+            // Fallback calculation using current laneWidth
+            float xOffset = (noteInfo.idx - (laneCount - 1) * 0.5f) * laneWidth;
             spawnPosition = new Vector3(xOffset, 0, 0);
         }
 
@@ -456,8 +461,9 @@ public class NoteRenderer : MonoBehaviour
         spawnPosition.z = worldDepth; // Start far from player (+25.0f)
         spawnPosition.y = 0;
 
-        // Set note properties
-        noteObject.transform.localScale = new Vector3(2.0f, 1.0f, 2.0f);
+        // Set note properties - fit exactly to lane width
+        float noteScale = laneWidth * 0.7f; // %70 of lane width for nice fit
+        noteObject.transform.localScale = new Vector3(noteScale, 1.0f, noteScale);
         noteObject.transform.position = spawnPosition;
         noteObject.SetActive(true);
 
@@ -509,7 +515,7 @@ public class NoteRenderer : MonoBehaviour
 
     void HandleLaneTapped(int lane, Vector2 screenPosition)
     {
-        Debug.Log($"🎯 LANE TAPPED: Lane {lane}, Finding notes in hit zone...");
+        Debug.Log($"🎯 LANE TAPPED: Lane {lane}, Finding notes in hit zone... ACTIVE NOTES: {activeNotes.Count}");
 
         // Find notes in hit zone for this lane
         var candidateNotes = FindNotesInHitZone(lane);
@@ -518,7 +524,12 @@ public class NoteRenderer : MonoBehaviour
 
         if (candidateNotes.Count == 0)
         {
-            Debug.Log($"🎯 No notes in hit zone for lane {lane}");
+            Debug.Log($"🎯 NO NOTES IN HIT ZONE for lane {lane} - but firing empty hit anyway");
+            // Even if no notes, show some feedback to player
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowHitEffect(HitAccuracy.Miss, screenPosition);
+            }
             return;
         }
 
@@ -539,19 +550,19 @@ public class NoteRenderer : MonoBehaviour
         int score;
 
         // Layered hit windows - closer to hit zone = better accuracy
-        if (distanceFromHitZone <= 0.3f)
+        if (distanceFromHitZone <= 0.8f)
         {
             // PERFECT hit zone (very close to hit line)
             hitAccuracy = HitAccuracy.Perfect;
             score = 300;
         }
-        else if (distanceFromHitZone <= 0.6f)
+        else if (distanceFromHitZone <= 1.5f)
         {
             // GOOD hit zone 
             hitAccuracy = HitAccuracy.Good;
             score = 200;
         }
-        else if (distanceFromHitZone <= 1.2f)
+        else if (distanceFromHitZone <= 3.0f)
         {
             // OKAY hit zone (using Miss as placeholder)
             hitAccuracy = HitAccuracy.Miss;
@@ -611,7 +622,7 @@ public class NoteRenderer : MonoBehaviour
 
         Debug.Log($"🔍 Finding notes in hit zone for lane {lane}:");
         Debug.Log($"🔍 Total active notes: {activeNotes.Count}");
-        Debug.Log($"🔍 Hit zone Z: {hitZoneZ}, Detection range: ±2.0f");
+        Debug.Log($"🔍 Hit zone Z: {hitZoneZ}, Detection range: ±4.0f");
 
         foreach (var activeNote in activeNotes)
         {
@@ -625,14 +636,14 @@ public class NoteRenderer : MonoBehaviour
                 Debug.Log($"🔍 LANE MATCH! Distance from hit zone: {distanceFromHitZone:F2}");
 
                 // Allow notes within expanded detection zone for better user experience
-                if (distanceFromHitZone <= 2.0f) // Reasonable detection zone
+                if (distanceFromHitZone <= 4.0f) // Generous detection zone (was 2.0f)
                 {
                     Debug.Log($"✅ NOTE IN HIT ZONE! Adding to candidates");
                     hitNotes.Add(activeNote);
                 }
                 else
                 {
-                    Debug.Log($"❌ Note too far from hit zone: {distanceFromHitZone:F2} > 2.0");
+                    Debug.Log($"❌ Note too far from hit zone: {distanceFromHitZone:F2} > 4.0");
                 }
             }
         }

@@ -17,7 +17,7 @@ public class InteractiveMusicSystem : MonoBehaviour
     [SerializeField] private InstrumentType currentInstrument = InstrumentType.Piano;
     [SerializeField] private MusicalScale currentScale = MusicalScale.CMajor;
     [SerializeField] private bool enableJsonBasedMusic = true;  // Use JSON note data
-    [SerializeField] private bool showDebugInfo = true;         // Debug note playing
+    [SerializeField] private bool showDebugInfo = false;         // Debug note playing
 
     [Header("🎼 Musical Mapping (Original SOUND_RESOURCE_IDXS)")]
     [SerializeField] private int baseOctave = 4;
