@@ -152,7 +152,6 @@ MonoBehaviour:
     targetLatencyMs: 20
     masterVolume: 1
     laneCount: 6
-    noteSpeed: 500
   audioManager: {fileID: 2079580563}
   inputManager: {fileID: 1838718565}
   uiManager: {fileID: 712101162}
@@ -330,6 +329,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 80a51610152aa3e45a1429629d2b62c9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  songDatabasePrefab: {fileID: 0}
 --- !u!4 &1918465025
 Transform:
   m_ObjectHideFlags: 0
@@ -376,10 +376,157 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mainMixer: {fileID: 0}
   audioSourcePoolSize: 20
-  instruments: []
+  instruments:
+  - instrumentType: 0
+    noteClips:
+    - {fileID: 8300000, guid: ba75da410b33a9f4c88ebc33ed7068eb, type: 3}
+    - {fileID: 8300000, guid: a7e83e7f5777804409ed49edc96235ec, type: 3}
+    - {fileID: 8300000, guid: 844710420260c784bb65850ffbdc908b, type: 3}
+    - {fileID: 8300000, guid: 7dd61961ec61e684a9e3bd8db57f5021, type: 3}
+    - {fileID: 8300000, guid: 32aa95e1b5e2966488581784d7b0c413, type: 3}
+    - {fileID: 8300000, guid: 515e5240bfe5bde4188d6a476c74e1bb, type: 3}
+    - {fileID: 8300000, guid: 43bf6c5d5d35f4941b52ac5ecf8deec3, type: 3}
+    - {fileID: 8300000, guid: b5b67544f835750418a88de25a70ddbd, type: 3}
+    - {fileID: 8300000, guid: f30d50a84b659014284d16e37d3885bc, type: 3}
+    - {fileID: 8300000, guid: 785ad42216e3ab04aabdaa02328378f7, type: 3}
+    - {fileID: 8300000, guid: 87cdd9a4e26a97641b85ce6bf2c8853b, type: 3}
+    - {fileID: 8300000, guid: a9ddfd0360e74194c952a2075e9c1ea9, type: 3}
+    - {fileID: 8300000, guid: a215c0141eda06c4fb4686e8e4835043, type: 3}
+    - {fileID: 8300000, guid: 911c4335a43ec004f9a30146afe093c4, type: 3}
+    - {fileID: 8300000, guid: 91328503effcc8c41bb89fdf25b6f863, type: 3}
+    - {fileID: 8300000, guid: 50a0009d8a39b124594c56ec4c696fbc, type: 3}
+    - {fileID: 8300000, guid: 7b0c62f2b8c760a4c90fec7c6f1417c9, type: 3}
+    - {fileID: 8300000, guid: 90f3445100c321443a2f93f82ea4a9f8, type: 3}
+    - {fileID: 8300000, guid: 649a1cb56a2136141be803bd524b61cf, type: 3}
+    - {fileID: 8300000, guid: a4033635a27509041aaff7f501bec011, type: 3}
+    - {fileID: 8300000, guid: a5c64496ed16ccb4789fb229ff2ed316, type: 3}
+    - {fileID: 8300000, guid: 889e32b756d9d174992504cd7234e8f2, type: 3}
+    - {fileID: 8300000, guid: 2a3d7f613ed678b48a1192c211480240, type: 3}
+    - {fileID: 8300000, guid: e30c8489f775cf14d9e296379ae3e2fc, type: 3}
+    - {fileID: 8300000, guid: a195233984770794fb5611576fecdfe6, type: 3}
+    - {fileID: 8300000, guid: 0614f8bc11c1bcd488b9978f1433f290, type: 3}
+    - {fileID: 8300000, guid: 239948159bc4f42409030e0f6b9047d7, type: 3}
+    - {fileID: 8300000, guid: 22fb73101cdc22841934635979db997f, type: 3}
+    - {fileID: 8300000, guid: 26b0325d374dcd54d843d79e365fb354, type: 3}
+    - {fileID: 8300000, guid: b1329c979bf4c0c44b0f83e9c197a95f, type: 3}
+    - {fileID: 8300000, guid: 0c8f255afdb6cfa42b1cf316220bfc63, type: 3}
+    - {fileID: 8300000, guid: 9ac4ed22f87f2d440bf11680d2c9fe82, type: 3}
+    - {fileID: 8300000, guid: 53fc78e8f5c0bc3459dee4c054cf0856, type: 3}
+    - {fileID: 8300000, guid: e3fab3691c53f6f44b4a3a38e9c282c0, type: 3}
+    - {fileID: 8300000, guid: 4f38579ce81242e4284a9521095c1c17, type: 3}
+    - {fileID: 8300000, guid: 021404b2c329fd2478440f65d7d13f4a, type: 3}
+    - {fileID: 8300000, guid: 5f145d30c07f0b143a074bfad3ddbb1d, type: 3}
+    - {fileID: 8300000, guid: cee9e740b250b1f4380dbd6445577fb9, type: 3}
+    - {fileID: 8300000, guid: bf8869b4f80f6ce45a3c653c4b7ba904, type: 3}
+    - {fileID: 8300000, guid: 17b0cc673eced5843899cd42286652c1, type: 3}
+    - {fileID: 8300000, guid: 22fe8bd2af9c76e46bb36232f4e3ad4e, type: 3}
+    - {fileID: 8300000, guid: 7fa96a031b145cb4bacb48e8af13fdb4, type: 3}
+    - {fileID: 8300000, guid: c3d6514041f1cf9448c714fadcd6ae72, type: 3}
+    - {fileID: 8300000, guid: ad906f64eb9433e43934ac70b1d476a5, type: 3}
+    - {fileID: 8300000, guid: bccd08432a1dc9d4ba49d1f4f3af0b22, type: 3}
+    instrumentName: Piano
+  - instrumentType: 1
+    noteClips:
+    - {fileID: 8300000, guid: b05bcb375cd1b8e489f7e5b9247da048, type: 3}
+    - {fileID: 8300000, guid: 7aedbf234cbd9ea49be5fefdb6c6e22f, type: 3}
+    - {fileID: 8300000, guid: e5cc05c11c250e74b852932f1c4071a1, type: 3}
+    - {fileID: 8300000, guid: c7cb590f0f6378c4a8c754c26ecb1955, type: 3}
+    - {fileID: 8300000, guid: 820ac03ac5e7d6d49890c4a2b5293210, type: 3}
+    - {fileID: 8300000, guid: 3ad8959ff987c5d438e8a36db46ac2a4, type: 3}
+    - {fileID: 8300000, guid: 2f17372863fd07b4aa42959e9eb388bd, type: 3}
+    - {fileID: 8300000, guid: 845f5a9f41784594fb6b3013b0d14698, type: 3}
+    - {fileID: 8300000, guid: 54c69619fb0530c468a8b63b71f370ba, type: 3}
+    - {fileID: 8300000, guid: d8f47b2bffda84445a97180cfd6cb4e6, type: 3}
+    - {fileID: 8300000, guid: e789e1a1b713d644399ddb207a5d1b0e, type: 3}
+    - {fileID: 8300000, guid: eac5a755202040f4d96d8dc6019e74b1, type: 3}
+    - {fileID: 8300000, guid: 3aff002553a49ac488985f6b41fe1d0d, type: 3}
+    - {fileID: 8300000, guid: 7bf7fde62c4ee0c4e9c2e9be46a7dbb8, type: 3}
+    - {fileID: 8300000, guid: e224649f0b3d7784f8c4a22a62feb389, type: 3}
+    - {fileID: 8300000, guid: e80ef40f4b1802a45939b67e997d76fe, type: 3}
+    - {fileID: 8300000, guid: fc1a73973f2f38e4a847ca80f18b7135, type: 3}
+    - {fileID: 8300000, guid: 4a75b7d9c6a38a043b28aa3c23062130, type: 3}
+    - {fileID: 8300000, guid: 0fe8e7726932f1a43b19fd0e0a728269, type: 3}
+    - {fileID: 8300000, guid: c0353333f561b8e4795e96a84a898353, type: 3}
+    - {fileID: 8300000, guid: a3f0d80ef0964844f8da8ed59d3f883f, type: 3}
+    - {fileID: 8300000, guid: b27c64cd363110040ab64a793194f429, type: 3}
+    - {fileID: 8300000, guid: d045b4f4acc834e439f989127f521cd4, type: 3}
+    - {fileID: 8300000, guid: 039eb2df06df9c747aaa943d07d8a78e, type: 3}
+    - {fileID: 8300000, guid: 5a302e8024af9f943953d3846c155fe4, type: 3}
+    - {fileID: 8300000, guid: a13eedfb7ba7a96498b4cbb874948612, type: 3}
+    - {fileID: 8300000, guid: 9b93e5a0410c4c54d90654c784fdfdf3, type: 3}
+    - {fileID: 8300000, guid: b24e69dd5d1fd2845ac564159d03dff0, type: 3}
+    - {fileID: 8300000, guid: 09882e6bc6db97d40989f0bc4f7d43ea, type: 3}
+    - {fileID: 8300000, guid: dec3658204e78444e97d887b3d712b12, type: 3}
+    - {fileID: 8300000, guid: 86e07e72638224842bf18f1fccb1bf5d, type: 3}
+    - {fileID: 8300000, guid: dda2b0f1a384a9e478a53752eb26eb9d, type: 3}
+    - {fileID: 8300000, guid: 489aeb122e6fc5d418046ed49c656fa7, type: 3}
+    - {fileID: 8300000, guid: 7ef31a0fa67042041b6c42af50890f54, type: 3}
+    - {fileID: 8300000, guid: 89627d033fb36954aa3902cdcefc9497, type: 3}
+    - {fileID: 8300000, guid: 23a4bf7c403e1c049aa597edb5ca5a8e, type: 3}
+    - {fileID: 8300000, guid: 90060c8f040ea874095156b1ec24658d, type: 3}
+    - {fileID: 8300000, guid: 8bb9791f7b412bd44b3b8978809955f7, type: 3}
+    - {fileID: 8300000, guid: 677587835f686ff479a8836ec0348638, type: 3}
+    - {fileID: 8300000, guid: 617a1d40457ce004993a61945605dabb, type: 3}
+    - {fileID: 8300000, guid: ae745771e2880b64a982041e51e172fe, type: 3}
+    - {fileID: 8300000, guid: 6fa290391ee1a9441af8e3f85097fb6e, type: 3}
+    - {fileID: 8300000, guid: 6a413dc2e91eaed4bae2252cda3b5180, type: 3}
+    - {fileID: 8300000, guid: 5fa41326bffca7f44ac5842676db8941, type: 3}
+    - {fileID: 8300000, guid: e2b2af18a5b087045b84aac47eea1587, type: 3}
+    instrumentName: Guitar
+  - instrumentType: 2
+    noteClips:
+    - {fileID: 8300000, guid: 81a398cd548e2e84392d4d9a5d6c1efd, type: 3}
+    - {fileID: 8300000, guid: 22331638ebf5b3a4eabcc7f788a1ee84, type: 3}
+    - {fileID: 8300000, guid: 7ccaa07ac423b454a8ac46fc001b784e, type: 3}
+    - {fileID: 8300000, guid: e94708d0df6a09d4abb6ff52b6cbbfaf, type: 3}
+    - {fileID: 8300000, guid: 2efb0d3024a26fe45bfe52dec364cea2, type: 3}
+    - {fileID: 8300000, guid: 5f3252f22be50f54780df6ad94010352, type: 3}
+    - {fileID: 8300000, guid: e98025f374e2f7e44b3fc148b6e713ae, type: 3}
+    - {fileID: 8300000, guid: 8e5a9edf3d2da9549b5f1dc33f5b29c1, type: 3}
+    - {fileID: 8300000, guid: d3fff5ab404752a42937777a0da5a32d, type: 3}
+    - {fileID: 8300000, guid: 985d5166645ddc444b0ac980691af699, type: 3}
+    - {fileID: 8300000, guid: 01d128466477da14cbe1d3cd63125122, type: 3}
+    - {fileID: 8300000, guid: 68fddbbb70ee7fd4792c30cc5e0f9a3b, type: 3}
+    - {fileID: 8300000, guid: f10041ebfd2ec99419d337325b9790d2, type: 3}
+    - {fileID: 8300000, guid: 9dbcdcb3728bb7f448a7add069416d64, type: 3}
+    - {fileID: 8300000, guid: 277f122ab1d726147a5b0f590869aeca, type: 3}
+    - {fileID: 8300000, guid: d68d036718b59ce4b85957da0bff254f, type: 3}
+    - {fileID: 8300000, guid: f4aff3b7f99bb2848a54da0ff71afdd3, type: 3}
+    - {fileID: 8300000, guid: 5ecde0a4ba0726e4494d2d0f50ae5f67, type: 3}
+    - {fileID: 8300000, guid: b66f2e0801a49ee49beeb69bd800a146, type: 3}
+    - {fileID: 8300000, guid: 882a5bd132058c84a8b3efd5ba50b6a9, type: 3}
+    - {fileID: 8300000, guid: 9d7728c4af12ce348914c2c9dc39cab8, type: 3}
+    - {fileID: 8300000, guid: f455d7ea5dc144f47a06d2812b299ab9, type: 3}
+    - {fileID: 8300000, guid: 8933b3fbd5139c6499b4da4e5b0c3579, type: 3}
+    - {fileID: 8300000, guid: db93dbe4aa8a46f4fa8c8db48abd66dd, type: 3}
+    - {fileID: 8300000, guid: 750cf8bbb79271f448721c5f46916243, type: 3}
+    - {fileID: 8300000, guid: 9683e140ce388b1499708bd2a561ca60, type: 3}
+    - {fileID: 8300000, guid: dbfe1b47e5ac0ac4d98c2819c50be067, type: 3}
+    - {fileID: 8300000, guid: 9305ab4e0ed258c4faade41823ad5ff7, type: 3}
+    - {fileID: 8300000, guid: 10c501ec7c17cef458b7ad662cd7968b, type: 3}
+    - {fileID: 8300000, guid: 97b1c366389a93c47b11f3a87a1a5ae7, type: 3}
+    - {fileID: 8300000, guid: 324c4926a2132794a93d141c32f37fc8, type: 3}
+    - {fileID: 8300000, guid: c8c9579172e1373448f753cfbcecc8a9, type: 3}
+    - {fileID: 8300000, guid: 5c6994228b7c7ea41807a1764ba75f03, type: 3}
+    - {fileID: 8300000, guid: 33f97e7c54c00304380eccb47ee29f2b, type: 3}
+    - {fileID: 8300000, guid: 266ef4e83fb9d48408d046bfc8baa8d5, type: 3}
+    - {fileID: 8300000, guid: ac9585e5c3060504c9ac28e7db17cdb7, type: 3}
+    - {fileID: 8300000, guid: 0c814161edfb02649b92c9f09f0e956e, type: 3}
+    - {fileID: 8300000, guid: 47b15207f5ddf5a479f6435b1cb8b55e, type: 3}
+    - {fileID: 8300000, guid: f36c3e8a59d41544487d0d6250ddcd01, type: 3}
+    - {fileID: 8300000, guid: 3380ec5b2caedcf408b5577973db37d1, type: 3}
+    - {fileID: 8300000, guid: 3fa498c09811b02488a38fa78b76d8ff, type: 3}
+    - {fileID: 8300000, guid: c1b2fb9fe2a63c04f8e408e686ad144c, type: 3}
+    - {fileID: 8300000, guid: 1108eb5dc643f5545862d7ad39b968dd, type: 3}
+    - {fileID: 8300000, guid: 4fdd74afa91ccff458eb3e376e5c6c90, type: 3}
+    - {fileID: 8300000, guid: ef03f1ac2b7de854f85f89bd4c55b04d, type: 3}
+    instrumentName: Harp
   masterVolume: 1
   musicVolume: 0.8
   sfxVolume: 0.9
+  enableNoteFadeOut: 1
+  noteFadeDuration: 0.3
+  showDebugLogs: 1
   enableLatencyMonitoring: 1
   averageLatency: 0
 --- !u!4 &2079580564

@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// GameplayManager - The Conductor of the Symphony
@@ -38,6 +39,9 @@ public class GameplayManager : MonoBehaviour
     [SerializeField] private InteractiveMusicSystem musicSystem;
     [SerializeField] private AudioManager audioManager;
     [SerializeField] private UIManager uiManager;
+
+    [Header("🔧 Debugging")]
+    [SerializeField] private bool showDebugLogs = false;
 
     // Game state management
     private bool isGameActive = false;
@@ -283,7 +287,7 @@ public class GameplayManager : MonoBehaviour
 
     IEnumerator StartGameplaySequence()
     {
-        //Debug.Log($"🎮 Starting gameplay: {currentSong.songName}");
+        if (showDebugLogs) Debug.Log("🚀 Gameplay sequence started...");
 
         // Prepare all systems
         PrepareGameplaySystems();
@@ -324,7 +328,7 @@ public class GameplayManager : MonoBehaviour
                 // TODO: When GameNoteCreator is refactored per RefactorParse.md,
                 // this should become: noteCreator.LoadAndPrepareSong(chartData, currentSong.bpm);
 
-                Debug.Log($"🎵 Song prepared with tempo: {currentSong.bpm} BPM");
+                if (showDebugLogs) Debug.Log($"🎵 Song prepared with tempo: {currentSong.bpm} BPM");
             }
             catch (System.Exception e)
             {
@@ -367,7 +371,7 @@ public class GameplayManager : MonoBehaviour
 
         for (int i = (int)countdownDuration; i > 0; i--)
         {
-            //Debug.Log($"🎮 Starting in {i}...");
+            if (showDebugLogs) Debug.Log($"🎮 Starting in {i}...");
 
             // Show countdown UI number
             if (UIManager.Instance != null)
@@ -406,7 +410,7 @@ public class GameplayManager : MonoBehaviour
         isSongLoaded = true;
         songDuration = currentSong.duration;
 
-        //Debug.Log($"🎮 Song loaded: {currentSong.songName} (Duration: {songDuration}s)");
+        if (showDebugLogs) Debug.Log($"🎮 Song loaded: {currentSong.songName} (Duration: {songDuration}s)");
     }
 
     /// <summary>
@@ -434,7 +438,7 @@ public class GameplayManager : MonoBehaviour
         // Trigger event for other systems  
         OnGameplayStarted?.Invoke();
 
-        Debug.Log("🎮 Gameplay başarıyla başlatıldı! Notalar gelmeye başlayacak...");
+        if (showDebugLogs) Debug.Log("🎮 Gameplay başarıyla başlatıldı! Notalar gelmeye başlayacak...");
     }
 
     IEnumerator StartMusicWithDelay()
@@ -442,7 +446,7 @@ public class GameplayManager : MonoBehaviour
         // Apply song start delay if configured
         if (songStartDelay > 0)
         {
-            //Debug.Log($"🎵 Applying song start delay: {songStartDelay}s");
+            if (showDebugLogs) Debug.Log($"🎵 Applying song start delay: {songStartDelay}s");
             yield return new WaitForSeconds(songStartDelay);
         }
 
@@ -454,12 +458,12 @@ public class GameplayManager : MonoBehaviour
             if (musicClip != null)
             {
                 audioManager.PlayMusic(musicClip, 0f);
-                //Debug.Log($"🎵 Müzik başlatıldı: {musicClip.name}");
+                if (showDebugLogs) Debug.Log($"🎵 Müzik başlatıldı: {musicClip.name}");
             }
             else
             {
                 // Background music not found - this is normal, game works with note-based music only
-                //Debug.Log($"🎵 Background music not available: {currentSong.audioFilePath} (Playing with note-based music only)");
+                if (showDebugLogs) Debug.Log($"🎵 Background music not available: {currentSong.audioFilePath} (Playing with note-based music only)");
             }
         }
     }

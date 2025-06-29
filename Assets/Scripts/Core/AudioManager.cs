@@ -9,7 +9,7 @@ public class AudioManager : MonoBehaviour
 
     [Header("🎵 Audio Configuration")]
     [SerializeField] private AudioMixer mainMixer;
-    [SerializeField] private int audioSourcePoolSize = 200; // Increased for high-frequency note playing - was 100
+    [SerializeField] private int audioSourcePoolSize = 200;
 
     [Header("🎼 Instrument Audio Clips")]
     [SerializeField] private InstrumentAudioData[] instruments;
@@ -21,6 +21,11 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private float musicVolume = 0.8f;
     [Range(0f, 1f)]
     [SerializeField] private float sfxVolume = 0.9f;
+    [SerializeField] private bool enableNoteFadeOut = true;
+    [SerializeField] private float noteFadeDuration = 3.0f; // TEST: Değeri geçici olarak 3 saniyeye çıkardık.
+
+    [Header("🔧 Debugging")]
+    [SerializeField] private bool showDebugLogs = false;
 
     [Header("📊 Performance Monitoring")]
     [SerializeField] private bool enableLatencyMonitoring = true;
@@ -63,8 +68,8 @@ public class AudioManager : MonoBehaviour
 
     void Start()
     {
-        // Apply mobile audio optimizations (from our test results)
         ApplyMobileOptimizations();
+        LoadVolumeSettings();
     }
 
     void InitializeAudioSystem()
@@ -75,7 +80,6 @@ public class AudioManager : MonoBehaviour
 
     void CreateAudioSourcePool()
     {
-        // Initialize audio source pool
         audioSourcePool = new Queue<AudioSource>();
         activeAudioSources = new List<AudioSource>();
 
@@ -91,42 +95,35 @@ public class AudioManager : MonoBehaviour
             audioSourcePool.Enqueue(source);
         }
 
-        // Create dedicated music audio source
         GameObject musicObject = new GameObject("MusicAudioSource");
         musicObject.transform.SetParent(transform);
         musicAudioSource = musicObject.AddComponent<AudioSource>();
         musicAudioSource.playOnAwake = false;
         musicAudioSource.loop = false;
 
-        // Create background audio source for rhythm tracks
         GameObject backgroundObject = new GameObject("BackgroundAudioSource");
         backgroundObject.transform.SetParent(transform);
         backgroundAudioSource = backgroundObject.AddComponent<AudioSource>();
         backgroundAudioSource.playOnAwake = false;
         backgroundAudioSource.loop = true;
-
-        // Debug.Log($"🎵 AudioManager initialized with {audioSourcePoolSize} pooled sources");
     }
 
     void ApplyDefaultSettings()
     {
-        // Set target frame rate for consistent audio performance
         Application.targetFrameRate = 60;
         QualitySettings.vSyncCount = 0;
     }
 
     void ApplyMobileOptimizations()
     {
-        // Apply optimizations from our successful mobile tests
         try
         {
 #if UNITY_ANDROID || UNITY_IOS
             AudioConfiguration config = AudioSettings.GetConfiguration();
-            config.dspBufferSize = 256;  // Low latency buffer (tested and working)
+            config.dspBufferSize = 256;
             config.sampleRate = AudioSettings.outputSampleRate;
             AudioSettings.Reset(config);
-
-            Debug.Log($"📱 Mobile audio optimized: {config.dspBufferSize} samples, {config.sampleRate}Hz");
+            if (showDebugLogs) Debug.Log($"📱 Mobile audio optimized: {config.dspBufferSize} samples, {config.sampleRate}Hz");
 #endif
         }
         catch (System.Exception e)
@@ -136,43 +133,64 @@ public class AudioManager : MonoBehaviour
     }
 
     #region Note Playing (Simplified and Enhanced)
-
-    /// <summary>
-    /// Ana nota çalma metodu - Java mapping sistemi ile birleştirildi
-    /// Bu metod hem eski PlayNote hem de PlayNoteFromChart işlevlerini birleştirir
-    /// </summary>
     public void PlayNote(InstrumentType instrument, int pitch, float volume = 1.0f, bool useJavaMapping = false, int line = 0)
     {
         int finalPitch = pitch;
 
-        // Java mapping kullanılacaksa, line+pitch'i gerçek ses indeksine çevir
         if (useJavaMapping)
         {
             finalPitch = AudioConstants.GetSoundIndex(line, pitch);
-            Debug.Log($"🎵 JAVA MAPPING: Line={line}, Pitch={pitch} → RealSoundIndex={finalPitch} ({instrument})");
+            if (showDebugLogs)
+            {
+                Debug.Log($"🎵 JAVA MAPPING: Line={line}, Pitch={pitch} → RealSoundIndex={finalPitch} ({instrument})");
+            }
         }
 
-        var audioSource = GetAvailableAudioSource();
-        if (audioSource != null)
+        int instrumentId = (int)instrument;
+        if (instrumentId < 0 || instrumentId >= instruments.Length || instruments[instrumentId].noteClips == null || instruments[instrumentId].noteClips.Length == 0)
         {
-            var clip = GetNoteClip(instrument, finalPitch);
-            if (clip != null)
-            {
-                audioSource.clip = clip;
-                audioSource.volume = volume * masterVolume;
-                audioSource.Play();
-            }
-            else
-            {
-                Debug.LogWarning($"🎵 Ses dosyası bulunamadı: {instrument} index {finalPitch}");
-            }
+            if (showDebugLogs) Debug.LogWarning($"🎵 AudioManager: Instrument '{instrument}' is not configured or has no audio clips. Aborting PlayNote.");
+            return;
         }
+
+        int maxIdx = instruments[instrumentId].noteClips.Length - 1;
+        finalPitch = GetInstrumentAdjustedIndex(instrument, finalPitch, maxIdx);
+
+        /*
+        if (showDebugLogs)
+        {
+            Debug.Log($"🎵 AudioManager: Attempting to play note. Instrument='{instrument}', FinalPitch={finalPitch}, Volume={volume:F2}");
+        }
+        */
+
+        AudioSource audioSource = GetAvailableAudioSource();
+        if (audioSource == null) return;
+
+        AudioClip clip = GetNoteClip(instrument, finalPitch);
+        if (clip == null)
+        {
+            if (showDebugLogs) Debug.LogWarning($"🎵 Audio clip not found for {instrument} pitch {finalPitch}");
+            // Return the source to the pool if we abort early, since it won't be used
+            activeAudioSources.Remove(audioSource);
+            audioSourcePool.Enqueue(audioSource);
+            return;
+        }
+
+        audioSource.clip = clip;
+        audioSource.volume = volume * sfxVolume * masterVolume;
+        audioSource.Play();
+
+        if (enableNoteFadeOut)
+        {
+            // This source's lifecycle is now managed by the coroutine.
+            // Remove it from the main recycling list to prevent conflicts.
+            activeAudioSources.Remove(audioSource);
+            StartCoroutine(FadeOutAndRecycle(audioSource, noteFadeDuration));
+        }
+        // If not fading, the source remains in activeAudioSources and will be 
+        // recycled by the main Update loop when it finishes playing.
     }
 
-    /// <summary>
-    /// DEPRECATED: Legacy compatibility wrapper - will be removed in future versions
-    /// Use PlayNote with useJavaMapping=true instead
-    /// </summary>
     [System.Obsolete("Use PlayNote with useJavaMapping=true instead")]
     public void PlayNoteFromChart(int line, int pitch, InstrumentType instrument, float volume = 1.0f)
     {
@@ -191,8 +209,6 @@ public class AudioManager : MonoBehaviour
             musicAudioSource.Play();
 
             StartCoroutine(MonitorMusicPlayback());
-
-            // Debug.Log($"🎵 Playing music: {musicClip.name} from {startTime:F2}s");
         }
     }
 
@@ -201,7 +217,6 @@ public class AudioManager : MonoBehaviour
         if (musicAudioSource != null && musicAudioSource.isPlaying)
         {
             musicAudioSource.Stop();
-            // Debug.Log("🎵 Music stopped");
         }
     }
 
@@ -210,7 +225,6 @@ public class AudioManager : MonoBehaviour
         if (musicAudioSource != null && musicAudioSource.isPlaying)
         {
             musicAudioSource.Pause();
-            // Debug.Log("⏸️ Music paused");
         }
     }
 
@@ -219,7 +233,6 @@ public class AudioManager : MonoBehaviour
         if (musicAudioSource != null && !musicAudioSource.isPlaying)
         {
             musicAudioSource.UnPause();
-            // Debug.Log("▶️ Music resumed");
         }
     }
 
@@ -230,8 +243,6 @@ public class AudioManager : MonoBehaviour
             OnMusicTimeUpdate?.Invoke(musicAudioSource.time);
             yield return null;
         }
-
-        // Music finished
         OnMusicFinished?.Invoke();
     }
     #endregion
@@ -268,14 +279,9 @@ public class AudioManager : MonoBehaviour
     #region Audio Testing Integration
     public void TestAudioLatency()
     {
-        // Basic latency test without external test classes
-        // Debug.Log("🎵 Testing audio latency...");
-
-        // Play a test sound and measure response
         if (instruments.Length > 0 && instruments[0].noteClips.Length > 0)
         {
             PlayNote(InstrumentType.Piano, 0, 1.0f);
-            // Debug.Log($"🎵 Audio latency test complete - Average: {averageLatency:F2}ms");
         }
     }
 
@@ -286,13 +292,11 @@ public class AudioManager : MonoBehaviour
 
     void Update()
     {
-        // Recycle finished audio sources back to pool
         RecycleFinishedAudioSources();
 
-        // Monitor audio performance in real-time
-        if (enableLatencyMonitoring && Time.frameCount % 60 == 0) // Check every second
+        if (enableLatencyMonitoring && Time.frameCount % 60 == 0)
         {
-            if (averageLatency > 25f) // Above our comfort zone
+            if (averageLatency > 25f)
             {
                 Debug.LogWarning($"⚠️ Audio performance warning - Avg latency: {averageLatency:F2}ms");
             }
@@ -301,7 +305,6 @@ public class AudioManager : MonoBehaviour
 
     void RecycleFinishedAudioSources()
     {
-        // Check active audio sources and return finished ones to pool
         for (int i = activeAudioSources.Count - 1; i >= 0; i--)
         {
             AudioSource source = activeAudioSources[i];
@@ -333,7 +336,6 @@ public class AudioManager : MonoBehaviour
 
     public AudioClip GetNoteClip(InstrumentType instrument, int pitch)
     {
-        // Try to get from instrument arrays first
         if (instruments != null && instruments.Length > 0)
         {
             foreach (var instrumentData in instruments)
@@ -347,44 +349,38 @@ public class AudioManager : MonoBehaviour
             }
         }
 
-        // Try to load from Assets/Audio directory structure
         AudioClip audioClip = LoadAudioFromAssets(instrument, pitch);
         if (audioClip != null)
         {
             return audioClip;
         }
 
-        // Development fallback: Generate test tone when real audio missing
         Debug.LogError($"🎵 [PRODUCTION] Missing audio file for {instrument} pitch {pitch} - no fallback available!");
         return null;
     }
 
     AudioClip LoadAudioFromAssets(InstrumentType instrument, int pitch)
     {
-        // Match original game's audio file structure: Assets/Audio/[Instrument]/[file_snd000-044].ogg
-        string instrumentFolder = instrument.ToString(); // Piano, Harp, Guitar
+        string instrumentFolder = instrument.ToString();
         string fileName = "";
 
-        // Map instrument to original file naming convention
         switch (instrument)
         {
             case InstrumentType.Piano:
-                fileName = $"piano_snd{pitch:D3}"; // piano_snd000, piano_snd001, etc.
+                fileName = $"piano_snd{pitch:D3}";
                 break;
             case InstrumentType.Harp:
-                fileName = $"harp_snd{pitch:D3}"; // harp_snd000, harp_snd001, etc.
+                fileName = $"harp_snd{pitch:D3}";
                 break;
             case InstrumentType.Guitar:
-                // Original had both acustic and classic - try acustic first
-                fileName = $"acustic_guitar_snd{pitch:D3}"; // acustic_guitar_snd000, etc.
+                fileName = $"acustic_guitar_snd{pitch:D3}";
                 break;
         }
 
-        // Try multiple loading paths
         string[] possiblePaths = {
-            $"Audio/{instrumentFolder}/{fileName}",  // Resources/Audio/Piano/piano_snd000
-            $"{instrumentFolder}/{fileName}",        // Resources/Piano/piano_snd000
-            fileName                                 // Resources/piano_snd000
+            $"Audio/{instrumentFolder}/{fileName}",
+            $"{instrumentFolder}/{fileName}",
+            fileName
         };
 
         foreach (string path in possiblePaths)
@@ -392,12 +388,10 @@ public class AudioManager : MonoBehaviour
             AudioClip clip = Resources.Load<AudioClip>(path);
             if (clip != null)
             {
-                // Audio loaded successfully
                 return clip;
             }
         }
 
-        // Fallback path for Guitar - try classic variant
         if (instrument == InstrumentType.Guitar)
         {
             fileName = $"classic_guitar_snd{pitch:D3}";
@@ -406,21 +400,61 @@ public class AudioManager : MonoBehaviour
                 $"{instrumentFolder}/{fileName}",
                 fileName
             };
-
             foreach (string path in guitarPaths)
             {
                 AudioClip clip = Resources.Load<AudioClip>(path);
-                if (clip != null)
-                {
-                    // Guitar audio loaded successfully
-                    return clip;
-                }
+                if (clip != null) return clip;
             }
         }
 
-        Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch}. " +
-                        $"Make sure audio files are in Resources folder!");
+        Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch}. Make sure files are in a Resources folder!");
         return null;
+    }
+
+    private int GetInstrumentAdjustedIndex(InstrumentType instrument, int baseIndex, int maxIndex)
+    {
+        int adjusted = baseIndex;
+        switch (instrument)
+        {
+            case InstrumentType.Guitar:
+                adjusted = baseIndex - 4;
+                break;
+            case InstrumentType.Harp:
+                adjusted = baseIndex + 2;
+                break;
+        }
+        return Mathf.Clamp(adjusted, 0, maxIndex);
+    }
+
+    IEnumerator FadeOutAndRecycle(AudioSource source, float fadeTime)
+    {
+        if (source == null || source.clip == null) yield break;
+
+        float waitTime = Mathf.Max(0f, source.clip.length - fadeTime);
+        yield return new WaitForSeconds(waitTime);
+
+        if (showDebugLogs)
+        {
+            Debug.Log($"🎵 FADE START: '{source.clip.name}' klibi {fadeTime} saniye içinde sönümleniyor. (Beklenen süre: {waitTime:F2}s)");
+        }
+
+        float startVol = source.volume;
+        float t = 0f;
+        while (t < fadeTime && source != null)
+        {
+            t += Time.deltaTime;
+            source.volume = Mathf.Lerp(startVol, 0f, t / fadeTime);
+            yield return null;
+        }
+
+        if (source != null)
+        {
+            source.Stop();
+            source.volume = startVol;
+            // The coroutine now exclusively manages this source,
+            // so it returns it directly to the pool.
+            audioSourcePool.Enqueue(source);
+        }
     }
 }
 
@@ -428,6 +462,6 @@ public class AudioManager : MonoBehaviour
 public class InstrumentAudioData
 {
     public InstrumentType instrumentType;
-    public AudioClip[] noteClips; // 45 clips per instrument (as per original game)
+    public AudioClip[] noteClips;
     public string instrumentName;
 }

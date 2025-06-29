@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using TMPro;
 
 /// <summary>
 /// NoteRenderer - Visual Heart of the Game
@@ -9,9 +10,17 @@ using System.Linq;
 /// </summary>
 public class NoteRenderer : MonoBehaviour
 {
-    [Header("🎨 Rendering Configuration")]
+    [Header("🔧 Debugging")]
+    [SerializeField] private bool showDebugLogs = false;
+
+    [Header("🎨 Rendering")]
     [SerializeField] private GameObject notePrefab;
     [SerializeField] private Transform noteParent;
+    [SerializeField] private Color[] laneColors;
+    [SerializeField] private float noteLengthMultiplier = 1.0f;
+    [SerializeField] private float cameraAngle = 45f;
+
+    [Header("📏 Sizing and Positioning")]
     [SerializeField] private int laneCount = 6;
     [SerializeField] private float laneWidth = 2.4f;       // Genişletildi: 1.8f → 2.4f
 
@@ -78,7 +87,7 @@ public class NoteRenderer : MonoBehaviour
 
         // *** FORCE FIX: Unity-adapted speed (Java 35.0f was too fast) ***
         speedMultiplier = 8.0f;
-        Debug.Log($"🚀 SPEED FORCED: speedMultiplier set to {speedMultiplier} (Unity-adapted)");
+        if (showDebugLogs) Debug.Log($"🚀 SPEED FORCED: speedMultiplier set to {speedMultiplier} (Unity-adapted)");
 
         CreateNoteMaterial();
 
@@ -88,35 +97,29 @@ public class NoteRenderer : MonoBehaviour
 
     void CreateNoteMaterial()
     {
-        // Create a bright, visible material for notes
-        noteMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-        noteMaterial.color = Color.cyan;
-
-        // Fallback to Standard Unlit if URP not available
-        if (noteMaterial.shader.name.Contains("Hidden"))
+        if (notePrefab == null)
         {
-            noteMaterial = new Material(Shader.Find("Unlit/Color"));
-            noteMaterial.color = Color.cyan;
+            Debug.LogError("Note prefab is not assigned in NoteRenderer!");
+            return;
         }
 
-        // Final fallback to Unity's default material
-        if (noteMaterial.shader.name.Contains("Hidden"))
+        var renderer = notePrefab.GetComponent<Renderer>();
+        if (renderer != null && renderer.sharedMaterial != null)
         {
-            noteMaterial = new Material(Shader.Find("Diffuse"));
+            noteMaterial = new Material(renderer.sharedMaterial);
+            if (showDebugLogs) Debug.Log($"🎨 Created base material with shader: {noteMaterial.shader.name}");
+        }
+        else
+        {
+            Debug.LogError("Note prefab must have a Renderer with a valid material. Creating a fallback material.");
+            // --- FALLBACK: Create a simple unlit material from scratch ---
+            var shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null) shader = Shader.Find("Unlit/Color"); // Secondary fallback
+            if (shader == null) shader = Shader.Find("Standard"); // Ultimate fallback
+
+            noteMaterial = new Material(shader);
             noteMaterial.color = Color.cyan;
         }
-
-        // Ultimate fallback - create from scratch
-        if (noteMaterial.shader.name.Contains("Hidden"))
-        {
-            noteMaterial = new Material(Shader.Find("Standard"));
-            noteMaterial.color = Color.cyan;
-            noteMaterial.SetFloat("_Mode", 1); // Set to fade mode
-            noteMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            noteMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-        }
-
-        Debug.Log($"🎨 Created base material with shader: {noteMaterial.shader.name}");
     }
 
     void CreateNotePool()
@@ -146,8 +149,7 @@ public class NoteRenderer : MonoBehaviour
             lanePositions[i] = new Vector3(xOffset, 0, 0);
         }
 
-        if (showHitZone)
-            Debug.Log($"🎯 Lanes setup: {laneCount} lanes, {laneWidth} width each, hitZone: {hitZoneWidth}, total world width: {worldWidth}");
+        if (showDebugLogs) Debug.Log($"🎯 Lanes setup: {laneCount} lanes, {laneWidth:F2} width each, hitZone: {hitZoneWidth:F2}, total world width: {worldWidth:F1}");
     }
 
     void SetupCamera()
@@ -164,6 +166,10 @@ public class NoteRenderer : MonoBehaviour
         {
             Debug.LogError("🎥 No main camera found!");
         }
+
+        mainCamera.transform.rotation = Quaternion.Euler(cameraAngle, 0, 0);
+
+        if (showDebugLogs) Debug.Log($"🎥 Camera setup: Position ({mainCamera.transform.position.x:F2}, {mainCamera.transform.position.y:F2}, {mainCamera.transform.position.z:F2}), Rotation ({mainCamera.transform.eulerAngles.x:F2}, {mainCamera.transform.eulerAngles.y:F2}, {mainCamera.transform.eulerAngles.z:F2})");
     }
 
     void SubscribeToEvents()
