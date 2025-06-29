@@ -20,7 +20,6 @@ public class GameplayManager : MonoBehaviour
     [SerializeField] private bool useAudioTimeSync = true;
 
     [Header("🎯 Gameplay Settings")]
-    [SerializeField] private float noteSpeed = 5f;
     [SerializeField] private float perfectTimingWindow = 50f;   // ms
     [SerializeField] private float goodTimingWindow = 100f;    // ms
     [SerializeField] private int maxCombo = 0;
@@ -605,9 +604,9 @@ public class GameplayManager : MonoBehaviour
 
     public void SetNoteSpeed(float speed)
     {
-        noteSpeed = Mathf.Max(0.1f, speed);
+        // DEPRECATED: Directly control NoteRenderer.speedMultiplier instead
         if (noteRenderer != null)
-            noteRenderer.SetNoteSpeed(noteSpeed);
+            noteRenderer.SetSpeedMultiplier(speed);
     }
 
     public void SetTimingWindows(float perfectMs, float goodMs)

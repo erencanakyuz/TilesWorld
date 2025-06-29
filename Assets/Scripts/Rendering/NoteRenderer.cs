@@ -18,7 +18,6 @@ public class NoteRenderer : MonoBehaviour
     [Header("🚀 Perspective Movement (Original Algorithm)")]
     [SerializeField] private float worldDepth = 25f;           // Original: 25.0F depth
     [SerializeField] private float speedMultiplier = 35.0f;    // *** ORİJİNAL JAVA: 35.0F ***
-    [SerializeField] private float baseNoteSpeed = 1.0f;       // Base movement speed (normalized)
     [SerializeField] private bool enablePerspectiveScaling = true;
     [SerializeField] private bool enablePerspectiveRotation = true;
 
@@ -77,9 +76,9 @@ public class NoteRenderer : MonoBehaviour
         notePool = new Queue<GameObject>();
         activeNotes = new List<RenderingNote>();
 
-        // *** FORCE FIX: Inspector override'ını bypass et ***
-        speedMultiplier = 35.0f;
-        Debug.Log($"🚀 SPEED FORCED: speedMultiplier set to {speedMultiplier}");
+        // *** FORCE FIX: Unity-adapted speed (Java 35.0f was too fast) ***
+        speedMultiplier = 8.0f;
+        Debug.Log($"🚀 SPEED FORCED: speedMultiplier set to {speedMultiplier} (Unity-adapted)");
 
         CreateNoteMaterial();
 
@@ -699,7 +698,8 @@ public class NoteRenderer : MonoBehaviour
 
     public void SetNoteSpeed(float speed)
     {
-        baseNoteSpeed = Mathf.Max(0.1f, speed);
+        // DEPRECATED: baseNoteSpeed removed - using speedMultiplier directly
+        Debug.LogWarning("⚠️ SetNoteSpeed is deprecated - use SetSpeedMultiplier instead");
     }
 
     public void SetSpeedMultiplier(float multiplier)

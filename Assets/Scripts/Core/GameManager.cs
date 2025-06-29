@@ -494,5 +494,4 @@ public class GameConfig
 
     [Header("🎮 Gameplay Settings")]
     public int laneCount = 6;
-    public float noteSpeed = 500f;
 }
