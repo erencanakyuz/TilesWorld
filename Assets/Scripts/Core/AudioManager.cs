@@ -21,8 +21,6 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private float musicVolume = 0.8f;
     [Range(0f, 1f)]
     [SerializeField] private float sfxVolume = 0.9f;
-    [SerializeField] private bool enableNoteFadeOut = true;
-    [SerializeField] private float noteFadeDuration = 0.3f; // 300ms like original Java
 
     [Header("📊 Performance Monitoring")]
     [SerializeField] private bool enableLatencyMonitoring = true;
@@ -147,34 +145,28 @@ public class AudioManager : MonoBehaviour
     {
         int finalPitch = pitch;
 
-        // Java mapping aktifse line+pitch'i SOUND_RESOURCE_IDXS ile dönüştür
+        // Java mapping kullanılacaksa, line+pitch'i gerçek ses indeksine çevir
         if (useJavaMapping)
         {
             finalPitch = AudioConstants.GetSoundIndex(line, pitch);
-            if (showDebugLogs)
-            {
-                Debug.Log($"🎵 JAVA MAPPING: Line={line}, Pitch={pitch} → RealSoundIndex={finalPitch} ({instrument})");
-            }
+            Debug.Log($"🎵 JAVA MAPPING: Line={line}, Pitch={pitch} → RealSoundIndex={finalPitch} ({instrument})");
         }
 
-        // === NEW: Apply instrument-specific offset for legacy compatibility ===
-        int maxIdx = instruments[(int)instrument].audioClips.Length - 1;
-        finalPitch = GetInstrumentAdjustedIndex(instrument, finalPitch, maxIdx);
-
         var audioSource = GetAvailableAudioSource();
-        if (audioSource == null) return;
-
-        AudioClip clip = GetNoteClip(instrument, finalPitch);
-        if (clip == null) return;
-
-        audioSource.clip = clip;
-        audioSource.volume = volume * sfxVolume * masterVolume;
-        audioSource.Play();
-
-        if (enableNoteFadeOut)
-            StartCoroutine(FadeOutAndRecycle(audioSource, noteFadeDuration));
-        else
-            activeAudioSources.Add(audioSource);
+        if (audioSource != null)
+        {
+            var clip = GetNoteClip(instrument, finalPitch);
+            if (clip != null)
+            {
+                audioSource.clip = clip;
+                audioSource.volume = volume * masterVolume;
+                audioSource.Play();
+            }
+            else
+            {
+                Debug.LogWarning($"🎵 Ses dosyası bulunamadı: {instrument} index {finalPitch}");
+            }
+        }
     }
 
     /// <summary>
@@ -429,47 +421,6 @@ public class AudioManager : MonoBehaviour
         Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch}. " +
                         $"Make sure audio files are in Resources folder!");
         return null;
-    }
-
-    private int GetInstrumentAdjustedIndex(InstrumentType instrument, int baseIndex, int maxIndex)
-    {
-        int adjusted = baseIndex;
-        switch (instrument)
-        {
-            case InstrumentType.Guitar:
-                adjusted = baseIndex - 4; // Java: gitar sample'ı biraz kalın (−4)
-                break;
-            case InstrumentType.Harp:
-                adjusted = baseIndex + 2; // Java: harp sample'ı biraz ince (+2)
-                break;
-        }
-        return Mathf.Clamp(adjusted, 0, maxIndex);
-    }
-
-    IEnumerator FadeOutAndRecycle(AudioSource source, float fadeTime)
-    {
-        if (source == null || source.clip == null) yield break;
-
-        // Wait until near the end of the clip
-        float waitTime = Mathf.Max(0f, source.clip.length - fadeTime);
-        yield return new WaitForSeconds(waitTime);
-
-        float startVol = source.volume;
-        float t = 0f;
-        while (t < fadeTime && source != null)
-        {
-            t += Time.deltaTime;
-            source.volume = Mathf.Lerp(startVol, 0f, t / fadeTime);
-            yield return null;
-        }
-
-        if (source != null)
-        {
-            source.Stop();
-            source.volume = startVol; // reset for next reuse
-            activeAudioSources.Remove(source);
-            audioSourcePool.Enqueue(source);
-        }
     }
 }
 
