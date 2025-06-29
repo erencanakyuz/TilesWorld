@@ -216,16 +216,19 @@ public class NoteRenderer : MonoBehaviour
             var activeNote = activeNotes[i];
             if (activeNote == null || activeNote.gameObject == null) continue;
 
-            // --- ORİJİNAL İVMELENME MANTIĞI (oldgame.md'den tam port) ---
+            // --- ORİJİNAL İVMELENME MANTIĞI (Unity koordinat uyarlaması) ---
             float currentSpeed;
-            if (activeNote.currentPosition.z < hitZoneZ)
+            if (activeNote.currentPosition.z > hitZoneZ)
             {
-                // Orijinal formül: f = (invader.position.z - 3.0F) / -25.0F * this.speedMultiplier;
-                currentSpeed = (activeNote.currentPosition.z - 3.0f) / -25.0f * speedMultiplier;
+                // Unity: +25 (uzak) → 0 (hit zone), Java: -25 (uzak) → 0 (hit zone)
+                // Java formülü: (z - 3.0F) / -25.0F * speedMultiplier
+                // Unity uyarlaması: (25.0F - z - 3.0F) / 25.0F * speedMultiplier
+                float javaEquivalentZ = -activeNote.currentPosition.z; // Unity +25 = Java -25
+                currentSpeed = (javaEquivalentZ - 3.0f) / -25.0f * speedMultiplier;
             }
             else
             {
-                // Hit zonunu geçmeden önce yavaş hareket
+                // Hit zone'u geçtikten sonra sabit hız
                 currentSpeed = speedMultiplier * 0.2f;
             }
 
