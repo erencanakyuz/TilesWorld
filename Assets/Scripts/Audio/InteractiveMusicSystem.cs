@@ -480,7 +480,6 @@ public class InteractiveMusicSystem : MonoBehaviour
     {
         notesPlayedThisSession = 0;
         chordsPlayedThisSession = 0;
-        currentMelodyComplexity = 0f;
         recentMusicalEvents.Clear();
     }
 
@@ -526,9 +525,6 @@ public class InteractiveMusicSystem : MonoBehaviour
 
             // Detect chords and harmonies
             CheckForChordCreation(musicalEvent);
-
-            // Track musical complexity
-            UpdateMelodyComplexity(musicalEvent);
 
             // Update statistics
             notesPlayedThisSession++;

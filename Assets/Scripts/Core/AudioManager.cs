@@ -145,28 +145,31 @@ public class AudioManager : MonoBehaviour
     {
         int finalPitch = pitch;
 
-        // Java mapping kullanılacaksa, line+pitch'i gerçek ses indeksine çevir
+        // Java mapping aktifse line+pitch'i SOUND_RESOURCE_IDXS ile dönüştür
         if (useJavaMapping)
         {
             finalPitch = AudioConstants.GetSoundIndex(line, pitch);
-            Debug.Log($"🎵 JAVA MAPPING: Line={line}, Pitch={pitch} → RealSoundIndex={finalPitch} ({instrument})");
+            if (showDebugLogs)
+            {
+                Debug.Log($"🎵 JAVA MAPPING: Line={line}, Pitch={pitch} → RealSoundIndex={finalPitch} ({instrument})");
+            }
         }
 
+        // === NEW: Apply instrument-specific offset for legacy compatibility ===
+        int maxIdx = instruments[(int)instrument].audioClips.Length - 1;
+        finalPitch = GetInstrumentAdjustedIndex(instrument, finalPitch, maxIdx);
+
         var audioSource = GetAvailableAudioSource();
-        if (audioSource != null)
-        {
-            var clip = GetNoteClip(instrument, finalPitch);
-            if (clip != null)
-            {
-                audioSource.clip = clip;
-                audioSource.volume = volume * masterVolume;
-                audioSource.Play();
-            }
-            else
-            {
-                Debug.LogWarning($"🎵 Ses dosyası bulunamadı: {instrument} index {finalPitch}");
-            }
-        }
+        if (audioSource == null) return;
+
+        AudioClip clip = GetNoteClip(instrument, finalPitch);
+        if (clip == null) return;
+
+        audioSource.clip = clip;
+        audioSource.volume = volume * sfxVolume * masterVolume;
+        audioSource.Play();
+
+        activeAudioSources.Add(audioSource);
     }
 
     /// <summary>
@@ -421,6 +424,21 @@ public class AudioManager : MonoBehaviour
         Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch}. " +
                         $"Make sure audio files are in Resources folder!");
         return null;
+    }
+
+    private int GetInstrumentAdjustedIndex(InstrumentType instrument, int baseIndex, int maxIndex)
+    {
+        int adjusted = baseIndex;
+        switch (instrument)
+        {
+            case InstrumentType.Guitar:
+                adjusted = baseIndex - 4; // Java: gitar sample'ı biraz kalın (−4)
+                break;
+            case InstrumentType.Harp:
+                adjusted = baseIndex + 2; // Java: harp sample'ı biraz ince (+2)
+                break;
+        }
+        return Mathf.Clamp(adjusted, 0, maxIndex);
     }
 }
 
