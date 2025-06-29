@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using System.IO;
 
 /// <summary>
 /// GameNoteCreator - Oyunun Kalbi (Refaktör Edilmiş)
@@ -9,10 +10,12 @@ using System;
 /// </summary>
 public class GameNoteCreator : MonoBehaviour
 {
-    // --- Orijinal Java'dan Port Edilen Sabitler ---
+    // --- Orijinal Java'dan Port Edilen Sabitler (Unity için ayarlanmış) ---
+    // ORIJINAL: {1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 7, 14, 28, 56, ...}
+    // UNITY: Daha yavaş değerler kullanarak nota akışını kontrol edilebilir hale getiriyoruz
     private static readonly int[] NOTE_LENGTH_FACTORS = {
-        1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 7, 14, 28, 56,
-        1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 7, 14, 28, 56
+        4, 8, 16, 32, 64, 128, 12, 24, 48, 96, 192, 28, 56, 112, 224,  // x4 multiplier
+        4, 8, 16, 32, 64, 128, 12, 24, 48, 96, 192, 28, 56, 112, 224   // x4 multiplier
     };
 
     private static readonly int[] LANE_PITCH_OFFSET = { 3, 5, 7, 11, 13, 17 };
@@ -38,11 +41,68 @@ public class GameNoteCreator : MonoBehaviour
     public static event Action OnGenerationComplete;
 
     /// <summary>
+    /// JSON'dan nota chart verilerini yükler
+    /// </summary>
+    private List<NoteChartSequence> LoadNoteChartFromJSON(string songKey)
+    {
+        try
+        {
+            string jsonPath = $"Song_Note_Jsons/Individual/{songKey}";
+            TextAsset jsonFile = Resources.Load<TextAsset>(jsonPath);
+
+            if (jsonFile == null)
+            {
+                Debug.LogError($"🎵 JSON nota dosyası bulunamadı: {jsonPath}");
+                return new List<NoteChartSequence>();
+            }
+
+            JsonSequenceArray jsonData = JsonUtility.FromJson<JsonSequenceArray>(jsonFile.text);
+
+            if (jsonData?.sequences == null)
+            {
+                Debug.LogError($"🎵 JSON formatı geçersiz: {jsonPath}");
+                return new List<NoteChartSequence>();
+            }
+
+            List<NoteChartSequence> chartSequences = new List<NoteChartSequence>();
+
+            foreach (var jsonSeq in jsonData.sequences)
+            {
+                var chartSeq = new NoteChartSequence
+                {
+                    music_id = jsonSeq.music_id,
+                    seq = jsonSeq.seq,
+                    line1 = jsonSeq.line1,
+                    line2 = jsonSeq.line2,
+                    line3 = jsonSeq.line3,
+                    line4 = jsonSeq.line4,
+                    line5 = jsonSeq.line5,
+                    line6 = jsonSeq.line6
+                };
+                chartSequences.Add(chartSeq);
+            }
+
+            Debug.Log($"🎵 JSON nota verileri yüklendi: {chartSequences.Count} sekans, dosya: {jsonPath}");
+            return chartSequences;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"🎵 JSON yükleme hatası: {e.Message}");
+            return new List<NoteChartSequence>();
+        }
+    }
+
+    /// <summary>
     /// Şarkıyı yükler, RefactorParse.md'ye uygun şekilde tüm nota verisini işler ve oynanmaya hazır hale getirir.
     /// </summary>
     public void LoadAndPrepareSong(List<NoteChartSequence> rawChart, int tempo)
     {
         ResetState();
+
+        Debug.Log($"🎵 Şarkı işleniyor: {rawChart.Count} sekans, tempo: {tempo} BPM");
+
+        // DEBUG: Note factors'ı logla
+        LogNoteFactorInfo();
 
         // 1. Ham veriyi, dikey dilimleme mantığıyla geçici bir formata dönüştür.
         List<TemporalNoteInfo> temporalNotes = ProcessChartWithVerticalSlicing(rawChart, tempo);
@@ -74,6 +134,7 @@ public class GameNoteCreator : MonoBehaviour
             {
                 firstDelayCompleted = true;
                 accumulatedTime = 0; // Sayacı sıfırla
+                Debug.Log($"🎵 FIRST_DELAY tamamlandı ({FIRST_DELAY_MS}ms). İlk nota spawn ediliyor...");
                 TrySpawnNextPackage();
             }
             return;
@@ -91,6 +152,10 @@ public class GameNoteCreator : MonoBehaviour
         if (notePackageQueue.Count > 0)
         {
             currentPackageToSpawn = notePackageQueue.Dequeue();
+
+            // DEBUG: Spawn timing bilgisi
+            Debug.Log($"🎵 SPAWN: {currentPackageToSpawn.gameNoteInfos.Count} nota, nextTiming: {currentPackageToSpawn.oneNote:F1}ms, queueLeft: {notePackageQueue.Count}");
+
             OnNotesGenerated?.Invoke(currentPackageToSpawn.gameNoteInfos);
         }
         else
@@ -104,91 +169,127 @@ public class GameNoteCreator : MonoBehaviour
     #region Refactored Parsing Logic (RefactorParse.md)
 
     /// <summary>
-    /// Ham chart verisini, dikey dilimleme (vertical slicing) yöntemiyle işler.
+    /// RefactorParse.md'ye göre: Ham chart verisini, dikey dilimleme (vertical slicing) yöntemiyle işler.
+    /// Orijinal Java oyununun PlayData.getTabList mantığını uygular.
     /// </summary>
     private List<TemporalNoteInfo> ProcessChartWithVerticalSlicing(List<NoteChartSequence> chart, int tempo)
     {
-        float baseTimingMs = ((60000f / tempo) / 8f) * 10f; // Yavaşlatılmış temel zaman birimi
+        Debug.Log($"🎵 Dikey zaman dilimlemesi başlıyor: {chart.Count} sekans, tempo: {tempo}");
+
+        // A. Temel Zaman Biriminin Hesaplanması (RefactorParse.md - Adım 2.2.A)
+        float baseTimingMs = (60000f / tempo) / 8f; // 32'lik nota süresi (ms)
+        Debug.Log($"🎵 Temel zaman birimi: {baseTimingMs} ms (32'lik nota)");
+
         var temporalNoteList = new List<TemporalNoteInfo>();
 
-        // 1. Tüm şeritlerdeki maksimum zaman dilimi sayısını bul.
+        // B. Tüm Veriyi Topla ve Maksimum Dilim Sayısını Bul (RefactorParse.md - Adım 3.2.1-2)
+        var allLineData = new Dictionary<int, string[]>(); // lane -> all subdivisions
         int maxSubdivisions = 0;
-        foreach (var sequence in chart)
+
+        // Tüm sekansları birleştir ve her lane için subdivision array'i oluştur
+        for (int lane = 0; lane < laneCount; lane++)
         {
+            var allSubdivisions = new List<string>();
+
+            foreach (var sequence in chart)
+            {
+                string lineData = sequence.GetLineData(lane);
+                if (!string.IsNullOrEmpty(lineData))
+                {
+                    string[] subdivisions = lineData.Split('/');
+                    allSubdivisions.AddRange(subdivisions);
+                }
+            }
+
+            allLineData[lane] = allSubdivisions.ToArray();
+            maxSubdivisions = Math.Max(maxSubdivisions, allSubdivisions.Count);
+        }
+
+        Debug.Log($"🎵 Maksimum zaman dilimi sayısı: {maxSubdivisions}");
+
+        // C. Dikey Dilimleme ve Haritala (RefactorParse.md - Adım 3.2.3-4)
+        var sliceMap = new Dictionary<int, List<(int lane, int pitch, int duration)>>();
+
+        // Her zaman dilimi için tüm lane'leri dikey olarak tara
+        for (int sliceIndex = 0; sliceIndex < maxSubdivisions; sliceIndex++)
+        {
+            sliceMap[sliceIndex] = new List<(int lane, int pitch, int duration)>();
+
             for (int lane = 0; lane < laneCount; lane++)
             {
-                maxSubdivisions = Math.Max(maxSubdivisions, sequence.GetLineData(lane).Split('/').Length);
+                // Bu zaman diliminde bu lane'de ne var?
+                if (sliceIndex < allLineData[lane].Length)
+                {
+                    string subdivision = allLineData[lane][sliceIndex];
+
+                    if (!string.IsNullOrEmpty(subdivision) && subdivision != "_,_")
+                    {
+                        string[] parts = subdivision.Split(',');
+                        if (parts.Length == 2)
+                        {
+                            if (int.TryParse(parts[0], out int pitch) &&
+                                int.TryParse(parts[1], out int duration) &&
+                                pitch > 0) // "_" = -1 veya parse hatası, geçerli nota değil
+                            {
+                                sliceMap[sliceIndex].Add((lane, pitch, duration));
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        // 2. Dikey olarak dilimle ve işle.
-        for (int i = 0; i < maxSubdivisions; i++)
+        // D. Anlamlı Paketlere Dönüştür ve oneTempo Hesapla (RefactorParse.md - Adım 3.2.5-6)
+        for (int sliceIndex = 0; sliceIndex < maxSubdivisions; sliceIndex++)
         {
+            if (!sliceMap.ContainsKey(sliceIndex) || sliceMap[sliceIndex].Count == 0)
+                continue; // Bu zaman diliminde nota yok, atla
+
             var temporalInfo = new TemporalNoteInfo();
-            // bool hasNotesInSlice = false; // Commented out - unused variable
+            int maxDuration = 0;
 
-            for (int lane = 0; lane < laneCount; lane++)
+            // Bu zaman dilimindeki tüm notaları işle
+            foreach (var (lane, pitch, duration) in sliceMap[sliceIndex])
             {
-                string[] subdivisions = chart.Select(s => s.GetLineData(lane).Split('/')).SelectMany(a => a).ToArray();
-                // Bu kısım basitleştirilmeli. Her sequence için ayrı ayrı işlem yapalım.
+                temporalInfo.pitches[lane] = pitch;
+                maxDuration = Math.Max(maxDuration, duration);
+            }
+
+            // oneTempo Hesaplama (RefactorParse.md - Adım 2.2.C)
+            temporalInfo.maxDurationType = maxDuration;
+
+            if (maxDuration >= 0 && maxDuration < NOTE_LENGTH_FACTORS.Length)
+            {
+                float calculatedTiming = (float)(NOTE_LENGTH_FACTORS[maxDuration] * baseTimingMs);
+                temporalInfo.timingMs = calculatedTiming;
+
+                // DEBUG: Timing hesaplama detayları (sadece ilk 5 paket için)
+                if (sliceIndex < 5)
+                {
+                    Debug.Log($"🎵 TIMING CAL [{sliceIndex}]: maxDuration={maxDuration}, factor={NOTE_LENGTH_FACTORS[maxDuration]}, baseMs={baseTimingMs:F1}, result={calculatedTiming:F1}ms");
+                }
+            }
+            else
+            {
+                temporalInfo.timingMs = baseTimingMs; // Fallback
+                if (sliceIndex < 5)
+                {
+                    Debug.Log($"🎵 TIMING FALLBACK [{sliceIndex}]: maxDuration={maxDuration} out of range, using baseMs={baseTimingMs:F1}ms");
+                }
+            }
+
+            temporalNoteList.Add(temporalInfo);
+
+            // Debug için - çok fazla spam önlemek için sadece ilk 10'unu göster
+            if (sliceIndex < 10)
+            {
+                var activeNotes = temporalInfo.pitches.Select((pitch, idx) => pitch != -1 ? $"L{idx}:P{pitch}" : null)
+                                                       .Where(x => x != null).ToArray();
+                Debug.Log($"🎵 Zaman dilimi {sliceIndex}: {string.Join(", ", activeNotes)}, maxDuration={maxDuration}, timingMs={temporalInfo.timingMs:F1}");
             }
         }
-        // -- Geçici olarak eski sistemin basitleştirilmiş halini kullanalım --
-        // DOĞRU YÖNTEM: Tüm sequence'leri birleştirip sonra dikey işle.
-        // Şimdilik her sequence'i kendi içinde işleyelim.
-        foreach (var sequence in chart)
-        {
-            var columns = new Dictionary<int, (int pitch, int duration)[]>();
-            int sequenceMaxSub = 0;
 
-            for (int lane = 0; lane < laneCount; lane++)
-            {
-                string[] subdivisions = sequence.GetLineData(lane).Split('/');
-                if (subdivisions.Length > sequenceMaxSub) sequenceMaxSub = subdivisions.Length;
-
-                for (int i = 0; i < subdivisions.Length; i++)
-                {
-                    if (!columns.ContainsKey(i)) columns[i] = new (int, int)[6];
-
-                    string[] parts = subdivisions[i].Split(',');
-                    if (parts.Length == 2 && int.TryParse(parts[0], out int pitch) && int.TryParse(parts[1], out int duration))
-                    {
-                        columns[i][lane] = (pitch, duration);
-                    }
-                    else
-                    {
-                        columns[i][lane] = (-1, -1);
-                    }
-                }
-            }
-            for (int subIdx = 0; subIdx < sequenceMaxSub; subIdx++)
-            {
-                if (!columns.ContainsKey(subIdx)) continue;
-
-                var temporalInfo = new TemporalNoteInfo();
-                bool hasNotes = false;
-
-                for (int lane = 0; lane < laneCount; lane++)
-                {
-                    var (pitch, duration) = columns[subIdx][lane];
-                    if (pitch != -1)
-                    {
-                        temporalInfo.pitches[lane] = pitch;
-                        temporalInfo.maxDurationType = Math.Max(temporalInfo.maxDurationType, duration);
-                        hasNotes = true;
-                    }
-                }
-
-                if (hasNotes)
-                {
-                    if (temporalInfo.maxDurationType >= 0 && temporalInfo.maxDurationType < NOTE_LENGTH_FACTORS.Length)
-                    {
-                        temporalInfo.timingMs = NOTE_LENGTH_FACTORS[temporalInfo.maxDurationType] * baseTimingMs;
-                    }
-                    temporalNoteList.Add(temporalInfo);
-                }
-            }
-        }
+        Debug.Log($"🎵 Dikey dilimleme tamamlandı: {temporalNoteList.Count} temporal note package oluşturuldu");
         return temporalNoteList;
     }
 
@@ -252,7 +353,7 @@ public class GameNoteCreator : MonoBehaviour
         notes.Sort((a, b) => a.idx.CompareTo(b.idx));
         for (int i = 0; i < notes.Count - 1; i++)
         {
-            if (Mathf.Abs(notes[i].idx - notes[i + 1].idx) <= 1)
+            if (Math.Abs(notes[i].idx - notes[i + 1].idx) <= 1)
             {
                 notes[i + 1].idx = (notes[i + 1].idx + 1) % laneCount;
             }
@@ -269,6 +370,16 @@ public class GameNoteCreator : MonoBehaviour
         notePackageQueue.Clear();
         currentPackageToSpawn = null;
     }
+
+    // DEBUG: Timing faktörlerini kontrol etmek için
+    private void LogNoteFactorInfo()
+    {
+        Debug.Log("🎵 NOTE_LENGTH_FACTORS dizisi:");
+        for (int i = 0; i < Math.Min(10, NOTE_LENGTH_FACTORS.Length); i++)
+        {
+            Debug.Log($"  Factor[{i}] = {NOTE_LENGTH_FACTORS[i]}");
+        }
+    }
     #endregion
 
     #region Compatibility Layer (Eski sistemle uyumluluk için)
@@ -283,6 +394,7 @@ public class GameNoteCreator : MonoBehaviour
 
     /// <summary>
     /// Eski sistemle uyumluluk için - LoadSong() metodunu LoadAndPrepareSong() ile eşler  
+    /// Şimdi gerçek JSON nota verilerini yükler!
     /// </summary>
     public void LoadSong(SongData songData)
     {
@@ -292,14 +404,23 @@ public class GameNoteCreator : MonoBehaviour
             return;
         }
 
-        // SongData'yı NoteChartSequence formatına dönüştür
-        // Şimdilik basit bir dummy implementation
-        List<NoteChartSequence> dummyChart = new List<NoteChartSequence>();
+        Debug.Log($"🎵 Loading song: {songData.songName} with key: {songData.songKey}");
 
-        // Geçici olarak boş bir chart ile yükle
-        LoadAndPrepareSong(dummyChart, 120); // Default tempo
+        // Gerçek JSON nota verilerini yükle
+        List<NoteChartSequence> chartData = LoadNoteChartFromJSON(songData.songKey);
 
-        Debug.Log($"🎵 Song loaded via compatibility layer: {songData.songName}");
+        if (chartData.Count == 0)
+        {
+            Debug.LogError($"🎵 No note data loaded for song: {songData.songKey}");
+            // Boş liste ile devam et, error handling
+            chartData = new List<NoteChartSequence>();
+        }
+
+        // Gerçek tempo ile yükle
+        int tempo = songData.bpm > 0 ? (int)songData.bpm : 120; // Fallback tempo
+        LoadAndPrepareSong(chartData, tempo);
+
+        Debug.Log($"🎵 Song loaded successfully: {songData.songName} (BPM: {tempo})");
     }
 
     #endregion
