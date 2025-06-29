@@ -265,3 +265,50 @@ public struct MusicalSessionStats
 }
 
 #endregion
+
+#region Audio Constants (Centralized)
+
+/// <summary>
+/// Merkezi Audio Sabitleri - Eski Java oyunundan SOUND_RESOURCE_IDXS mapping sistemi
+/// Bu sistem hangi line+pitch kombinasyonunun hangi ses dosyasını kullanacağını belirler
+/// </summary>
+public static class AudioConstants
+{
+    /// <summary>
+    /// Orijinal Java oyunundan: SOUND_RESOURCE_IDXS
+    /// Her lane için hangi ses indekslerinin kullanılacağını belirler
+    /// [lane][pitch] → actual sound file index
+    /// </summary>
+    public static readonly int[][] SOUND_RESOURCE_IDXS = {
+        // Lane 0: Piano yüksek oktav (24-44)
+        new int[] { 24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44 },
+        // Lane 1: Piano orta-yüksek (19-39)
+        new int[] { 19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39 },
+        // Lane 2: Piano orta (15-35)
+        new int[] { 15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35 },
+        // Lane 3: Piano alçak-orta (10-30)
+        new int[] { 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 },
+        // Lane 4: Piano alçak (5-25)
+        new int[] { 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25 },
+        // Lane 5: Piano en alçak (1-21)
+        new int[] { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21 }
+    };
+
+    /// <summary>
+    /// Güvenli lane access için helper metod
+    /// </summary>
+    public static int GetSoundIndex(int lane, int pitch)
+    {
+        int safeLane = UnityEngine.Mathf.Clamp(lane, 0, SOUND_RESOURCE_IDXS.Length - 1);
+
+        if (pitch < 0 || pitch >= SOUND_RESOURCE_IDXS[safeLane].Length)
+        {
+            UnityEngine.Debug.LogWarning($"⚠️ AudioConstants: Geçersiz pitch değeri! Lane: {lane}, Pitch: {pitch}. Varsayılan olarak 0 kullanılıyor.");
+            pitch = UnityEngine.Mathf.Clamp(pitch, 0, SOUND_RESOURCE_IDXS[safeLane].Length - 1);
+        }
+
+        return SOUND_RESOURCE_IDXS[safeLane][pitch];
+    }
+}
+
+#endregion

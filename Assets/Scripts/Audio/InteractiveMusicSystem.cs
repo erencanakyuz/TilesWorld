@@ -29,19 +29,7 @@ public class InteractiveMusicSystem : MonoBehaviour
     [SerializeField] private int chordsPlayedThisSession = 0;
     [SerializeField] private float currentMelodyComplexity = 0f;
 
-    // Original Java SOUND_RESOURCE_IDXS mapping (from MD analysis)
-    private static readonly int[][] SOUND_RESOURCE_IDXS = {
-        // Piano notes mapping (Original Java)
-        new int[] { 24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44 },
-        // Harp notes mapping  
-        new int[] { 19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39 },
-        // Guitar notes mapping
-        new int[] { 15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35 },
-        // Extended mappings for more variety
-        new int[] { 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 },
-        new int[] { 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25 },
-        new int[] { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21 }
-    };
+    // Original Java SOUND_RESOURCE_IDXS mapping artık AudioConstants'da merkezi olarak tanımlı
 
     // Musical scale definitions (Western music theory)
     private static readonly Dictionary<MusicalScale, int[]> MUSICAL_SCALES = new Dictionary<MusicalScale, int[]>
@@ -153,12 +141,8 @@ public class InteractiveMusicSystem : MonoBehaviour
             return noteInfo;
         }
 
-        // Use original SOUND_RESOURCE_IDXS as base mapping
-        int instrumentIndex = (int)currentInstrument;
-        if (instrumentIndex >= SOUND_RESOURCE_IDXS.Length)
-            instrumentIndex = 0;
-
-        int soundIndex = SOUND_RESOURCE_IDXS[instrumentIndex][lane];
+        // Use AudioConstants for centralized sound mapping
+        int soundIndex = AudioConstants.GetSoundIndex(lane, 0); // Use lane as base, pitch 0 for this context
 
         // Enhanced with musical scale mapping
         if (MUSICAL_SCALES.ContainsKey(currentScale))

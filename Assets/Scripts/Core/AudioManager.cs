@@ -27,16 +27,7 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private float averageLatency = 0f;
 
     // === ESKİ JAVA OYUNUNDAN: SOUND_RESOURCE_IDXS MAPPING SİSTEMİ ===
-    // Bu sistem Java oyunundaki nota seçimini birebir kopyalar
-    private static readonly int[][] SOUND_RESOURCE_IDXS = {
-        // Piano notes mapping (Original Java) - Lane 0-5 için
-        new int[] { 24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44 },
-        new int[] { 19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39 },
-        new int[] { 15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35 },
-        new int[] { 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 },
-        new int[] { 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25 },
-        new int[] { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21 }
-    };
+    // Bu sistem artık DataStructures.cs/AudioConstants'da merkezi olarak tanımlı
 
     // Audio Source Pool for low-latency playback
     private Queue<AudioSource> audioSourcePool;
@@ -195,19 +186,11 @@ public class AudioManager : MonoBehaviour
     /// <summary>
     /// Orijinal Java'dan: line+pitch → real sound index mapping
     /// Bu, oyunun müzikal doğruluğunu sağlayan kritik algoritma
+    /// Artık merkezi AudioConstants sistemini kullanıyor
     /// </summary>
     private int GetMappedSoundIndex(int line, int pitch)
     {
-        // Safety checks
-        int safeLine = Mathf.Clamp(line, 0, SOUND_RESOURCE_IDXS.Length - 1);
-
-        if (pitch < 0 || pitch >= SOUND_RESOURCE_IDXS[safeLine].Length)
-        {
-            Debug.LogWarning($"⚠️ Geçersiz pitch değeri! Line: {line}, Pitch: {pitch}. Varsayılan olarak 0 kullanılıyor.");
-            pitch = Mathf.Clamp(pitch, 0, SOUND_RESOURCE_IDXS[safeLine].Length - 1);
-        }
-
-        return SOUND_RESOURCE_IDXS[safeLine][pitch];
+        return AudioConstants.GetSoundIndex(line, pitch);
     }
     #endregion
 
