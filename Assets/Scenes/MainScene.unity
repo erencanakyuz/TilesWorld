@@ -746,12 +746,12 @@ MonoBehaviour:
   notePrefab: {fileID: 6626783956275190528, guid: 8913b5b518dedbe4889eee660de1001e, type: 3}
   noteParent: {fileID: 1870890062}
   laneCount: 6
-  laneWidth: 1.8
+  laneWidth: 1.85
   worldDepth: 25
   speedMultiplier: 2
   enablePerspectiveScaling: 1
   enablePerspectiveRotation: 1
-  hitZoneZ: 0
+  hitZoneZ: -1
   hitZoneWidth: 2
   noteDestroyZ: 2
   enableObjectPooling: 1
@@ -2801,7 +2801,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   currentInstrument: 0
   currentScale: 0
-  enableJsonBasedMusic: 1
   showDebugInfo: 1
   baseOctave: 4
   notesPlayedThisSession: 0

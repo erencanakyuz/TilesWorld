@@ -17,9 +17,9 @@ public class NoteRenderer : MonoBehaviour
 
     [Header("🚀 Perspective Movement (Original Algorithm)")]
     [SerializeField] private float worldDepth = 25f;           // Original: 25.0F depth
-    [SerializeField] private float speedMultiplier = 35.0f;    // *** ORİJİNAL JAVA: 35.0F ***
-    [SerializeField] private bool enablePerspectiveScaling = true;
-    [SerializeField] private bool enablePerspectiveRotation = true;
+    [SerializeField] private float speedMultiplier = 8.0f;    // Adapted for Unity
+    [Range(0.1f, 1.0f)]
+    [SerializeField] private float accelerationIntensity = 0.8f; // İvme yoğunluğu (0.8 = standart Java hissi)
 
     [Header("🎯 Hit Zone Configuration")]
     [SerializeField] private float hitZoneZ = 0.0f;            // Hit line at Z=0 for easier calculation
@@ -218,20 +218,22 @@ public class NoteRenderer : MonoBehaviour
             var activeNote = activeNotes[i];
             if (activeNote == null || activeNote.gameObject == null) continue;
 
-            // --- ORİJİNAL İVMELENME MANTIĞI (Unity koordinat uyarlaması) ---
+            // --- ORİJİNAL İVMELENME MANTIĞI (Yoğunluk Ayarlı) ---
             float currentSpeed;
             if (activeNote.currentPosition.z > hitZoneZ)
             {
-                // Unity: +25 (uzak) → 0 (hit zone), Java: -25 (uzak) → 0 (hit zone)
-                // Java formülü: (z - 3.0F) / -25.0F * speedMultiplier
-                // Unity uyarlaması: (25.0F - z - 3.0F) / 25.0F * speedMultiplier
-                float javaEquivalentZ = -activeNote.currentPosition.z; // Unity +25 = Java -25
-                currentSpeed = (javaEquivalentZ - 3.0f) / -25.0f * speedMultiplier;
+                // Uzaklığa göre hızlanma formülü (Inspector'dan ayarlanabilir)
+                float distanceRatio = (activeNote.currentPosition.z - hitZoneZ) / worldDepth;
+                currentSpeed = speedMultiplier * (1.0f - distanceRatio * accelerationIntensity);
+
+                // Minimum hızı da yoğunluğa göre belirle
+                float minSpeed = speedMultiplier * (1.0f - accelerationIntensity);
+                currentSpeed = Mathf.Max(currentSpeed, minSpeed);
             }
             else
             {
-                // Hit zone'u geçtikten sonra sabit hız
-                currentSpeed = speedMultiplier * 0.2f;
+                // Hit zone'u geçtikten sonra sabit ve yavaş hız (Java ile aynı)
+                currentSpeed = speedMultiplier * (1.0f - accelerationIntensity);
             }
 
             // *** UNITY COORDINATE: Move notes TOWARD player (Z decreases) ***
@@ -264,44 +266,14 @@ public class NoteRenderer : MonoBehaviour
             }
             */
 
-            // Apply perspective effects
-            ApplyPerspectiveEffects(activeNote, activeNote.currentPosition.z);
+
         }
     }
 
     /// <summary>
     /// Simplified perspective effects - keep notes as stable rectangular tiles
     /// </summary>
-    void ApplyPerspectiveEffects(RenderingNote activeNote, float zPosition)
-    {
-        var transform = activeNote.gameObject.transform;
 
-        // Subtle perspective scaling only (closer notes slightly larger)
-        if (enablePerspectiveScaling)
-        {
-            float distanceFromPlayer = Mathf.Abs(zPosition - hitZoneZ);
-            float scale = Mathf.Lerp(2.5f, 2.0f, distanceFromPlayer / worldDepth);
-            transform.localScale = new Vector3(scale, 1.0f, scale);
-        }
-
-        // Keep rotation minimal - notes should stay as flat tiles
-        if (enablePerspectiveRotation)
-        {
-            // Very slight rotation for visual depth (much less than original)
-            float rotationX = Mathf.Lerp(0f, -10f, Mathf.Abs(zPosition) / worldDepth);
-            transform.rotation = Quaternion.Euler(rotationX, 0, 0);
-        }
-        else
-        {
-            // Keep notes completely flat (no rotation)
-            transform.rotation = Quaternion.identity;
-        }
-
-        // Keep Y position stable at ground level - no accumulation
-        Vector3 position = transform.position;
-        position.y = 0f;
-        transform.position = position;
-    }
 
     void ApplyNoteHighlight(GameObject noteObject, bool highlight)
     {

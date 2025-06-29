@@ -95,7 +95,7 @@ public class JsonSequenceArray
 internal class TemporalNoteInfo
 {
     public int[] pitches = { -1, -1, -1, -1, -1, -1 };
-    public int durationType = -1;
+    public int maxDurationType = -1;
     public float timingMs = 0f;
 }
 
@@ -167,6 +167,27 @@ public enum MusicalScale
     Pentatonic,
     MinorPentatonic,
     Chromatic
+}
+
+#endregion
+
+#region Song Database Structures
+
+[System.Serializable]
+public class SongDatabaseInfo
+{
+    public int musicId;
+    public string title;
+    public string artist;
+    public int tempo;
+    public DifficultyLevel difficulty;
+    public string songKey; // JSON dosya adı için
+}
+
+[System.Serializable]
+public class SongDatabaseListWrapper
+{
+    public List<SongDatabaseInfo> Songs;
 }
 
 #endregion
