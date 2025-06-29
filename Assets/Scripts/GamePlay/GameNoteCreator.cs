@@ -12,16 +12,18 @@ public class GameNoteCreator : MonoBehaviour
 {
     // --- Orijinal Java'dan Port Edilen Sabitler (Unity için ayarlanmış) ---
     // ORIJINAL: {1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 7, 14, 28, 56, ...}
-    // UNITY: Daha yavaş değerler kullanarak nota akışını kontrol edilebilir hale getiriyoruz
+    // ARTIK ORİJİNAL DEĞERLERİ KULLANIYORUZ VE ÇARPANLA AYARLIYORUZ
     private static readonly int[] NOTE_LENGTH_FACTORS = {
-        4, 8, 16, 32, 64, 128, 12, 24, 48, 96, 192, 28, 56, 112, 224,  // x4 multiplier
-        4, 8, 16, 32, 64, 128, 12, 24, 48, 96, 192, 28, 56, 112, 224   // x4 multiplier
+        1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 7, 14, 28, 56,
+        1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 7, 14, 28, 56
     };
 
     private static readonly int[] LANE_PITCH_OFFSET = { 3, 5, 7, 11, 13, 17 };
     private const float FIRST_DELAY_MS = 1500f; // Başlangıç gecikmesi (daha belirgin)
 
     [Header("🎵 Konfigürasyon")]
+    [Tooltip("Nota zamanlama çarpanı. Orijinal Java hissiyatı için ~4.0 civarı bir değerle başlayın.")]
+    [SerializeField] private float timingMultiplier = 4.0f;
     [SerializeField] private int laneCount = 6;
     [SerializeField] private int maxDirectionInterval = 10;
 
@@ -260,13 +262,14 @@ public class GameNoteCreator : MonoBehaviour
 
             if (maxDuration >= 0 && maxDuration < NOTE_LENGTH_FACTORS.Length)
             {
-                float calculatedTiming = (float)(NOTE_LENGTH_FACTORS[maxDuration] * baseTimingMs);
+                // YENİ SİSTEM: Orijinal faktörü, ayarlanabilir çarpanımızla çarpıyoruz.
+                float calculatedTiming = (float)(NOTE_LENGTH_FACTORS[maxDuration] * timingMultiplier * baseTimingMs);
                 temporalInfo.timingMs = calculatedTiming;
 
                 // DEBUG: Timing hesaplama detayları (sadece ilk 5 paket için)
                 if (sliceIndex < 5)
                 {
-                    Debug.Log($"🎵 TIMING CAL [{sliceIndex}]: maxDuration={maxDuration}, factor={NOTE_LENGTH_FACTORS[maxDuration]}, baseMs={baseTimingMs:F1}, result={calculatedTiming:F1}ms");
+                    Debug.Log($"🎵 TIMING CAL [{sliceIndex}]: maxDuration={maxDuration}, factor={NOTE_LENGTH_FACTORS[maxDuration]}, multiplier={timingMultiplier}, baseMs={baseTimingMs:F1}, result={calculatedTiming:F1}ms");
                 }
             }
             else

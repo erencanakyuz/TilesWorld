@@ -9,6 +9,11 @@ public class Bootstrap : MonoBehaviour
     [Header("🎵 Core Systems")]
     [SerializeField] private GameObject songDatabasePrefab;
 
+    private void Awake()
+    {
+        Application.targetFrameRate = 60;
+    }
+
     void Start()
     {
         // Ana sahnenin zaten yüklü olup olmadığını kontrol et.

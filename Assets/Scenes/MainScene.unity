@@ -698,7 +698,6 @@ MonoBehaviour:
   musicSystem: {fileID: 1554464276}
   audioManager: {fileID: 0}
   uiManager: {fileID: 0}
-  jsonMusicParser: {fileID: 0}
 --- !u!4 &440843741
 Transform:
   m_ObjectHideFlags: 0
@@ -749,8 +748,7 @@ MonoBehaviour:
   laneWidth: 1.85
   worldDepth: 25
   speedMultiplier: 2
-  enablePerspectiveScaling: 1
-  enablePerspectiveRotation: 1
+  accelerationIntensity: 0.8
   hitZoneZ: -1
   hitZoneWidth: 2
   noteDestroyZ: 2
@@ -1230,6 +1228,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51c302f8f03cfd64090061880c861b93, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  timingMultiplier: 4
   laneCount: 6
   maxDirectionInterval: 10
 --- !u!4 &667145113
