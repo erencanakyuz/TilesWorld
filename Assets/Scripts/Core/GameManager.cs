@@ -83,6 +83,9 @@ public class GameManager : MonoBehaviour
 
     void InitializeCoreComponents()
     {
+        // CRITICAL: Ensure SongDatabase is initialized first
+        EnsureSongDatabaseExists();
+
         // If references are not set in the inspector, find them automatically using the singleton pattern.
         if (audioManager == null)
             audioManager = AudioManager.Instance;
@@ -377,6 +380,19 @@ public class GameManager : MonoBehaviour
             ChangeGameState(GameState.Paused);
         }
 #endif
+    }
+
+    /// <summary>
+    /// Ensure SongDatabase singleton exists (fallback if Bootstrap didn't create it)
+    /// </summary>
+    void EnsureSongDatabaseExists()
+    {
+        if (SongDatabase.Instance == null)
+        {
+            GameObject songDbObject = new GameObject("SongDatabase");
+            songDbObject.AddComponent<SongDatabase>();
+            Debug.Log("🎵 SongDatabase created by GameManager (Bootstrap fallback)");
+        }
     }
 
     void OnDestroy()

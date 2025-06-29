@@ -16,6 +16,10 @@ public class Bootstrap : MonoBehaviour
         if (SceneManager.GetSceneByName(TargetSceneName).isLoaded)
         {
             Debug.LogWarning($"'{TargetSceneName}' sahnesi zaten yüklü. Bootstrap işlemi atlanıyor.");
+
+            // CRITICAL FIX: Sahne zaten yüklü olsa bile core sistemleri başlat!
+            InitializeCoreSystemsFirst();
+
             // İsteğe bağlı olarak, bu objeyi yok edebiliriz çünkü görevi tamamlandı.
             Destroy(gameObject);
             return;

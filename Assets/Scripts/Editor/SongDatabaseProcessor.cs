@@ -73,7 +73,7 @@ public class SongDatabaseProcessor : EditorWindow
                     artist = artist,
                     tempo = tempo,
                     difficulty = difficulty,
-                    songKey = $"{cleanTitle.ToLower().Replace(" ", "_")}_{artist.ToLower().Replace(" ", "_")}" // Geçici anahtar
+                    songKey = $"{cleanTitle.ToLower().Replace(" ", "_")}_{artist.ToLower().Replace(" ", "_")}"
                 });
             }
 
@@ -83,7 +83,7 @@ public class SongDatabaseProcessor : EditorWindow
             File.WriteAllText(OutputPath, json);
             AssetDatabase.Refresh();
 
-            Debug.Log($"Başarılı! {songList.Count} şarkı işlendi ve '{OutputPath}' dosyasına kaydedildi.");
+            Debug.Log($"✅ BAŞARILI! {songList.Count} şarkı işlendi ve '{OutputPath}' dosyasına kaydedildi.");
         }
         catch (Exception e)
         {
@@ -134,4 +134,4 @@ public class SongDatabaseProcessor : EditorWindow
     }
 }
 
-// Bu yapılar artık DataStructures.cs dosyasında tanımlanıyor.
+// Bu yapılar artık DataStructures.cs dosyasında tanımlanıyor. 

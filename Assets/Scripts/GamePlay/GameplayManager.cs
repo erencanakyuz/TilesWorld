@@ -38,7 +38,6 @@ public class GameplayManager : MonoBehaviour
     [SerializeField] private InteractiveMusicSystem musicSystem;
     [SerializeField] private AudioManager audioManager;
     [SerializeField] private UIManager uiManager;
-    [SerializeField] private JsonMusicParser jsonMusicParser;
 
     // Game state management
     private bool isGameActive = false;
@@ -84,8 +83,6 @@ public class GameplayManager : MonoBehaviour
             audioManager = FindFirstObjectByType<AudioManager>();
         if (uiManager == null)
             uiManager = FindFirstObjectByType<UIManager>();
-        if (jsonMusicParser == null)
-            jsonMusicParser = FindFirstObjectByType<JsonMusicParser>();
 
         SetupGameplaySystems();
     }
@@ -357,8 +354,6 @@ public class GameplayManager : MonoBehaviour
     {
         // Simple heuristic: slower songs are generally longer
         // This is a rough estimation until we have actual duration data
-        float baseSeconds = 180f; // 3 minutes base
-
         if (tempo < 60) return 240f;      // Very slow: 4 minutes
         if (tempo < 80) return 210f;      // Slow: 3.5 minutes  
         if (tempo < 120) return 180f;     // Moderate: 3 minutes
