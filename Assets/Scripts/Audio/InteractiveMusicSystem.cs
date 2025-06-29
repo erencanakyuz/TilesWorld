@@ -401,7 +401,7 @@ public class InteractiveMusicSystem : MonoBehaviour
     /// <summary>
     /// Enhanced note playing with JSON pitch data (for NoteRenderer integration)
     /// </summary>
-    public void TriggerNoteAudio(GameNoteInfo noteInfo)
+    public void PlayNoteFromChart(GameNoteInfo noteInfo)
     {
         if (noteInfo == null) return;
 
@@ -426,8 +426,53 @@ public class InteractiveMusicSystem : MonoBehaviour
         }
 #endif
 
-        // Use unified processing method
-        ProcessAndPlayNote(noteInfo.idx, noteInfo.pitch, noteVolume, true, noteInfo.instrumentType);
+        // ENHANCED: AudioManager'ın yeni Java-style mapping metodunu kullan
+        if (audioManager != null)
+        {
+            audioManager.PlayNoteFromChart(noteInfo.line, noteInfo.pitch, currentInstrument, noteVolume);
+        }
+        else
+        {
+            Debug.LogWarning("🎵 AudioManager referansı bulunamadı!");
+        }
+
+        // Müzikal event ve analiz sistemini koru
+        ProcessMusicalEvent(noteInfo, noteVolume);
+    }
+
+    /// <summary>
+    /// Müzikal event'i işle ve analiz et (separated from audio playing)
+    /// </summary>
+    private void ProcessMusicalEvent(GameNoteInfo noteInfo, float velocity)
+    {
+        // Create musical event for analysis
+        var musicalEvent = new MusicalEvent
+        {
+            lane = noteInfo.line,
+            timestamp = Time.time,
+            velocity = velocity,
+            noteInfo = new MusicalNoteInfo
+            {
+                midiNote = noteInfo.pitch,
+                soundIndex = noteInfo.pitch,
+                noteName = GetNoteName(noteInfo.pitch),
+                instrumentType = currentInstrument,
+                isValid = true
+            }
+        };
+
+        // Add to recent events for chord detection
+        recentMusicalEvents.Enqueue(musicalEvent);
+        OnMusicalEventCreated?.Invoke(musicalEvent);
+
+        // Update session statistics
+        notesPlayedThisSession++;
+        laneLastPlayTime[noteInfo.line] = Time.time;
+
+        // Analyze musical patterns
+        CheckForChordCreation(musicalEvent);
+        UpdateMelodyComplexity(musicalEvent);
+        CleanupOldMusicalEvents();
     }
 
     /// <summary>
@@ -453,7 +498,7 @@ public class InteractiveMusicSystem : MonoBehaviour
 
         foreach (var note in chordNotes)
         {
-            TriggerNoteAudio(note);
+            PlayNoteFromChart(note);
         }
 
         // Detect and classify chord using JSON pitch data

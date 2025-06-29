@@ -628,7 +628,7 @@ public class NoteRenderer : MonoBehaviour
         if (InteractiveMusicSystem.Instance != null)
         {
             // Use enhanced music system with JSON pitch data - this handles all audio
-            InteractiveMusicSystem.Instance.TriggerNoteAudio(noteInfo);
+            InteractiveMusicSystem.Instance.PlayNoteFromChart(noteInfo);
         }
         // Note: No fallback to prevent duplicate audio calls
     }

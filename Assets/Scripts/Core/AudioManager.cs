@@ -26,6 +26,18 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private bool enableLatencyMonitoring = true;
     [SerializeField] private float averageLatency = 0f;
 
+    // === ESKİ JAVA OYUNUNDAN: SOUND_RESOURCE_IDXS MAPPING SİSTEMİ ===
+    // Bu sistem Java oyunundaki nota seçimini birebir kopyalar
+    private static readonly int[][] SOUND_RESOURCE_IDXS = {
+        // Piano notes mapping (Original Java) - Lane 0-5 için
+        new int[] { 24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44 },
+        new int[] { 19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39 },
+        new int[] { 15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35 },
+        new int[] { 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 },
+        new int[] { 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25 },
+        new int[] { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21 }
+    };
+
     // Audio Source Pool for low-latency playback
     private Queue<AudioSource> audioSourcePool;
     private List<AudioSource> activeAudioSources;
@@ -132,7 +144,11 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    #region Note Playing (Low-Latency)
+    #region Note Playing (Enhanced with Original Java Mapping)
+
+    /// <summary>
+    /// Ana nota çalma metodu - Original Java mapping ile geliştirildi
+    /// </summary>
     public void PlayNote(InstrumentType instrument, int pitch, float volume = 1.0f)
     {
         var audioSource = GetAvailableAudioSource();
@@ -148,109 +164,50 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    AudioSource GetAvailableAudioSource()
+    /// <summary>
+    /// Enhanced note playing - Java oyununun birebir kopyası
+    /// Bu metod GameNoteInfo'dan gelen line+pitch verisini doğru ses dosyasına çevirir
+    /// </summary>
+    public void PlayNoteFromChart(int line, int pitch, InstrumentType instrument, float volume = 1.0f)
     {
-        if (audioSourcePool.Count > 0)
+        // Orijinal Java oyununun SOUND_RESOURCE_IDXS mapping sistemi
+        int realSoundIndex = GetMappedSoundIndex(line, pitch);
+
+        Debug.Log($"🎵 JAVA MAPPING: Line={line}, Pitch={pitch} → RealSoundIndex={realSoundIndex} ({instrument})");
+
+        var audioSource = GetAvailableAudioSource();
+        if (audioSource != null)
         {
-            AudioSource source = audioSourcePool.Dequeue();
-            activeAudioSources.Add(source);
-            return source;
-        }
-
-        Debug.LogWarning("🎵 Audio source pool exhausted! Consider increasing pool size.");
-        return null;
-    }
-
-    public AudioClip GetNoteClip(InstrumentType instrument, int pitch)
-    {
-        // Try to get from instrument arrays first
-        if (instruments != null && instruments.Length > 0)
-        {
-            foreach (var instrumentData in instruments)
-            {
-                if (instrumentData.instrumentType == instrument &&
-                    instrumentData.noteClips != null &&
-                    pitch >= 0 && pitch < instrumentData.noteClips.Length)
-                {
-                    return instrumentData.noteClips[pitch];
-                }
-            }
-        }
-
-        // Try to load from Assets/Audio directory structure
-        AudioClip audioClip = LoadAudioFromAssets(instrument, pitch);
-        if (audioClip != null)
-        {
-            return audioClip;
-        }
-
-        // Development fallback: Generate test tone when real audio missing
-        Debug.LogError($"🎵 [PRODUCTION] Missing audio file for {instrument} pitch {pitch} - no fallback available!");
-        return null;
-    }
-
-    AudioClip LoadAudioFromAssets(InstrumentType instrument, int pitch)
-    {
-        // Match original game's audio file structure: Assets/Audio/[Instrument]/[file_snd000-044].ogg
-        string instrumentFolder = instrument.ToString(); // Piano, Harp, Guitar
-        string fileName = "";
-
-        // Map instrument to original file naming convention
-        switch (instrument)
-        {
-            case InstrumentType.Piano:
-                fileName = $"piano_snd{pitch:D3}"; // piano_snd000, piano_snd001, etc.
-                break;
-            case InstrumentType.Harp:
-                fileName = $"harp_snd{pitch:D3}"; // harp_snd000, harp_snd001, etc.
-                break;
-            case InstrumentType.Guitar:
-                // Original had both acustic and classic - try acustic first
-                fileName = $"acustic_guitar_snd{pitch:D3}"; // acustic_guitar_snd000, etc.
-                break;
-        }
-
-        // Try multiple loading paths
-        string[] possiblePaths = {
-            $"Audio/{instrumentFolder}/{fileName}",  // Resources/Audio/Piano/piano_snd000
-            $"{instrumentFolder}/{fileName}",        // Resources/Piano/piano_snd000
-            fileName                                 // Resources/piano_snd000
-        };
-
-        foreach (string path in possiblePaths)
-        {
-            AudioClip clip = Resources.Load<AudioClip>(path);
+            var clip = GetNoteClip(instrument, realSoundIndex);
             if (clip != null)
             {
-                // Audio loaded successfully
-                return clip;
+                audioSource.clip = clip;
+                audioSource.volume = volume * masterVolume;
+                audioSource.Play();
             }
-        }
-
-        // Fallback path for Guitar - try classic variant
-        if (instrument == InstrumentType.Guitar)
-        {
-            fileName = $"classic_guitar_snd{pitch:D3}";
-            string[] guitarPaths = {
-                $"Audio/{instrumentFolder}/{fileName}",
-                $"{instrumentFolder}/{fileName}",
-                fileName
-            };
-
-            foreach (string path in guitarPaths)
+            else
             {
-                AudioClip clip = Resources.Load<AudioClip>(path);
-                if (clip != null)
-                {
-                    // Guitar audio loaded successfully
-                    return clip;
-                }
+                Debug.LogWarning($"🎵 Ses dosyası bulunamadı: {instrument} index {realSoundIndex}");
             }
         }
+    }
 
-        Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch}. " +
-                        $"Make sure audio files are in Resources folder!");
-        return null;
+    /// <summary>
+    /// Orijinal Java'dan: line+pitch → real sound index mapping
+    /// Bu, oyunun müzikal doğruluğunu sağlayan kritik algoritma
+    /// </summary>
+    private int GetMappedSoundIndex(int line, int pitch)
+    {
+        // Safety checks
+        int safeLine = Mathf.Clamp(line, 0, SOUND_RESOURCE_IDXS.Length - 1);
+
+        if (pitch < 0 || pitch >= SOUND_RESOURCE_IDXS[safeLine].Length)
+        {
+            Debug.LogWarning($"⚠️ Geçersiz pitch değeri! Line: {line}, Pitch: {pitch}. Varsayılan olarak 0 kullanılıyor.");
+            pitch = Mathf.Clamp(pitch, 0, SOUND_RESOURCE_IDXS[safeLine].Length - 1);
+        }
+
+        return SOUND_RESOURCE_IDXS[safeLine][pitch];
     }
     #endregion
 
@@ -390,6 +347,111 @@ public class AudioManager : MonoBehaviour
     void OnDestroy()
     {
         PlayerPrefs.Save();
+    }
+
+    AudioSource GetAvailableAudioSource()
+    {
+        if (audioSourcePool.Count > 0)
+        {
+            AudioSource source = audioSourcePool.Dequeue();
+            activeAudioSources.Add(source);
+            return source;
+        }
+
+        Debug.LogWarning("🎵 Audio source pool exhausted! Consider increasing pool size.");
+        return null;
+    }
+
+    public AudioClip GetNoteClip(InstrumentType instrument, int pitch)
+    {
+        // Try to get from instrument arrays first
+        if (instruments != null && instruments.Length > 0)
+        {
+            foreach (var instrumentData in instruments)
+            {
+                if (instrumentData.instrumentType == instrument &&
+                    instrumentData.noteClips != null &&
+                    pitch >= 0 && pitch < instrumentData.noteClips.Length)
+                {
+                    return instrumentData.noteClips[pitch];
+                }
+            }
+        }
+
+        // Try to load from Assets/Audio directory structure
+        AudioClip audioClip = LoadAudioFromAssets(instrument, pitch);
+        if (audioClip != null)
+        {
+            return audioClip;
+        }
+
+        // Development fallback: Generate test tone when real audio missing
+        Debug.LogError($"🎵 [PRODUCTION] Missing audio file for {instrument} pitch {pitch} - no fallback available!");
+        return null;
+    }
+
+    AudioClip LoadAudioFromAssets(InstrumentType instrument, int pitch)
+    {
+        // Match original game's audio file structure: Assets/Audio/[Instrument]/[file_snd000-044].ogg
+        string instrumentFolder = instrument.ToString(); // Piano, Harp, Guitar
+        string fileName = "";
+
+        // Map instrument to original file naming convention
+        switch (instrument)
+        {
+            case InstrumentType.Piano:
+                fileName = $"piano_snd{pitch:D3}"; // piano_snd000, piano_snd001, etc.
+                break;
+            case InstrumentType.Harp:
+                fileName = $"harp_snd{pitch:D3}"; // harp_snd000, harp_snd001, etc.
+                break;
+            case InstrumentType.Guitar:
+                // Original had both acustic and classic - try acustic first
+                fileName = $"acustic_guitar_snd{pitch:D3}"; // acustic_guitar_snd000, etc.
+                break;
+        }
+
+        // Try multiple loading paths
+        string[] possiblePaths = {
+            $"Audio/{instrumentFolder}/{fileName}",  // Resources/Audio/Piano/piano_snd000
+            $"{instrumentFolder}/{fileName}",        // Resources/Piano/piano_snd000
+            fileName                                 // Resources/piano_snd000
+        };
+
+        foreach (string path in possiblePaths)
+        {
+            AudioClip clip = Resources.Load<AudioClip>(path);
+            if (clip != null)
+            {
+                // Audio loaded successfully
+                return clip;
+            }
+        }
+
+        // Fallback path for Guitar - try classic variant
+        if (instrument == InstrumentType.Guitar)
+        {
+            fileName = $"classic_guitar_snd{pitch:D3}";
+            string[] guitarPaths = {
+                $"Audio/{instrumentFolder}/{fileName}",
+                $"{instrumentFolder}/{fileName}",
+                fileName
+            };
+
+            foreach (string path in guitarPaths)
+            {
+                AudioClip clip = Resources.Load<AudioClip>(path);
+                if (clip != null)
+                {
+                    // Guitar audio loaded successfully
+                    return clip;
+                }
+            }
+        }
+
+        Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch}. " +
+                        $"Make sure audio files are in Resources folder!");
+        return null;
     }
 }
 
