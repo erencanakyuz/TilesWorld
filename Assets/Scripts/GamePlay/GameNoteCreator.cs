@@ -4,306 +4,123 @@ using System.Linq;
 using System;
 
 /// <summary>
-/// 🎹 *** ORİJİNAL JAVA ALGORİTMASI RESTORE EDİLDİ! ***
-/// GameNoteCreator - oldgame.md'deki EXACT algoritmaları uygular
-/// Critical: LANE_PITCH_OFFSET, NOTE_LENGTH_FACTORS, LoadAndPrepareSong, Tick
+/// GameNoteCreator - True Dynamic System (oldgame.md'ye uygun)
+/// Ham veriyi saklar, her tick'te anlık olarak nota paketi oluşturur ve kuralları uygular.
 /// </summary>
 public class GameNoteCreator : MonoBehaviour
 {
-    // *** ORİJİNAL JAVA'DAN PORT EDİLEN SABİTLER (oldgame.md'den) ***
+    // --- Orijinal Java'dan Port Edilen Sabitler ---
     private static readonly int[] NOTE_LENGTH_FACTORS = {
         1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 7, 14, 28, 56,
         1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 7, 14, 28, 56
     };
 
     private static readonly int[] LANE_PITCH_OFFSET = { 3, 5, 7, 11, 13, 17 };
+    private const float FIRST_DELAY_MS = 1000f; // oldgame.md'den
 
-    [Header("🎵 Original Java Algorithm Settings")]
-    private const int MAX_DIRECTION_INTERVAL = 10;
-
-    [SerializeField] private float accDeltaTime = 0.0f;
-    [SerializeField] private int firstPassCnt = 3;
-    [SerializeField] private bool isAllCreated = false;
-
-    private const float FIRST_DELAY = 1000f;
-    private bool isSecondRequest = true;
-    private int maxGameHeightLength = 6;            // ✅ EXACT Java: maxGameHeightLength
-    private int validGameNoteCnt = 0;               // ✅ EXACT Java: validGameNoteCnt
-
-    [Header("🎵 oldgame.md Konfigürasyon")]
+    [Header("🎵 Konfigürasyon")]
     [SerializeField] private int laneCount = 6;
     [SerializeField] private int maxDirectionInterval = 10;
 
-    // Direction tracking for rules (used by LoadAndPrepareSong)
+    // --- HAM VERİ (Dinamik İçin) ---
+    private List<NoteChartSequence> rawChartData;
+    private float baseTimingMs;
+    private int currentSequenceIndex = 0;
+    private int currentSubdivisionIndex = 0;
+
+    // --- DİNAMİK DURUM ---
+    private float accumulatedTime = 0f;
+    private bool isAllCreated = false;
+    private bool firstDelayCompleted = false;
+
+    // --- KURAL MOTORU (O anki durum) ---
     private int directionCounter = 0;
     private bool isFlowingRight = true;
 
-    // Sequence Data
-    private IEnumerator<GameNoteInfoPackage> finalGameNotePackIterator;
-    private GameNoteInfoPackage returnGameNoteInfoPack;
-    private GameNoteInfoPackage lastApplyGameNoteInfoPack;           // ✅ EXACT Java: lastApplyGameNoteInfoPack
-    private List<GameNoteInfoPackage> finalGameNotePackages;
+    // --- Olaylar ---
+    public static event Action<List<GameNoteInfo>> OnNotesGenerated;
+    public static event Action OnGenerationComplete;
 
-    private AudioManager audioManager;
-    private SongData currentSong;
-    private float currentSongBPM = 120f;
-
-    // Events
-    public static event System.Action OnGenerationComplete;
-
-    void Start()
-    {
-        audioManager = AudioManager.Instance;
-        if (audioManager == null)
-        {
-            Debug.LogWarning("⚠️ AudioManager.Instance not found!");
-        }
-    }
+    // --- DİNAMİK DURUM (Yeni) ---
+    private GameNoteInfoPackage currentNotePackage;
+    private float nextNoteTime = 0f;
 
     /// <summary>
-    /// *** EXACT JAVA: getNote() method - CRITICAL! ***
-    /// This is the EXACT 1:1 port from original GameNoteCreator.java line 259
+    /// Ham veriyi yükler ama hiçbir şey hesaplamaz - sadece saklar
     /// </summary>
-    public List<GameNoteInfo> GetNote(float deltaTime)
-    {
-        // *** EXACT JAVA LOGIC ***
-        if (firstPassCnt > 0)
-        {
-            firstPassCnt--;
-            return null;
-        }
-
-        accDeltaTime += deltaTime;
-
-        if (isSecondRequest)
-        {
-            if (FIRST_DELAY <= accDeltaTime * 1000.0f)
-            {
-                accDeltaTime = 0.0f;
-                isSecondRequest = false;
-
-                // Return notes directly (no event)
-                if (returnGameNoteInfoPack != null)
-                {
-                    return returnGameNoteInfoPack.gameNoteInfos;
-                }
-                return null;
-            }
-            return null;
-        }
-
-        if (returnGameNoteInfoPack == null) return null;
-
-        if (returnGameNoteInfoPack.oneNote <= accDeltaTime * 1000.0f)
-        {
-            accDeltaTime = 0.0f;
-            if (finalGameNotePackIterator != null && finalGameNotePackIterator.MoveNext())
-            {
-                GameNoteInfoPackage gameNoteInfoPackage = finalGameNotePackIterator.Current;
-                returnGameNoteInfoPack = gameNoteInfoPackage;
-
-                // Return notes directly (no event)
-                return gameNoteInfoPackage.gameNoteInfos;
-            }
-
-            isAllCreated = true;
-            OnGenerationComplete?.Invoke();
-            return null;
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// *** EXACT JAVA: Constructor equivalent ***
-    /// Simplified to work with LoadSong flow
-    /// </summary>
-    public void InitializeGame(int tempo, int maxHeightLength)
-    {
-        maxGameHeightLength = maxHeightLength;
-
-        // Reset state for new song
-        ResetState();
-
-        Debug.Log($"🎵 EXACT JAVA: Game initialized with tempo={tempo}, lanes={maxHeightLength}");
-    }
-
-    /// <summary>
-    /// *** EXACT JAVA: generateFinalList() method ***
-    /// This works with the LoadSong flow that provides already processed packages
-    /// </summary>
-    private void GenerateFinalList()
-    {
-        // This method is now handled by LoadSong -> ConvertChartToTemporalInfo -> GenerateFinalPackages
-        // The finalGameNotePackages list is set by LoadSong process
-
-        if (finalGameNotePackages != null && finalGameNotePackages.Count > 0)
-        {
-            validGameNoteCnt = finalGameNotePackages.Count;
-            Debug.Log($"🎵 EXACT JAVA: Using {finalGameNotePackages.Count} pre-generated packages");
-        }
-        else
-        {
-            Debug.LogWarning("🎵 EXACT JAVA: No packages found! Make sure LoadSong was called first.");
-        }
-    }
-
-    /// <summary>
-    /// *** EXACT JAVA: applyRule() method ***
-    /// </summary>
-    private void ApplyRule(GameNoteInfoPackage gameNoteInfoPackage)
-    {
-        MergeGameNoteInfoPackage(gameNoteInfoPackage, 2);
-        if (!EqualLastNoteInfoPackagePitch(gameNoteInfoPackage) && EqualLastInfoPackageIdx(gameNoteInfoPackage))
-        {
-            ApplyComplexRule(gameNoteInfoPackage);
-        }
-        ApplySpace(gameNoteInfoPackage);
-    }
-
-    /// <summary>
-    /// *** EXACT JAVA: applyComplexRule() method ***
-    /// This creates the flowing "S" pattern that makes the game feel alive
-    /// </summary>
-    private void ApplyComplexRule(GameNoteInfoPackage gameNoteInfoPackage)
-    {
-        if (isFlowingRight)
-        {
-            directionCounter++;
-        }
-        else
-        {
-            directionCounter--;
-        }
-
-        for (int i = 0; i < gameNoteInfoPackage.gameNoteInfos.Count; i++)
-        {
-            int j = gameNoteInfoPackage.gameNoteInfos[i].idx;
-            int k = directionCounter;
-            int m = laneCount;
-            gameNoteInfoPackage.gameNoteInfos[i].idx = (j + k) % m;
-        }
-
-        if (directionCounter >= maxDirectionInterval)
-        {
-            isFlowingRight = false;
-        }
-        else if (directionCounter <= 0)
-        {
-            isFlowingRight = true;
-        }
-
-        // Check for overlap with last package
-        for (int i = 0; i < gameNoteInfoPackage.gameNoteInfos.Count; i++)
-        {
-            if (IsExistInLastApplyGameNoteInfoPack(gameNoteInfoPackage.gameNoteInfos[i]))
-            {
-                ApplyComplexRule(gameNoteInfoPackage);
-                break;
-            }
-        }
-    }
-
-    /// <summary>
-    /// *** EXACT JAVA: applySpace() method ***
-    /// Prevents clustering of notes in adjacent lanes
-    /// </summary>
-    private void ApplySpace(GameNoteInfoPackage gameNoteInfoPackage)
-    {
-        if (gameNoteInfoPackage.gameNoteInfos.Count > 1)
-        {
-            gameNoteInfoPackage.gameNoteInfos.Sort((a, b) => a.idx.CompareTo(b.idx));
-
-            for (int i = 0; i < gameNoteInfoPackage.gameNoteInfos.Count - 1; i++)
-            {
-                GameNoteInfo gameNoteInfo1 = gameNoteInfoPackage.gameNoteInfos[i];
-                GameNoteInfo gameNoteInfo2 = gameNoteInfoPackage.gameNoteInfos[i + 1];
-
-                if (Mathf.Abs(gameNoteInfo1.idx - gameNoteInfo2.idx) == 1)
-                {
-                    gameNoteInfo2.idx = (gameNoteInfo2.idx + 1) % laneCount;
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// *** EXACT JAVA: Load and prepare song for GetNote() ***
-    /// </summary>
-    public void LoadAndPrepareSong(List<NoteChartSequence> chartSequences, int tempo)
+    public void LoadSong(List<NoteChartSequence> rawChart, int tempo)
     {
         ResetState();
 
-        // 1. Convert chart to temporal data
-        List<TemporalNoteInfo> temporalNotes = ConvertChartToTemporalInfo(chartSequences, tempo);
+        rawChartData = rawChart;
+        baseTimingMs = (60000f / tempo) / 8f;
 
-        // 2. Generate final packages with rules
-        List<GameNoteInfoPackage> finalPackages = GenerateFinalPackages(temporalNotes);
-
-        // 3. Store packages for GetNote() iterator
-        finalGameNotePackages = finalPackages;
-
-        // 4. Initialize iterator
-        if (finalGameNotePackages != null && finalGameNotePackages.Count > 0)
-        {
-            finalGameNotePackIterator = finalGameNotePackages.GetEnumerator();
-            if (finalGameNotePackIterator.MoveNext())
-            {
-                returnGameNoteInfoPack = finalGameNotePackIterator.Current;
-            }
-        }
-        else
-        {
-            isAllCreated = true;
-        }
-
-        Debug.Log($"🎵 EXACT JAVA: Song ready! {finalGameNotePackages?.Count ?? 0} packages.");
+        Debug.Log($"🎵 Raw chart loaded with {rawChartData.Count} sequences. Base timing: {baseTimingMs:F2}ms");
     }
 
-    // *** TICK METHOD REMOVED - Using GetNote() stream-based approach only ***
-
     /// <summary>
-    /// Public interface for existing code
+    /// Backward compatibility - SongData'dan JSON yükleyip raw chart'a çevir
     /// </summary>
     public void LoadSong(SongData song)
     {
-        if (song == null) return;
-
-        currentSong = song;
-        currentSongBPM = song.bpm;
-
-        // Load JSON and convert to NoteChartSequence format
-        string jsonFileName = GetIndividualJsonFileName(song);
-        string resourcePath = $"Song_Note_Jsons/Individual/{jsonFileName}".Replace(".json", "");
-
-        Debug.Log($"🔍 DEBUG: Loading {song.songName} by {song.artist}");
-        Debug.Log($"🔍 DEBUG: jsonFileName = {jsonFileName}");
-        Debug.Log($"🔍 DEBUG: resourcePath = {resourcePath}");
-
-        TextAsset jsonFile = Resources.Load<TextAsset>(resourcePath);
-
-        if (jsonFile == null)
+        if (song == null)
         {
-            Debug.LogError($"❌ Could not load: {resourcePath}");
+            Debug.LogError("🚨 Song is null!");
             return;
         }
 
-        Debug.Log($"🔍 DEBUG: JSON file loaded, length: {jsonFile.text.Length}");
+        Debug.Log($"🎵 Loading song via SongData compatibility: {song.songName}");
+
+        // JSON dosyasını yükle
+        string jsonFileName = GetJsonFileName(song);
+        string resourcePath = $"Song_Note_Jsons/Individual/{jsonFileName}".Replace(".json", "");
+
+        Debug.Log($"🔍 Trying to load JSON from path: {resourcePath}");
+        Debug.Log($"🔍 Generated filename: {jsonFileName}");
+
+        TextAsset jsonFile = Resources.Load<TextAsset>(resourcePath);
+        if (jsonFile == null)
+        {
+            Debug.LogError($"❌ Could not load JSON from: {resourcePath}");
+            Debug.LogError($"❌ Make sure the file exists in Resources/{resourcePath}.json");
+
+            // Alternative paths denemesi
+            string[] possiblePaths = {
+                $"Song_Note_Jsons/Individual/turkish_delight_mozart",
+                $"Song_Note_Jsons/Individual/turkish_delight_unknown",
+                $"Song_Note_Jsons/Individual/air_on_a_g_string_bach"
+            };
+
+            foreach (string altPath in possiblePaths)
+            {
+                Debug.Log($"🔍 Trying alternative path: {altPath}");
+                TextAsset altFile = Resources.Load<TextAsset>(altPath);
+                if (altFile != null)
+                {
+                    Debug.Log($"✅ Found file at: {altPath}");
+                    jsonFile = altFile;
+                    break;
+                }
+            }
+
+            if (jsonFile == null)
+            {
+                Debug.LogError("❌ No JSON file found for this song!");
+                return;
+            }
+        }
 
         try
         {
+            Debug.Log($"📄 JSON file loaded, length: {jsonFile.text.Length} characters");
             var sequences = ParseIndividualJson(jsonFile.text);
-            Debug.Log($"🔍 DEBUG: Parsed {sequences.Count} sequences from JSON");
+            Debug.Log($"📊 Parsed {sequences.Count} sequences");
 
             var chartSequences = ConvertToChartSequences(sequences);
-            Debug.Log($"🔍 DEBUG: Converted to {chartSequences.Count} chart sequences");
+            Debug.Log($"📈 Converted to {chartSequences.Count} chart sequences");
 
-            // Use EXACT Java algorithm
-            InitializeGame((int)song.bpm, 6); // Call EXACT Java constructor equivalent
-            LoadAndPrepareSong(chartSequences, (int)song.bpm); // Load packages for GetNote()
-
-            Debug.Log($"🎵 EXACT JAVA: LoadSong complete, ready for GetNote() calls");
-
-            Debug.Log($"🔍 DEBUG: Final packages ready: {finalGameNotePackages?.Count ?? 0}");
+            LoadSong(chartSequences, (int)song.bpm);
+            Debug.Log($"🎵 DYNAMIC SYSTEM: {song.songName} loaded via compatibility layer!");
         }
         catch (Exception e)
         {
@@ -312,132 +129,213 @@ public class GameNoteCreator : MonoBehaviour
         }
     }
 
-    #region oldgame.md Core Algorithms
-
     /// <summary>
-    /// *** oldgame.md'deki ConvertChartToTemporalInfo (CRITICAL!) ***
+    /// Oyun döngüsünde sürekli çağrılır. oldgame.md'deki oneNote timing sistemini uygular.
+    /// Her nota paketi bir sonraki paketin ne kadar süre sonra geleceğini belirler.
     /// </summary>
-    private List<TemporalNoteInfo> ConvertChartToTemporalInfo(List<NoteChartSequence> chart, int tempo)
+    public void GetNote(float deltaTime)
     {
-        // *** GEÇICI FIX: 10x yavaşlatım test için ***
-        float baseTimingMs = ((60000f / tempo) / 8f) * 10f; // 10x slower for testing
-        var temporalNoteList = new List<TemporalNoteInfo>();
+        if (isAllCreated) return;
 
-        Debug.Log($"🔍 TIMING: BPM={tempo}, baseTimingMs={baseTimingMs:F1}ms");
+        accumulatedTime += deltaTime * 1000f; // milisaniye'ye çevir
 
-        foreach (var sequence in chart)
+        // PHASE 1: FIRST_DELAY (1000ms başlangıç gecikmesi)
+        if (!firstDelayCompleted)
         {
-            var columns = new Dictionary<int, (int pitch, int duration)[]>();
-            int maxSubdivisions = 0;
-
-            // Parse all lanes
-            for (int lane = 0; lane < laneCount; lane++)
+            if (accumulatedTime >= FIRST_DELAY_MS)
             {
-                string lineData = GetLineData(sequence, lane);
-                string[] subdivisions = lineData.Split('/');
-                if (subdivisions.Length > maxSubdivisions) maxSubdivisions = subdivisions.Length;
+                Debug.Log($"✅ FIRST_DELAY completed! Starting dynamic generation...");
+                firstDelayCompleted = true;
 
-                for (int i = 0; i < subdivisions.Length; i++)
+                // İlk paketi oluştur
+                currentNotePackage = CreatePackageAtCurrentMoment();
+                if (currentNotePackage != null)
                 {
-                    if (!columns.ContainsKey(i)) columns[i] = new (int, int)[6];
+                    Debug.Log($"🎯 FIRST package: {currentNotePackage.gameNoteInfos.Count} notes, oneNote: {currentNotePackage.oneNote:F1}ms");
+                    OnNotesGenerated?.Invoke(currentNotePackage.gameNoteInfos);
 
-                    string[] parts = subdivisions[i].Split(',');
-                    if (parts.Length == 2 && int.TryParse(parts[0], out int pitch) && int.TryParse(parts[1], out int duration))
-                    {
-                        columns[i][lane] = (pitch, duration);
-                    }
-                    else
-                    {
-                        columns[i][lane] = (-1, -1);
-                    }
+                    // *** FIX: Timing'i doğru reset et ***
+                    accumulatedTime = 0f; // Reset accumulated time for clean start
+                    nextNoteTime = currentNotePackage.oneNote; // Set next package time
                 }
+                else
+                {
+                    isAllCreated = true;
+                    OnGenerationComplete?.Invoke();
+                }
+                return; // *** FIX: Prevent double spawn in same frame ***
             }
+            return;
+        }
 
-            // Process time slots
-            for (int subIdx = 0; subIdx < maxSubdivisions; subIdx++)
+        // PHASE 2: oneNote timing system (asıl dinamik sistem)
+        if (currentNotePackage != null && accumulatedTime >= nextNoteTime)
+        {
+            accumulatedTime -= nextNoteTime; // Kalan süreyi koru (precision için)
+
+            // Bir sonraki paketi oluştur
+            currentNotePackage = CreatePackageAtCurrentMoment();
+            if (currentNotePackage != null)
             {
-                if (!columns.ContainsKey(subIdx)) continue;
+                Debug.Log($"🎯 Next package: {currentNotePackage.gameNoteInfos.Count} notes, oneNote: {currentNotePackage.oneNote:F1}ms, dir: {directionCounter}");
 
-                var temporalInfo = new TemporalNoteInfo();
-                bool hasNotes = false;
+                // *** DEBUG: Event'i tetiklemeden önce subscriber sayısını kontrol et ***
+                int subscriberCount = OnNotesGenerated?.GetInvocationList()?.Length ?? 0;
+                Debug.Log($"🔥 EVENT DEBUG: OnNotesGenerated has {subscriberCount} subscribers");
 
-                for (int lane = 0; lane < laneCount; lane++)
-                {
-                    var (pitch, duration) = columns[subIdx][lane];
-                    if (pitch != -1)
-                    {
-                        temporalInfo.pitches[lane] = pitch;
-                        temporalInfo.durationType = duration;
-                        hasNotes = true;
-                    }
-                }
+                OnNotesGenerated?.Invoke(currentNotePackage.gameNoteInfos);
 
-                if (hasNotes)
-                {
-                    // *** ORİJİNAL JAVA: NOTE_LENGTH_FACTORS ***
-                    if (temporalInfo.durationType >= 0 && temporalInfo.durationType < NOTE_LENGTH_FACTORS.Length)
-                    {
-                        temporalInfo.timingMs = NOTE_LENGTH_FACTORS[temporalInfo.durationType] * baseTimingMs;
-                    }
-                    else
-                    {
-                        temporalInfo.timingMs = baseTimingMs; // Fallback
-                    }
-                    temporalNoteList.Add(temporalInfo);
-                }
+                // Bir sonraki paketin zamanını ayarla
+                nextNoteTime = currentNotePackage.oneNote;
+            }
+            else
+            {
+                // Artık nota kalmadı
+                isAllCreated = true;
+                OnGenerationComplete?.Invoke();
+                Debug.Log("🏁 Generation complete!");
             }
         }
-        return temporalNoteList;
+    }
+
+    #region True Dynamic Generation (Her Call'da Anlık)
+
+    /// <summary>
+    /// O ANKİ ANDA sıradaki package'ı bul, oluştur ve kuralları uygula
+    /// </summary>
+    private GameNoteInfoPackage CreatePackageAtCurrentMoment()
+    {
+        var templatePackage = FindNextValidPackage();
+        if (templatePackage == null) return null;
+
+        // Sıradaki subdivision'a geç
+        AdvanceToNextSubdivision();
+
+        // Template'den yeni bir package oluştur ve kuralları uygula
+        var finalNotes = new List<GameNoteInfo>();
+
+        // Template'den notaları oluştur
+        foreach (var templateNote in templatePackage.gameNoteInfos)
+        {
+            var gameNote = new GameNoteInfo
+            {
+                idx = (templateNote.pitch + LANE_PITCH_OFFSET[templateNote.line]) % laneCount,
+                pitch = templateNote.pitch,
+                line = templateNote.line
+            };
+            finalNotes.Add(gameNote);
+        }
+
+        // *** O ANKİ DURUMA GÖRE KURALLAR UYGULA ***
+        ApplyComplexRuleAtThisMoment(finalNotes);
+        ApplySpacingAtThisMoment(finalNotes);
+
+        // Final package oluştur
+        var finalPackage = new GameNoteInfoPackage
+        {
+            oneNote = templatePackage.oneNote,
+            gameNoteInfos = finalNotes
+        };
+
+        return finalPackage;
     }
 
     /// <summary>
-    /// *** oldgame.md'deki GenerateFinalPackages (CRITICAL!) ***
+    /// Sıradaki geçerli paketi bul (henüz oluşturmaz!)
     /// </summary>
-    private List<GameNoteInfoPackage> GenerateFinalPackages(List<TemporalNoteInfo> temporalNotes)
+    private GameNoteInfoPackage FindNextValidPackage()
     {
-        var packages = new List<GameNoteInfoPackage>();
-
-        foreach (var tNote in temporalNotes)
+        if (rawChartData == null)
         {
-            var package = new GameNoteInfoPackage { oneNote = tNote.timingMs };
-            var tempNotes = new List<GameNoteInfo>();
+            Debug.LogError("🚨 rawChartData is null! Song was not loaded properly.");
+            return null;
+        }
 
-            for (int lane = 0; lane < laneCount; lane++)
+        while (currentSequenceIndex < rawChartData.Count)
+        {
+            var sequence = rawChartData[currentSequenceIndex];
+            var packageData = GetSubdivisionData(sequence, currentSubdivisionIndex);
+
+            if (packageData != null)
             {
-                if (tNote.pitches[lane] != -1)
+                return packageData;
+            }
+
+            // Bu sequence bitti, sıradakine geç
+            currentSequenceIndex++;
+            currentSubdivisionIndex = 0;
+        }
+
+        return null; // Hiç nota kalmadı
+    }
+
+    /// <summary>
+    /// Belirli bir subdivision'dan geçici package oluştur
+    /// </summary>
+    private GameNoteInfoPackage GetSubdivisionData(NoteChartSequence sequence, int subdivisionIndex)
+    {
+        var package = new GameNoteInfoPackage();
+        var tempNotes = new List<GameNoteInfo>();
+        bool hasAnyNote = false;
+        int maxDurationType = 0;
+
+        for (int lane = 0; lane < laneCount; lane++)
+        {
+            string[] subdivisions = sequence.GetLineData(lane).Split('/');
+            if (subdivisionIndex >= subdivisions.Length) continue;
+
+            string[] parts = subdivisions[subdivisionIndex].Split(',');
+            if (parts.Length == 2 && int.TryParse(parts[0], out int pitch) && int.TryParse(parts[1], out int duration))
+            {
+                if (pitch != -1) // Valid note
                 {
-                    var gameNote = new GameNoteInfo
+                    var note = new GameNoteInfo
                     {
-                        // *** ORİJİNAL JAVA: LANE_PITCH_OFFSET ***
-                        idx = (tNote.pitches[lane] + LANE_PITCH_OFFSET[lane]) % laneCount,
-                        pitch = tNote.pitches[lane],
-                        line = lane
+                        pitch = pitch,
+                        line = lane,
+                        idx = -1 // Henüz hesaplanmadı
                     };
-                    tempNotes.Add(gameNote);
+                    tempNotes.Add(note);
+                    maxDurationType = Mathf.Max(maxDurationType, duration);
+                    hasAnyNote = true;
                 }
             }
-
-            // *** oldgame.md Rules ***
-            ApplyComplexRule(tempNotes);
-            ApplySpacing(tempNotes);
-
-            package.gameNoteInfos = tempNotes;
-            packages.Add(package);
         }
-        return packages;
+
+        if (!hasAnyNote) return null;
+
+        // Timing hesapla
+        if (maxDurationType < NOTE_LENGTH_FACTORS.Length)
+        {
+            package.oneNote = NOTE_LENGTH_FACTORS[maxDurationType] * baseTimingMs;
+        }
+        else
+        {
+            package.oneNote = baseTimingMs; // Fallback
+        }
+
+        package.gameNoteInfos = tempNotes;
+        return package;
+    }
+
+    private void AdvanceToNextSubdivision()
+    {
+        currentSubdivisionIndex++;
     }
 
     /// <summary>
-    /// *** oldgame.md'deki ApplyComplexRule (CRITICAL!) ***
+    /// O ANKİ direction counter'a göre akış kuralı uygula
     /// </summary>
-    private void ApplyComplexRule(List<GameNoteInfo> notes)
+    private void ApplyComplexRuleAtThisMoment(List<GameNoteInfo> notes)
     {
+        // Direction counter'ı güncelle
         if (isFlowingRight) directionCounter++;
         else directionCounter--;
 
         if (directionCounter >= maxDirectionInterval) isFlowingRight = false;
         else if (directionCounter <= 0) isFlowingRight = true;
 
+        // O ANKİ counter değeriyle notaları kaydır
         foreach (var note in notes)
         {
             note.idx = (note.idx + directionCounter + laneCount) % laneCount;
@@ -445,9 +343,9 @@ public class GameNoteCreator : MonoBehaviour
     }
 
     /// <summary>
-    /// *** oldgame.md'deki ApplySpacing (CRITICAL!) ***
+    /// O ANKİ durumda spacing kuralı uygula
     /// </summary>
-    private void ApplySpacing(List<GameNoteInfo> notes)
+    private void ApplySpacingAtThisMoment(List<GameNoteInfo> notes)
     {
         if (notes.Count <= 1) return;
 
@@ -461,173 +359,24 @@ public class GameNoteCreator : MonoBehaviour
         }
     }
 
-    #region EXACT Java Helper Methods
-
-    /// <summary>
-    /// *** EXACT JAVA: equalLastNoteInfoPackagePitch() method ***
-    /// </summary>
-    private bool EqualLastNoteInfoPackagePitch(GameNoteInfoPackage gameNoteInfoPackage)
-    {
-        if (lastApplyGameNoteInfoPack != null)
-        {
-            List<int> lastList = MakeOneNoteIdList(lastApplyGameNoteInfoPack);
-            List<int> currentList = MakeOneNoteIdList(gameNoteInfoPackage);
-
-            if (lastList.Count == currentList.Count)
-            {
-                for (int i = 0; i < lastList.Count; i++)
-                {
-                    if (!currentList.Contains(lastList[i]))
-                    {
-                        return false;
-                    }
-                }
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// *** EXACT JAVA: equalLastInfoPackageIdx() method ***
-    /// </summary>
-    private bool EqualLastInfoPackageIdx(GameNoteInfoPackage gameNoteInfoPackage)
-    {
-        if (lastApplyGameNoteInfoPack != null &&
-            lastApplyGameNoteInfoPack.gameNoteInfos.Count == gameNoteInfoPackage.gameNoteInfos.Count)
-        {
-            for (int i = 0; i < lastApplyGameNoteInfoPack.gameNoteInfos.Count; i++)
-            {
-                GameNoteInfo lastNote = lastApplyGameNoteInfoPack.gameNoteInfos[i];
-                for (int j = 0; j < gameNoteInfoPackage.gameNoteInfos.Count; j++)
-                {
-                    GameNoteInfo currentNote = gameNoteInfoPackage.gameNoteInfos[j];
-                    if (lastNote.idx == currentNote.idx)
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// *** EXACT JAVA: isExistInLastApplyGameNoteInfoPack() method ***
-    /// </summary>
-    private bool IsExistInLastApplyGameNoteInfoPack(GameNoteInfo gameNoteInfo)
-    {
-        if (lastApplyGameNoteInfoPack == null) return false;
-
-        for (int i = 0; i < lastApplyGameNoteInfoPack.gameNoteInfos.Count; i++)
-        {
-            if (lastApplyGameNoteInfoPack.gameNoteInfos[i].idx == gameNoteInfo.idx)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// *** EXACT JAVA: makeOneNoteIdList() method ***
-    /// </summary>
-    private List<int> MakeOneNoteIdList(GameNoteInfoPackage gameNoteInfoPackage)
-    {
-        List<int> noteIdList = new List<int>();
-
-        for (int i = 0; i < gameNoteInfoPackage.gameNoteInfos.Count; i++)
-        {
-            for (int j = 0; j < gameNoteInfoPackage.gameNoteInfos[i].noteInfoList.Count; j++)
-            {
-                OneNote oneNote = gameNoteInfoPackage.gameNoteInfos[i].noteInfoList[j];
-                // Using a simple mapping since we don't have Sounds.findSoundIdx
-                int soundIdx = oneNote.line * 10 + oneNote.flat;
-                noteIdList.Add(soundIdx);
-            }
-        }
-        return noteIdList;
-    }
-
-    /// <summary>
-    /// *** EXACT JAVA: mergeGameNoteInfoPackage() method ***
-    /// </summary>
-    private void MergeGameNoteInfoPackage(GameNoteInfoPackage gameNoteInfoPackage, int startIdx)
-    {
-        while (startIdx < gameNoteInfoPackage.gameNoteInfos.Count)
-        {
-            GameNoteInfo gameNoteInfo = gameNoteInfoPackage.gameNoteInfos[startIdx];
-
-            for (int i = 0; i < gameNoteInfo.noteInfoList.Count; i++)
-            {
-                if (startIdx > 0)
-                {
-                    int randomIdx = UnityEngine.Random.Range(0, startIdx);
-                    gameNoteInfoPackage.gameNoteInfos[randomIdx].noteInfoList.Add(gameNoteInfo.noteInfoList[i]);
-                }
-            }
-            gameNoteInfoPackage.gameNoteInfos.RemoveAt(startIdx);
-        }
-    }
-
-    /// <summary>
-    /// Load note list from current song (placeholder implementation)
-    /// </summary>
-    private List<NoteInfo> LoadNoteListFromCurrentSong(int tempo)
-    {
-        // This is handled differently in Unity - we use JSON parsing
-        // This method is kept for Java compatibility but returns empty list
-        return new List<NoteInfo>();
-    }
-
-    #endregion
-
     private void ResetState()
     {
-        // EXACT Java reset
-        accDeltaTime = 0.0f;
-        firstPassCnt = 3;
+        accumulatedTime = 0f;
         isAllCreated = false;
-        isSecondRequest = true;
+        firstDelayCompleted = false;
+        currentSequenceIndex = 0;
+        currentSubdivisionIndex = 0;
         directionCounter = 0;
         isFlowingRight = true;
-        validGameNoteCnt = 0;
-        lastApplyGameNoteInfoPack = null;
-        returnGameNoteInfoPack = null;
-        finalGameNotePackIterator = null;
-        finalGameNotePackages = null;
-
-        // Legacy reset removed - using GetNote() only
-        directionCounter = 0;
-        isFlowingRight = true;
-        accDeltaTime = 0.0f;
-        firstPassCnt = 3;
-        isSecondRequest = true;
-        returnGameNoteInfoPack = null;
+        rawChartData = null;
     }
-
     #endregion
 
-    #region Helper Methods
-
-    private string GetLineData(NoteChartSequence sequence, int lane)
-    {
-        return lane switch
-        {
-            0 => sequence.line1 ?? "",
-            1 => sequence.line2 ?? "",
-            2 => sequence.line3 ?? "",
-            3 => sequence.line4 ?? "",
-            4 => sequence.line5 ?? "",
-            5 => sequence.line6 ?? "",
-            _ => ""
-        };
-    }
+    #region Helper Methods for Compatibility
 
     private List<NoteChartSequence> ConvertToChartSequences(List<JsonSongSequence> jsonSequences)
     {
         var chartSequences = new List<NoteChartSequence>();
-
         foreach (var jsonSeq in jsonSequences)
         {
             var chartSeq = new NoteChartSequence
@@ -643,11 +392,10 @@ public class GameNoteCreator : MonoBehaviour
             };
             chartSequences.Add(chartSeq);
         }
-
         return chartSequences;
     }
 
-    private string GetIndividualJsonFileName(SongData song)
+    private string GetJsonFileName(SongData song)
     {
         string songName = song.songName.ToLower()
             .Replace(" ", "_")
@@ -664,38 +412,15 @@ public class GameNoteCreator : MonoBehaviour
     {
         try
         {
-            // Individual JSON files already have { "sequences": [...] } format
-            // No need to add extra wrapper like in old format
             JsonSequenceArray wrapper = JsonUtility.FromJson<JsonSequenceArray>(jsonText);
-            Debug.Log($"🔍 DEBUG: Wrapper parsed, sequences array length: {wrapper?.sequences?.Length ?? 0}");
             return wrapper?.sequences?.ToList() ?? new List<JsonSongSequence>();
         }
         catch (Exception e)
         {
             Debug.LogError($"❌ JSON parse error: {e.Message}");
-            Debug.LogError($"❌ JSON content preview: {jsonText.Substring(0, Mathf.Min(200, jsonText.Length))}...");
             return new List<JsonSongSequence>();
         }
     }
-
-    private void InitializePackageIterator()
-    {
-        if (finalGameNotePackages != null)
-        {
-            finalGameNotePackIterator = finalGameNotePackages.GetEnumerator();
-            if (finalGameNotePackIterator.MoveNext())
-            {
-                returnGameNoteInfoPack = finalGameNotePackIterator.Current;
-            }
-        }
-    }
-
-    #endregion
-
-    #region Public Interface
-
-    public bool IsGenerationComplete() => isAllCreated;
-    public void StopGeneration() => isAllCreated = true;
 
     #endregion
 }

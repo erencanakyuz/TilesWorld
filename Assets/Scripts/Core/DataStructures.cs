@@ -2,99 +2,78 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /// <summary>
-/// 🎹 Game Data Structures
-/// oldgame.md'deki orijinal Java algoritmaları için veri yapıları
+/// DataStructures - Merkezi Veri Yapıları
+/// Tüm oyun veri yapılarını tek bir yerde toplar, duplicate tanımları önler
 /// </summary>
 
 #region Core Game Data Structures
 
+// --- Nota Yapıları ---
 [System.Serializable]
 public class GameNoteInfoPackage
 {
-    public float oneNote;                           // Timing in milliseconds (oldgame.md'den)
-    public List<GameNoteInfo> gameNoteInfos;       // Notes in this package
-
-    public GameNoteInfoPackage()
-    {
-        gameNoteInfos = new List<GameNoteInfo>();
-    }
+    public float oneNote; // Bu paketten sonraki paketin ne kadar süre sonra geleceği (ms)
+    public List<GameNoteInfo> gameNoteInfos = new List<GameNoteInfo>();
 }
 
 [System.Serializable]
 public class GameNoteInfo
 {
-    public int idx;                    // Lane index (0-5)
-    public float timeMs;               // Time in milliseconds
-    public NoteType noteType;          // Single, Hold, etc.
-    public InstrumentType instrumentType; // Piano, Harp, Guitar
-    public int pitch;                  // Musical pitch (for audio)
-    public int duration;               // Note duration from JSON
-    public bool alreadyHit;           // Hit state tracking
-    public int line;                  // Original line/lane (oldgame.md'den)
-
-    // *** EXACT JAVA: From GameNoteCreator.java ***
-    public int seq;                   // Sequence number
-    public List<OneNote> noteInfoList; // List of notes in this game note
-
-    public GameNoteInfo()
-    {
-        noteInfoList = new List<OneNote>();
-    }
+    public int idx;           // Final lane indeksi (0-5)
+    public int pitch;         // Orijinal pitch değeri (ses için)
+    public int line;          // Orijinal line/lane (kural uygulamadan önce)
+    public float duration = 1.0f;    // Note duration for InteractiveMusicSystem
+    public InstrumentType instrumentType = InstrumentType.Piano; // Default to Piano
+    public List<OneNote> noteInfoList = new List<OneNote>(); // Java uyumluluğu
 }
 
-/// <summary>
-/// *** EXACT JAVA: OneNote class from GameNoteCreator.java ***
-/// </summary>
 [System.Serializable]
 public class OneNote
 {
-    public int flat;    // Pitch value (EXACT Java: public int flat)
-    public int line;    // Line index (EXACT Java: public int line)
+    public int line;
+    public int flat;
+    public int instrument;
 }
 
-/// <summary>
-/// *** EXACT JAVA: NoteInfo class equivalent to Java NoteInfo ***
-/// </summary>
 [System.Serializable]
 public class NoteInfo
 {
-    public int[] pitch;    // Array of pitches for each line
-    public float oneTempo; // Timing for next note package (EXACT Java: int oneNote)
+    public int line;
+    public int flat;
+    public int instrument;
+    public int duration;
+}
 
-    public NoteInfo()
+// --- Chart Data Structures ---
+[System.Serializable]
+public class NoteChartSequence
+{
+    public int music_id;
+    public int seq;
+    public string line1;
+    public string line2;
+    public string line3;
+    public string line4;
+    public string line5;
+    public string line6;
+
+    public string GetLineData(int lane)
     {
-        pitch = new int[6]; // 6 lanes
-        for (int i = 0; i < pitch.Length; i++)
+        return lane switch
         {
-            pitch[i] = -1; // Initialize to "no note"
-        }
+            0 => line1 ?? "",
+            1 => line2 ?? "",
+            2 => line3 ?? "",
+            3 => line4 ?? "",
+            4 => line5 ?? "",
+            5 => line6 ?? "",
+            _ => ""
+        };
     }
 }
 
 [System.Serializable]
-public class RawNoteData
-{
-    public float timeMs;
-    public int lane;
-    public NoteType noteType;
-    public int pitch;        // Musical pitch (0-26)
-    public int duration;     // Note duration (1-9)
-}
-
-// Ham veriyi geçici olarak tutmak için (oldgame.md'den)
-public class TemporalNoteInfo
-{
-    public int[] pitches = { -1, -1, -1, -1, -1, -1 };
-    public int durationType = -1;
-    public float timingMs = 0f;
-}
-
-#endregion
-
-#region JSON Data Structures
-
-[System.Serializable]
-public class NoteChartSequence
+public class JsonSongSequence
 {
     public int music_id;
     public int seq;
@@ -112,81 +91,51 @@ public class JsonSequenceArray
     public JsonSongSequence[] sequences;
 }
 
-[System.Serializable]
-public class JsonSongSequence
+// --- Temporal Processing (Internal) ---
+internal class TemporalNoteInfo
 {
-    public int music_id;
-    public int seq;
-    public string line1;
-    public string line2;
-    public string line3;
-    public string line4;
-    public string line5;
-    public string line6;
+    public int[] pitches = { -1, -1, -1, -1, -1, -1 };
+    public int durationType = -1;
+    public float timingMs = 0f;
 }
 
 #endregion
 
 #region Enums
 
-[System.Serializable]
 public enum NoteType
 {
-    Single,
+    Regular,
     Hold,
-    Chord
+    Slide
 }
 
-[System.Serializable]
 public enum HitAccuracy
 {
     Miss,
+    Okay,
     Good,
     Perfect
 }
 
-[System.Serializable]
 public enum InstrumentType
 {
     Piano,
-    Harp,
-    Guitar
+    Guitar,
+    Harp
 }
 
-[System.Serializable]
-public enum DifficultyLevel
-{
-    Easy,
-    Medium,
-    Hard,
-    Expert,
-    Master
-}
-
-[System.Serializable]
 public enum GameState
 {
     MainMenu,
     SongSelection,
+    Loading,
     Playing,
     Paused,
     GameOver,
-    Settings,
-    Loading
+    Settings
 }
 
-[System.Serializable]
-public enum MusicalScale
-{
-    CMajor,
-    AMajor,
-    GMajor,
-    Pentatonic,
-    MinorPentatonic,
-    Chromatic
-}
-
-[System.Serializable]
 public enum ChordType
 {
     None,
@@ -197,38 +146,41 @@ public enum ChordType
     Major,
     Minor,
     Diminished,
-    Augmented
+    Augmented,
+    Seventh
+}
+
+public enum DifficultyLevel
+{
+    Easy,
+    Medium,
+    Hard,
+    Expert,
+    Master
+}
+
+public enum MusicalScale
+{
+    CMajor,
+    AMajor,
+    GMajor,
+    Pentatonic,
+    MinorPentatonic,
+    Chromatic
 }
 
 #endregion
 
-#region Game State Structures
-
-[System.Serializable]
-public struct GameplayStats
-{
-    public int totalNotesHit;
-    public int perfectHits;
-    public int goodHits;
-    public int missedNotes;
-    public int maxCombo;
-    public float accuracy;
-    public string songName;
-
-    public override string ToString()
-    {
-        return $"Stats: {totalNotesHit} notes, {accuracy:F1}% accuracy, {maxCombo} max combo";
-    }
-}
+#region Musical Structures
 
 [System.Serializable]
 public class MusicalEvent
 {
     public float timestamp;
-    public string eventType;
-    public int pitch;
-    public float duration;
-    public InstrumentType instrument;
+    public ChordType detectedChord;
+    public List<int> activePitches = new List<int>();
+    public float harmonyScore;
+    public string musicKey;
 
     // InteractiveMusicSystem için gerekli ek field'lar
     public int lane;                      // Lane index where note was played
@@ -241,8 +193,8 @@ public class MusicalEvent
 public class MusicalNoteInfo
 {
     public int pitch;                  // Musical pitch (0-26)
-    public int lane;                   // Lane index
-    public float velocity;             // Note velocity (0-1)
+    public int velocity;               // Note velocity (0-1)
+    public float duration;             // Note duration
     public InstrumentType instrument;  // Piano, Harp, Guitar
 
     // InteractiveMusicSystem için gerekli ek field'lar
@@ -251,6 +203,26 @@ public class MusicalNoteInfo
     public string noteName;           // Note name (C4, D#5, etc.)
     public InstrumentType instrumentType; // Alternative name for consistency
     public bool isValid;              // Whether this note info is valid
+}
+
+[System.Serializable]
+public class GameplayStats
+{
+    public int totalNotes;
+    public int totalNotesHit;     // Alias for consistency
+    public int perfectHits;
+    public int goodHits;
+    public int okayHits;
+    public int missedNotes;
+    public int maxCombo;
+    public float accuracy;
+    public int totalScore;
+    public string songName;       // Song name for this stats
+
+    public override string ToString()
+    {
+        return $"Stats: {totalNotesHit} notes, {accuracy:F1}% accuracy, {maxCombo} max combo";
+    }
 }
 
 [System.Serializable]

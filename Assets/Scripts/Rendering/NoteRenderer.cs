@@ -25,7 +25,7 @@ public class NoteRenderer : MonoBehaviour
     [Header("🎯 Hit Zone Configuration")]
     [SerializeField] private float hitZoneZ = 0.0f;            // Hit line at Z=0 for easier calculation
     [SerializeField] private float hitZoneWidth = 2f;          // Reduced for better precision
-    [SerializeField] private float noteDestroyZ = 2f;          // Notes destroyed after passing hit zone
+    [SerializeField] private float noteDestroyZ = -2f;         // Notes destroyed AFTER passing hit zone (negative Z)
 
     [Header("📊 Performance & Debug")]
     [SerializeField] private bool enableObjectPooling = true;
@@ -76,6 +76,10 @@ public class NoteRenderer : MonoBehaviour
     {
         notePool = new Queue<GameObject>();
         activeNotes = new List<RenderingNote>();
+
+        // *** FORCE FIX: Inspector override'ını bypass et ***
+        speedMultiplier = 35.0f;
+        Debug.Log($"🚀 SPEED FORCED: speedMultiplier set to {speedMultiplier}");
 
         CreateNoteMaterial();
 
@@ -200,8 +204,8 @@ public class NoteRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// *** EXACT JAVA: updateInvaders() - World.java line 107 ***
-    /// CRITICAL FORMULA: f = (invader.position.z - 3.0F) / -25.0F * speedMultiplier
+    /// *** EXACT JAVA ALGORITHM adapted for Unity coordinate system ***
+    /// Notes move from POSITIVE Z (far) to NEGATIVE Z (near player)
     /// </summary>
     void UpdateActiveNotes(float deltaTime)
     {
@@ -212,31 +216,39 @@ public class NoteRenderer : MonoBehaviour
             var activeNote = activeNotes[i];
             if (activeNote == null || activeNote.gameObject == null) continue;
 
-            // *** EXACT JAVA ALGORITHM FROM World.java ***
-            float f; // Speed variable like original Java
-
-            if (activeNote.currentPosition.z < 0.0f)
+            // --- ORİJİNAL İVMELENME MANTIĞI (oldgame.md'den tam port) ---
+            float currentSpeed;
+            if (activeNote.currentPosition.z < hitZoneZ)
             {
-                // *** EXACT FORMULA: (z - 3.0F) / -25.0F * speedMultiplier ***
-                f = (activeNote.currentPosition.z - 3.0f) / -25.0f * speedMultiplier;
+                // Orijinal formül: f = (invader.position.z - 3.0F) / -25.0F * this.speedMultiplier;
+                currentSpeed = (activeNote.currentPosition.z - 3.0f) / -25.0f * speedMultiplier;
             }
             else
             {
-                // *** EXACT FORMULA: speedMultiplier * 0.2F ***
-                f = speedMultiplier * 0.2f;
+                // Hit zonunu geçmeden önce yavaş hareket
+                currentSpeed = speedMultiplier * 0.2f;
             }
 
-            // *** EXACT JAVA: invader.update(deltaTime, f) ***
-            activeNote.currentPosition.z += deltaTime * f; // FORWARD direction in Java (negative in Unity)
+            // *** UNITY COORDINATE: Move notes TOWARD player (Z decreases) ***
+            float oldZ = activeNote.currentPosition.z;
+            activeNote.currentPosition.z -= currentSpeed * deltaTime;
 
-            // Convert to Unity coordinate system (z towards camera is negative)
-            Vector3 unityPosition = activeNote.currentPosition;
-            unityPosition.z = -activeNote.currentPosition.z; // Flip for Unity camera
-            activeNote.gameObject.transform.position = unityPosition;
-
-            // *** EXACT JAVA: Remove missed notes (position.z > noteDestroyZ) ***
-            if (activeNote.currentPosition.z > noteDestroyZ)
+            // Minimal debug only for first note to verify system working
+            if (i == 0 && totalNotesRendered <= 5)
             {
+                Debug.Log($"🚀 NOTE MOVE: Z {oldZ:F1} → {activeNote.currentPosition.z:F1}, speed={currentSpeed:F1}");
+            }
+
+            // Update Unity transform directly (no coordinate conversion needed)
+            activeNote.gameObject.transform.position = activeNote.currentPosition;
+
+            // *** UNITY COORDINATE: Destroy notes that passed player ***
+            if (activeNote.currentPosition.z < noteDestroyZ)
+            {
+                if (totalNotesRendered <= 15)
+                {
+                    Debug.Log($"💥 NOTE DESTROYED: Z={activeNote.currentPosition.z:F1}, destroyZ={noteDestroyZ}");
+                }
                 HandleNoteMissed(activeNote);
                 ReturnNoteToPool(activeNote.gameObject);
                 activeNotes.RemoveAt(i);
@@ -244,7 +256,7 @@ public class NoteRenderer : MonoBehaviour
             }
 
             // Apply perspective effects
-            ApplyPerspectiveEffects(activeNote, unityPosition.z);
+            ApplyPerspectiveEffects(activeNote, activeNote.currentPosition.z);
         }
     }
 
@@ -382,11 +394,17 @@ public class NoteRenderer : MonoBehaviour
 
     public void SpawnNotes(List<GameNoteInfo> notes)
     {
+        // *** DEBUG: Kim çağırıyor? ***
+        string caller = System.Environment.StackTrace.Split('\n')[1].Trim();
+        Debug.Log($"🔥 SpawnNotes CALLED! Received {notes.Count} notes. CALLER: {caller}");
+
         // Called directly from GameplayManager (no events)
         foreach (var note in notes)
         {
             SpawnNote(note);
         }
+
+        Debug.Log($"🔥 SpawnNotes COMPLETED! Total spawned this call: {notes.Count}");
     }
 
     void SpawnNote(GameNoteInfo noteInfo)
@@ -432,8 +450,8 @@ public class NoteRenderer : MonoBehaviour
             spawnPosition = new Vector3(xOffset, 0, 0);
         }
 
-        // *** EXACT JAVA: Spawn at WORLD_MIN_Z = -25.0F ***
-        spawnPosition.z = -25.0f; // Java coordinate system
+        // *** UNITY COORDINATE: Spawn notes at FAR END (positive Z) ***
+        spawnPosition.z = worldDepth; // Start far from player (+25.0f)
         spawnPosition.y = 0;
 
         // Set note properties
@@ -453,7 +471,11 @@ public class NoteRenderer : MonoBehaviour
         activeNotes.Add(activeNote);
         totalNotesRendered++;
 
-        Debug.Log($"🎵 NOTE SPAWNED: Lane {noteInfo.idx}, Pitch {noteInfo.pitch}, Position {spawnPosition}");
+        // Debug only for first few spawns to check for duplicates
+        if (totalNotesRendered <= 10)
+        {
+            Debug.Log($"🎵 SPAWN #{totalNotesRendered}: Lane {noteInfo.idx}, Pitch {noteInfo.pitch}, Pos {spawnPosition}");
+        }
     }
 
     GameObject GetPooledNote()
@@ -585,17 +607,30 @@ public class NoteRenderer : MonoBehaviour
     {
         var hitNotes = new List<RenderingNote>();
 
+        Debug.Log($"🔍 Finding notes in hit zone for lane {lane}:");
+        Debug.Log($"🔍 Total active notes: {activeNotes.Count}");
+        Debug.Log($"🔍 Hit zone Z: {hitZoneZ}, Detection range: ±2.0f");
+
         foreach (var activeNote in activeNotes)
         {
+            Debug.Log($"🔍 Note in lane {activeNote.noteInfo.idx}, Z: {activeNote.currentPosition.z:F2}");
+
             if (activeNote.noteInfo.idx == lane)
             {
                 // Hit zone detection - allow notes within reasonable hitting distance
                 float distanceFromHitZone = Mathf.Abs(activeNote.currentPosition.z - hitZoneZ);
 
+                Debug.Log($"🔍 LANE MATCH! Distance from hit zone: {distanceFromHitZone:F2}");
+
                 // Allow notes within expanded detection zone for better user experience
                 if (distanceFromHitZone <= 2.0f) // Reasonable detection zone
                 {
+                    Debug.Log($"✅ NOTE IN HIT ZONE! Adding to candidates");
                     hitNotes.Add(activeNote);
+                }
+                else
+                {
+                    Debug.Log($"❌ Note too far from hit zone: {distanceFromHitZone:F2} > 2.0");
                 }
             }
         }

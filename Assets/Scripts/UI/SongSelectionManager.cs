@@ -27,14 +27,7 @@ public class SongSelectionManager : MonoBehaviour
         public string songKey; // For loading the actual song
     }
 
-    public enum DifficultyLevel
-    {
-        Easy,
-        Medium,
-        Hard,
-        Expert,
-        Master
-    }
+    // DifficultyLevel enum moved to DataStructures.cs to avoid duplicates
 
     private void Start()
     {

@@ -403,7 +403,7 @@ public class InteractiveMusicSystem : MonoBehaviour
         if (noteInfo == null) return;
 
         // Enhanced volume calculation based on note duration from JSON
-        float noteVolume = CalculateNoteVolume(noteInfo.duration);
+        float noteVolume = CalculateNoteVolume((int)noteInfo.duration);
 
 #if UNITY_EDITOR
         // Debug tracking to ensure only NoteRenderer calls this method

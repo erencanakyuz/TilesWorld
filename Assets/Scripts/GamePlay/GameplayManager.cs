@@ -39,6 +39,7 @@ public class GameplayManager : MonoBehaviour
     [SerializeField] private InteractiveMusicSystem musicSystem;
     [SerializeField] private AudioManager audioManager;
     [SerializeField] private UIManager uiManager;
+    [SerializeField] private JsonMusicParser jsonMusicParser;
 
     // Game state management
     private bool isGameActive = false;
@@ -84,6 +85,8 @@ public class GameplayManager : MonoBehaviour
             audioManager = FindFirstObjectByType<AudioManager>();
         if (uiManager == null)
             uiManager = FindFirstObjectByType<UIManager>();
+        if (jsonMusicParser == null)
+            jsonMusicParser = FindFirstObjectByType<JsonMusicParser>();
 
         SetupGameplaySystems();
     }
@@ -105,7 +108,14 @@ public class GameplayManager : MonoBehaviour
 
     void SubscribeToEvents()
     {
-        // GameNoteCreator events - GetNote() stream-based approach (no events)
+        Debug.Log("🔗 SUBSCRIBING TO EVENTS...");
+
+        // *** PREVENT DUPLICATE SUBSCRIPTION ***
+        GameNoteCreator.OnNotesGenerated -= noteRenderer.SpawnNotes; // Remove if exists
+
+        // GameNoteCreator events - True Dynamic System ile events kullanıyoruz!
+        Debug.Log("🔗 Subscribing to GameNoteCreator.OnNotesGenerated (duplicate-safe)");
+        GameNoteCreator.OnNotesGenerated += noteRenderer.SpawnNotes; // CRITICAL!
         GameNoteCreator.OnGenerationComplete += HandleSongComplete;
 
         // InteractiveMusicSystem events
@@ -120,6 +130,8 @@ public class GameplayManager : MonoBehaviour
 
         // GameManager events
         GameManager.OnGameStateChanged += HandleGameStateChange;
+
+        Debug.Log("✅ Event subscriptions completed!");
     }
 
     IEnumerator DelayedGameStartCoroutine(float delay)
@@ -180,15 +192,9 @@ public class GameplayManager : MonoBehaviour
     /// </summary>
     void UpdateNoteGeneration(float deltaTime)
     {
-        if (noteCreator == null || noteRenderer == null) return;
-
-        // *** EXACT JAVA: Call getNote() every frame like original ***
-        List<GameNoteInfo> newNotes = noteCreator.GetNote(deltaTime);
-
-        // If notes returned, send directly to renderer (no events)
-        if (newNotes != null && newNotes.Count > 0)
+        if (noteCreator != null && isGameActive)
         {
-            noteRenderer.SpawnNotes(newNotes);
+            noteCreator.GetNote(deltaTime);
         }
     }
 
@@ -258,43 +264,53 @@ public class GameplayManager : MonoBehaviour
     /// </summary>
     void PrepareGameplaySystems()
     {
-        // Reset all stats
         ResetGameplayStats();
 
-        // *** CRITICAL: Load song into note creator (ORİJİNAL JAVA SİSTEMİ) ***
-        if (noteCreator != null)
-        {
-            Debug.Log($"🎵 LOADING SONG: {currentSong.songName} into noteCreator");
-
-            // *** oldgame.md approach: Use LoadSong which calls LoadAndPrepareSong internally ***
-            noteCreator.LoadSong(currentSong);
-
-            Debug.Log($"🎵 SONG LOADED: noteCreator hazır!");
-        }
-        else
-        {
-            Debug.LogError("🚨 noteCreator is NULL! Bu kritik bir hata!");
-        }
-
-        // Set instrument for music system
-        if (musicSystem != null && GameManager.Instance != null)
-        {
-            musicSystem.SetInstrument(GameManager.Instance.GetSelectedInstrument());
-        }
-
-        // Clear any existing notes
         if (noteRenderer != null)
         {
             noteRenderer.ClearAllNotes();
         }
 
-        // Update game state
+        if (noteCreator != null && currentSong != null)
+        {
+            Debug.Log($"🎵 Loading song with dynamic system: {currentSong.songName}");
+
+            // Direkt JSON loading deniyoruz
+            try
+            {
+                noteCreator.LoadSong(currentSong); // Bu metod kendi JSON loading'ini yapıyor
+                Debug.Log($"✅ Song loaded successfully!");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"🚨 Song loading failed: {e.Message}");
+
+                // Fallback: JsonMusicParser deniyoruz
+                if (jsonMusicParser != null)
+                {
+                    Debug.Log("🎵 Fallback: Using JsonMusicParser...");
+                    noteCreator.LoadSong(currentSong);
+                }
+                else
+                {
+                    Debug.LogError("🚨 JsonMusicParser not found! Manual JSON loading required.");
+                }
+            }
+        }
+        else
+        {
+            Debug.LogError("🚨 GameNoteCreator or currentSong not ready!");
+        }
+
+        if (musicSystem != null && GameManager.Instance != null)
+        {
+            musicSystem.SetInstrument(GameManager.Instance.GetSelectedInstrument());
+        }
+
         if (GameManager.Instance != null)
         {
             GameManager.Instance.ChangeGameState(GameState.Playing);
         }
-
-        Debug.Log("🎮 Tüm sistemler hazırlandı!");
     }
 
     IEnumerator ShowCountdown()
@@ -636,6 +652,7 @@ public class GameplayManager : MonoBehaviour
     void OnDestroy()
     {
         // Unsubscribe from events
+        GameNoteCreator.OnNotesGenerated -= noteRenderer.SpawnNotes;
         GameNoteCreator.OnGenerationComplete -= HandleSongComplete;
         InteractiveMusicSystem.OnChordDetected -= HandleChordDetected;
         InteractiveMusicSystem.OnMusicalEventCreated -= HandleMusicalEvent;
