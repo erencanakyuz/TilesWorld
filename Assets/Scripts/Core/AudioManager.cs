@@ -21,6 +21,8 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private float musicVolume = 0.8f;
     [Range(0f, 1f)]
     [SerializeField] private float sfxVolume = 0.9f;
+    [SerializeField] private bool enableNoteFadeOut = true;
+    [SerializeField] private float noteFadeDuration = 0.3f; // 300ms like original Java
 
     [Header("📊 Performance Monitoring")]
     [SerializeField] private bool enableLatencyMonitoring = true;
@@ -169,7 +171,10 @@ public class AudioManager : MonoBehaviour
         audioSource.volume = volume * sfxVolume * masterVolume;
         audioSource.Play();
 
-        activeAudioSources.Add(audioSource);
+        if (enableNoteFadeOut)
+            StartCoroutine(FadeOutAndRecycle(audioSource, noteFadeDuration));
+        else
+            activeAudioSources.Add(audioSource);
     }
 
     /// <summary>
@@ -439,6 +444,32 @@ public class AudioManager : MonoBehaviour
                 break;
         }
         return Mathf.Clamp(adjusted, 0, maxIndex);
+    }
+
+    IEnumerator FadeOutAndRecycle(AudioSource source, float fadeTime)
+    {
+        if (source == null || source.clip == null) yield break;
+
+        // Wait until near the end of the clip
+        float waitTime = Mathf.Max(0f, source.clip.length - fadeTime);
+        yield return new WaitForSeconds(waitTime);
+
+        float startVol = source.volume;
+        float t = 0f;
+        while (t < fadeTime && source != null)
+        {
+            t += Time.deltaTime;
+            source.volume = Mathf.Lerp(startVol, 0f, t / fadeTime);
+            yield return null;
+        }
+
+        if (source != null)
+        {
+            source.Stop();
+            source.volume = startVol; // reset for next reuse
+            activeAudioSources.Remove(source);
+            audioSourcePool.Enqueue(source);
+        }
     }
 }
 
