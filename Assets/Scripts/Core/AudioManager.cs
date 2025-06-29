@@ -135,41 +135,27 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    #region Note Playing (Enhanced with Original Java Mapping)
+    #region Note Playing (Simplified and Enhanced)
 
     /// <summary>
-    /// Ana nota çalma metodu - Original Java mapping ile geliştirildi
+    /// Ana nota çalma metodu - Java mapping sistemi ile birleştirildi
+    /// Bu metod hem eski PlayNote hem de PlayNoteFromChart işlevlerini birleştirir
     /// </summary>
-    public void PlayNote(InstrumentType instrument, int pitch, float volume = 1.0f)
+    public void PlayNote(InstrumentType instrument, int pitch, float volume = 1.0f, bool useJavaMapping = false, int line = 0)
     {
-        var audioSource = GetAvailableAudioSource();
-        if (audioSource != null)
+        int finalPitch = pitch;
+
+        // Java mapping kullanılacaksa, line+pitch'i gerçek ses indeksine çevir
+        if (useJavaMapping)
         {
-            var clip = GetNoteClip(instrument, pitch);
-            if (clip != null)
-            {
-                audioSource.clip = clip;
-                audioSource.volume = volume * masterVolume;
-                audioSource.Play();
-            }
+            finalPitch = AudioConstants.GetSoundIndex(line, pitch);
+            Debug.Log($"🎵 JAVA MAPPING: Line={line}, Pitch={pitch} → RealSoundIndex={finalPitch} ({instrument})");
         }
-    }
-
-    /// <summary>
-    /// Enhanced note playing - Java oyununun birebir kopyası
-    /// Bu metod GameNoteInfo'dan gelen line+pitch verisini doğru ses dosyasına çevirir
-    /// </summary>
-    public void PlayNoteFromChart(int line, int pitch, InstrumentType instrument, float volume = 1.0f)
-    {
-        // Orijinal Java oyununun SOUND_RESOURCE_IDXS mapping sistemi
-        int realSoundIndex = GetMappedSoundIndex(line, pitch);
-
-        Debug.Log($"🎵 JAVA MAPPING: Line={line}, Pitch={pitch} → RealSoundIndex={realSoundIndex} ({instrument})");
 
         var audioSource = GetAvailableAudioSource();
         if (audioSource != null)
         {
-            var clip = GetNoteClip(instrument, realSoundIndex);
+            var clip = GetNoteClip(instrument, finalPitch);
             if (clip != null)
             {
                 audioSource.clip = clip;
@@ -178,19 +164,19 @@ public class AudioManager : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning($"🎵 Ses dosyası bulunamadı: {instrument} index {realSoundIndex}");
+                Debug.LogWarning($"🎵 Ses dosyası bulunamadı: {instrument} index {finalPitch}");
             }
         }
     }
 
     /// <summary>
-    /// Orijinal Java'dan: line+pitch → real sound index mapping
-    /// Bu, oyunun müzikal doğruluğunu sağlayan kritik algoritma
-    /// Artık merkezi AudioConstants sistemini kullanıyor
+    /// DEPRECATED: Legacy compatibility wrapper - will be removed in future versions
+    /// Use PlayNote with useJavaMapping=true instead
     /// </summary>
-    private int GetMappedSoundIndex(int line, int pitch)
+    [System.Obsolete("Use PlayNote with useJavaMapping=true instead")]
+    public void PlayNoteFromChart(int line, int pitch, InstrumentType instrument, float volume = 1.0f)
     {
-        return AudioConstants.GetSoundIndex(line, pitch);
+        PlayNote(instrument, pitch, volume, useJavaMapping: true, line: line);
     }
     #endregion
 

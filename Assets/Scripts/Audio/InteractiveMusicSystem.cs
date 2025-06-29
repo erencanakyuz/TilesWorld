@@ -15,32 +15,15 @@ public class InteractiveMusicSystem : MonoBehaviour
 
     [Header("🎵 Interactive Music Configuration")]
     [SerializeField] private InstrumentType currentInstrument = InstrumentType.Piano;
-    [SerializeField] private MusicalScale currentScale = MusicalScale.CMajor;
     [Header("⚙️ System Configuration")]
-    // [SerializeField] private bool enableJsonBasedMusic = true;
     [SerializeField] private bool showDebugInfo = false;
-    // [SerializeField] private InstrumentType defaultInstrument = InstrumentType.Piano;
 
     [Header("🎼 Musical Mapping (Original SOUND_RESOURCE_IDXS)")]
-    [SerializeField] private int baseOctave = 4;
-
     [Header("📊 Musical Analysis")]
     [SerializeField] private int notesPlayedThisSession = 0;
     [SerializeField] private int chordsPlayedThisSession = 0;
-    [SerializeField] private float currentMelodyComplexity = 0f;
 
     // Original Java SOUND_RESOURCE_IDXS mapping artık AudioConstants'da merkezi olarak tanımlı
-
-    // Musical scale definitions (Western music theory)
-    private static readonly Dictionary<MusicalScale, int[]> MUSICAL_SCALES = new Dictionary<MusicalScale, int[]>
-    {
-        { MusicalScale.CMajor, new int[] { 0, 2, 4, 5, 7, 9, 11 } },      // C D E F G A B
-        { MusicalScale.AMajor, new int[] { 0, 2, 4, 5, 7, 9, 11 } },      // A B C# D E F# G#
-        { MusicalScale.GMajor, new int[] { 0, 2, 4, 5, 7, 9, 11 } },      // G A B C D E F#
-        { MusicalScale.Pentatonic, new int[] { 0, 2, 4, 7, 9 } },         // C D E G A
-        { MusicalScale.MinorPentatonic, new int[] { 0, 3, 5, 7, 10 } },   // C Eb F G Bb
-        { MusicalScale.Chromatic, new int[] { 0,1,2,3,4,5,6,7,8,9,10,11 } } // All notes
-    };
 
     // Chord detection and harmony
     private List<PlayingNote> currentlyPlayingNotes;
@@ -55,7 +38,6 @@ public class InteractiveMusicSystem : MonoBehaviour
     // Events for musical feedback
     public static System.Action<MusicalEvent> OnMusicalEventCreated;
     public static System.Action<ChordType> OnChordDetected;
-    public static System.Action<float> OnMelodyComplexityChanged;
 
     void Awake()
     {
@@ -129,7 +111,7 @@ public class InteractiveMusicSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Original Java SOUND_RESOURCE_IDXS mapping enhanced with musical theory
+    /// Original Java SOUND_RESOURCE_IDXS mapping - simplified
     /// </summary>
     MusicalNoteInfo CalculateMusicalNote(int lane)
     {
@@ -144,29 +126,12 @@ public class InteractiveMusicSystem : MonoBehaviour
         // Use AudioConstants for centralized sound mapping
         int soundIndex = AudioConstants.GetSoundIndex(lane, 0); // Use lane as base, pitch 0 for this context
 
-        // Enhanced with musical scale mapping
-        if (MUSICAL_SCALES.ContainsKey(currentScale))
-        {
-            int[] scaleNotes = MUSICAL_SCALES[currentScale];
-            int scaleNoteIndex = lane % scaleNotes.Length;
-            int scaleNote = scaleNotes[scaleNoteIndex];
-
-            // Calculate MIDI note (C4 = 60 as base)
-            noteInfo.midiNote = 60 + (baseOctave - 4) * 12 + scaleNote;
-            noteInfo.soundIndex = soundIndex;
-            noteInfo.noteName = GetNoteName(noteInfo.midiNote);
-            noteInfo.instrumentType = currentInstrument;
-            noteInfo.isValid = true;
-        }
-        else
-        {
-            // Fallback to original direct mapping
-            noteInfo.midiNote = soundIndex + 60; // Approximate MIDI mapping
-            noteInfo.soundIndex = soundIndex;
-            noteInfo.noteName = GetNoteName(noteInfo.midiNote);
-            noteInfo.instrumentType = currentInstrument;
-            noteInfo.isValid = true;
-        }
+        // Simple direct mapping - no complex musical theory
+        noteInfo.midiNote = soundIndex + 60; // Direct mapping
+        noteInfo.soundIndex = soundIndex;
+        noteInfo.noteName = GetNoteName(noteInfo.midiNote);
+        noteInfo.instrumentType = currentInstrument;
+        noteInfo.isValid = true;
 
         return noteInfo;
     }
@@ -279,58 +244,7 @@ public class InteractiveMusicSystem : MonoBehaviour
     }
     #endregion
 
-    #region Musical Complexity Analysis
-
-    void UpdateMelodyComplexity(MusicalEvent newEvent)
-    {
-        // Simple complexity calculation based on note variety and timing
-        var recentEvents = new List<MusicalEvent>(recentMusicalEvents);
-
-        if (recentEvents.Count > 1)
-        {
-            // Calculate interval variety
-            var intervals = new HashSet<int>();
-            for (int i = 1; i < recentEvents.Count; i++)
-            {
-                int interval = Mathf.Abs(recentEvents[i].noteInfo.midiNote - recentEvents[i - 1].noteInfo.midiNote);
-                intervals.Add(interval);
-            }
-
-            // Calculate timing variety
-            var timings = new List<float>();
-            for (int i = 1; i < recentEvents.Count; i++)
-            {
-                float timeDiff = recentEvents[i].timestamp - recentEvents[i - 1].timestamp;
-                timings.Add(timeDiff);
-            }
-
-            // Complexity = interval variety + timing variety + chord frequency
-            float intervalComplexity = intervals.Count / 12f; // Normalize to max possible intervals
-            float timingComplexity = CalculateTimingVariance(timings);
-            float chordComplexity = chordsPlayedThisSession / (float)notesPlayedThisSession;
-
-            currentMelodyComplexity = (intervalComplexity + timingComplexity + chordComplexity) / 3f;
-            OnMelodyComplexityChanged?.Invoke(currentMelodyComplexity);
-        }
-    }
-
-    float CalculateTimingVariance(List<float> timings)
-    {
-        if (timings.Count == 0) return 0f;
-
-        float average = 0f;
-        foreach (float timing in timings) average += timing;
-        average /= timings.Count;
-
-        float variance = 0f;
-        foreach (float timing in timings)
-        {
-            variance += (timing - average) * (timing - average);
-        }
-        variance /= timings.Count;
-
-        return Mathf.Min(1f, variance * 10f); // Normalize and cap at 1
-    }
+    #region Event Cleanup (Simplified)
 
     void CleanupOldMusicalEvents()
     {
@@ -410,10 +324,10 @@ public class InteractiveMusicSystem : MonoBehaviour
         }
 #endif
 
-        // ENHANCED: AudioManager'ın yeni Java-style mapping metodunu kullan
+        // ENHANCED: AudioManager'ın unified metodunu Java mapping ile kullan
         if (audioManager != null)
         {
-            audioManager.PlayNoteFromChart(noteInfo.line, noteInfo.pitch, currentInstrument, noteVolume);
+            audioManager.PlayNote(currentInstrument, noteInfo.pitch, noteVolume, useJavaMapping: true, line: noteInfo.line);
         }
         else
         {
@@ -453,9 +367,8 @@ public class InteractiveMusicSystem : MonoBehaviour
         notesPlayedThisSession++;
         laneLastPlayTime[noteInfo.line] = Time.time;
 
-        // Analyze musical patterns
+        // Analyze musical patterns (chord detection only)
         CheckForChordCreation(musicalEvent);
-        UpdateMelodyComplexity(musicalEvent);
         CleanupOldMusicalEvents();
     }
 
@@ -551,25 +464,15 @@ public class InteractiveMusicSystem : MonoBehaviour
         return ChordType.None;
     }
 
-    public void SetMusicalScale(MusicalScale scale)
-    {
-        currentScale = scale;
-    }
-
-    public void SetBaseOctave(int octave)
-    {
-        baseOctave = Mathf.Clamp(octave, 1, 8);
-    }
-
     public MusicalSessionStats GetSessionStats()
     {
         return new MusicalSessionStats
         {
             notesPlayed = notesPlayedThisSession,
             chordsPlayed = chordsPlayedThisSession,
-            melodyComplexity = currentMelodyComplexity,
+            melodyComplexity = 0f, // Simplified - no longer calculated
             currentInstrument = currentInstrument,
-            currentScale = currentScale
+            currentScale = MusicalScale.CMajor // Default - no longer changeable
         };
     }
 
