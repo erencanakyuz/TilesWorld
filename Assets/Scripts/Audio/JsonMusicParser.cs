@@ -15,7 +15,17 @@ public class JsonMusicParser : MonoBehaviour
 
     [Header("📊 Parser Settings")]
     [SerializeField] private float defaultBPM = 120f;
-    [SerializeField] private bool enableDebugLogging = true;
+    // [SerializeField] private bool enableDebugLogging = true;
+
+    /*
+    [Header("⚙️ Configuration")]
+    [SerializeField] private string jsonFileName = "ClassicMusic/all_songs_notes";
+    [SerializeField] private int maxNotesToProcess = 10000;
+
+    [Header("📊 Debugging")]
+    [SerializeField] private bool showParsedData = false;
+    [SerializeField] private int debugDisplayLimit = 20;
+    */
 
     // Static access for other systems
     public static JsonMusicParser Instance { get; private set; }
@@ -74,7 +84,7 @@ public class JsonMusicParser : MonoBehaviour
         ProcessAllSequences();
         GenerateSongDatabase();
 
-        
+
     }
 
     /// <summary>
@@ -498,10 +508,12 @@ public class JsonMusicParser : MonoBehaviour
 
     void LogDebug(string message)
     {
+        /*
         if (enableDebugLogging)
         {
             Debug.Log($"[JsonMusicParser] {message}");
         }
+        */
     }
 
     #endregion

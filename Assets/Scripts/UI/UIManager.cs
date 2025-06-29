@@ -75,11 +75,11 @@ public class UIManager : MonoBehaviour
             DontDestroyOnLoad(gameObject);
 
             // Event subscription'ları burada yap ki GameManager'dan önce hazır ol
-            Debug.Log("🔔 UIManager Awake - Event subscription yapılıyor...");
+            // Debug.Log("🔔 UIManager Awake - Event subscription yapılıyor...");
             GameManager.OnGameStateChanged += HandleGameStateChange;
             GameManager.OnScoreChanged += UpdateScore;
             GameManager.OnComboChanged += UpdateCombo;
-            Debug.Log("✅ UIManager Awake - Event subscription tamamlandı!");
+            // Debug.Log("✅ UIManager Awake - Event subscription tamamlandı!");
         }
         else
         {
@@ -135,38 +135,38 @@ public class UIManager : MonoBehaviour
 
     bool AutoFindUIElements()
     {
-        Debug.Log("🔍 AutoFindUIElements başlatılıyor...");
+        // Debug.Log("🔍 AutoFindUIElements başlatılıyor...");
         bool success = true;
 
         // Canvas'ları akıllı şekilde bul
         success &= FindCanvases();
-        Debug.Log($"   FindCanvases result: {success}");
+        // Debug.Log($"   FindCanvases result: {success}");
 
         // HUD elemanlarını HUDCanvas içinde ara
         success &= FindHUDElements();
-        Debug.Log($"   FindHUDElements result: {success}");
+        // Debug.Log($"   FindHUDElements result: {success}");
 
         // Efekt parent'ını overlay canvas'ta ara
         success &= FindEffectElements();
-        Debug.Log($"   FindEffectElements result: {success}");
+        // Debug.Log($"   FindEffectElements result: {success}");
 
         // Mobil kontrolleri ara
         success &= FindMobileControls();
-        Debug.Log($"   FindMobileControls result: {success}");
+        // Debug.Log($"   FindMobileControls result: {success}");
 
-        Debug.Log($"🎯 AutoFindUIElements tamamlandı: {success}");
+        // Debug.Log($"🎯 AutoFindUIElements tamamlandı: {success}");
         return success;
     }
 
     bool FindCanvases()
     {
-        Debug.Log("🔍 Canvas'ları arıyor...");
+        // Debug.Log("🔍 Canvas'ları arıyor...");
         var allCanvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
-        Debug.Log($"   Bulunan Canvas sayısı: {allCanvases.Length}");
+        // Debug.Log($"   Bulunan Canvas sayısı: {allCanvases.Length}");
 
         for (int i = 0; i < allCanvases.Length; i++)
         {
-            Debug.Log($"   Canvas[{i}]: {allCanvases[i].name} (sortingOrder: {allCanvases[i].sortingOrder})");
+            // Debug.Log($"   Canvas[{i}]: {allCanvases[i].name} (sortingOrder: {allCanvases[i].sortingOrder})");
         }
 
         // İsim veya pattern'e göre canvas'ları ayır
@@ -182,9 +182,9 @@ public class UIManager : MonoBehaviour
             c.name.ToLower().Contains("overlay") ||
             c.sortingOrder > 10); // Yüksek sorting order = overlay
 
-        Debug.Log($"   ✅ mainCanvas: {(mainCanvas != null ? mainCanvas.name : "NULL")}");
-        Debug.Log($"   ✅ hudCanvas: {(hudCanvas != null ? hudCanvas.name : "NULL")}");
-        Debug.Log($"   ✅ overlayCanvas: {(overlayCanvas != null ? overlayCanvas.name : "NULL")}");
+        // Debug.Log($"   ✅ mainCanvas: {(mainCanvas != null ? mainCanvas.name : "NULL")}");
+        // Debug.Log($"   ✅ hudCanvas: {(hudCanvas != null ? hudCanvas.name : "NULL")}");
+        // Debug.Log($"   ✅ overlayCanvas: {(overlayCanvas != null ? overlayCanvas.name : "NULL")}");
 
         return mainCanvas != null;
     }
@@ -338,35 +338,35 @@ public class UIManager : MonoBehaviour
 
     void SetupEventListeners()
     {
-        Debug.Log("🔔 SetupEventListeners başlatılıyor...");
+        // Debug.Log("🔔 SetupEventListeners başlatılıyor...");
 
         // GameManager events artık Awake()'de subscribe ediliyor
         // Burada sadece UI-specific event'ler kalıyor
 
-        Debug.Log("✅ SetupEventListeners tamamlandı (GameManager events Awake'de handle edildi)!");
+        // Debug.Log("✅ SetupEventListeners tamamlandı (GameManager events Awake'de handle edildi)!");
     }
 
     #region Game State UI Management
     void HandleGameStateChange(GameState newState)
     {
-        Debug.Log($"🔔 UIManager.HandleGameStateChange ÇAĞRILDI! State: {newState}");
+        // Debug.Log($"🔔 UIManager.HandleGameStateChange ÇAĞRILDI! State: {newState}");
 
         // Canvas'lar henüz bulunmadıysa bekle
         if (mainCanvas == null || overlayCanvas == null || hudCanvas == null)
         {
-            Debug.Log("⏳ Canvas'lar henüz yok, state change'i pending yapılıyor...");
+            // Debug.Log("⏳ Canvas'lar henüz yok, state change'i pending yapılıyor...");
             StartCoroutine(WaitForCanvasAndHandleState(newState));
             return;
         }
 
-        Debug.Log($"🎮 UIManager: Handling state change to {newState}");
+        // Debug.Log($"🎮 UIManager: Handling state change to {newState}");
 
         HandleStateChangeImmediate(newState);
     }
 
     private System.Collections.IEnumerator WaitForCanvasAndHandleState(GameState newState)
     {
-        Debug.Log("⏳ Canvas'ların bulunması bekleniyor...");
+        // Debug.Log("⏳ Canvas'ların bulunması bekleniyor...");
 
         // Canvas'lar bulunana kadar bekle (max 5 saniye)
         float waitTime = 0f;
@@ -378,7 +378,7 @@ public class UIManager : MonoBehaviour
 
         if (mainCanvas != null)
         {
-            Debug.Log("✅ Canvas'lar bulundu, state change işleniyor...");
+            // Debug.Log("✅ Canvas'lar bulundu, state change işleniyor...");
             HandleStateChangeImmediate(newState);
         }
         else
@@ -389,12 +389,12 @@ public class UIManager : MonoBehaviour
 
     private void HandleStateChangeImmediate(GameState newState)
     {
-        Debug.Log($"🎮 UIManager: Handling state change to {newState}");
+        // Debug.Log($"🎮 UIManager: Handling state change to {newState}");
 
         // Destroy the previous panel instance
         if (currentPanelInstance != null)
         {
-            Debug.Log($"🗑️ Destroying previous panel: {currentPanelInstance.name}");
+            // Debug.Log($"🗑️ Destroying previous panel: {currentPanelInstance.name}");
             Destroy(currentPanelInstance);
             currentPanelInstance = null;
         }
@@ -406,7 +406,7 @@ public class UIManager : MonoBehaviour
             if (parentCanvas != null)
             {
                 currentPanelInstance = Instantiate(prefab, parentCanvas);
-                Debug.Log($"✅ Created panel: {prefab.name} on canvas: {parentCanvas.name}");
+                // Debug.Log($"✅ Created panel: {prefab.name} on canvas: {parentCanvas.name}");
             }
             else
             {
@@ -441,10 +441,10 @@ public class UIManager : MonoBehaviour
 
     private Transform GetParentCanvasForState(GameState state)
     {
-        Debug.Log($"🔍 GetParentCanvasForState({state}):");
-        Debug.Log($"   mainCanvas: {(mainCanvas != null ? mainCanvas.name : "NULL")}");
-        Debug.Log($"   overlayCanvas: {(overlayCanvas != null ? overlayCanvas.name : "NULL")}");
-        Debug.Log($"   hudCanvas: {(hudCanvas != null ? hudCanvas.name : "NULL")}");
+        // Debug.Log($"🔍 GetParentCanvasForState({state}):");
+        // Debug.Log($"   mainCanvas: {(mainCanvas != null ? mainCanvas.name : "NULL")}");
+        // Debug.Log($"   overlayCanvas: {(overlayCanvas != null ? overlayCanvas.name : "NULL")}");
+        // Debug.Log($"   hudCanvas: {(hudCanvas != null ? hudCanvas.name : "NULL")}");
 
         switch (state)
         {
@@ -595,7 +595,7 @@ public class UIManager : MonoBehaviour
         if (mobileControls != null)
             mobileControls.SetActive(false);
 
-        Debug.Log("🎵 Song Selection UI activated");
+        // Debug.Log("🎵 Song Selection UI activated");
     }
     #endregion
 
@@ -840,7 +840,7 @@ public class UIManager : MonoBehaviour
     void DisplayFinalScore()
     {
         // This will be expanded when game over screen is implemented
-        Debug.Log($"🏁 Final Score: {currentScore}, Max Combo: {currentCombo}");
+        // Debug.Log($"🏁 Final Score: {currentScore}, Max Combo: {currentCombo}");
     }
 
     public void SetUIInteractable(bool interactable)

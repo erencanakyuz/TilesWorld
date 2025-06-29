@@ -102,7 +102,7 @@ public class AudioManager : MonoBehaviour
         backgroundAudioSource.playOnAwake = false;
         backgroundAudioSource.loop = true;
 
-        Debug.Log($"🎵 AudioManager initialized with {audioSourcePoolSize} pooled sources");
+        // Debug.Log($"🎵 AudioManager initialized with {audioSourcePoolSize} pooled sources");
     }
 
     void ApplyDefaultSettings()
@@ -266,7 +266,7 @@ public class AudioManager : MonoBehaviour
 
             StartCoroutine(MonitorMusicPlayback());
 
-            Debug.Log($"🎵 Playing music: {musicClip.name} from {startTime:F2}s");
+            // Debug.Log($"🎵 Playing music: {musicClip.name} from {startTime:F2}s");
         }
     }
 
@@ -275,7 +275,7 @@ public class AudioManager : MonoBehaviour
         if (musicAudioSource != null && musicAudioSource.isPlaying)
         {
             musicAudioSource.Stop();
-            Debug.Log("🎵 Music stopped");
+            // Debug.Log("🎵 Music stopped");
         }
     }
 
@@ -284,7 +284,7 @@ public class AudioManager : MonoBehaviour
         if (musicAudioSource != null && musicAudioSource.isPlaying)
         {
             musicAudioSource.Pause();
-            Debug.Log("⏸️ Music paused");
+            // Debug.Log("⏸️ Music paused");
         }
     }
 
@@ -293,7 +293,7 @@ public class AudioManager : MonoBehaviour
         if (musicAudioSource != null && !musicAudioSource.isPlaying)
         {
             musicAudioSource.UnPause();
-            Debug.Log("▶️ Music resumed");
+            // Debug.Log("▶️ Music resumed");
         }
     }
 
@@ -343,13 +343,13 @@ public class AudioManager : MonoBehaviour
     public void TestAudioLatency()
     {
         // Basic latency test without external test classes
-        Debug.Log("🎵 Testing audio latency...");
+        // Debug.Log("🎵 Testing audio latency...");
 
         // Play a test sound and measure response
         if (instruments.Length > 0 && instruments[0].noteClips.Length > 0)
         {
             PlayNote(InstrumentType.Piano, 0, 1.0f);
-            Debug.Log($"🎵 Audio latency test complete - Average: {averageLatency:F2}ms");
+            // Debug.Log($"🎵 Audio latency test complete - Average: {averageLatency:F2}ms");
         }
     }
 

@@ -143,8 +143,9 @@ public class SongJSONSplitter : EditorWindow
                         artist = artist
                     };
                     database[musicId] = songInfo;
-                    Debug.Log($"📀 Loaded: {title} by {artist} (ID:{musicId})");
+
                 }
+
             }
         }
 

@@ -95,7 +95,7 @@ public class SongSelectionManager : MonoBehaviour
                         };
 
                         songList.Add(songData);
-                        Debug.Log($"🎵 Loaded: {cleanTitle} by {artist} (BPM: {bpm}, Difficulty: {difficulty})");
+                        // Debug.Log($"🎵 Loaded: {cleanTitle} by {artist} (BPM: {bpm}, Difficulty: {difficulty})");
                     }
                     catch (System.Exception e)
                     {
@@ -105,7 +105,7 @@ public class SongSelectionManager : MonoBehaviour
             }
 
             availableSongs = songList.ToArray();
-            Debug.Log($"🎼 Successfully loaded {availableSongs.Length} songs from database");
+            // Debug.Log($"🎼 Successfully loaded {availableSongs.Length} songs from database");
         }
         catch (System.Exception e)
         {
@@ -292,7 +292,7 @@ public class SongSelectionManager : MonoBehaviour
         songDetails.text = formattedDetails;
 
         // Debug log
-        Debug.Log($"♪ Selected Song: {selectedSong.title} - {selectedSong.difficulty}");
+        // Debug.Log($"♪ Selected Song: {selectedSong.title} - {selectedSong.difficulty}");
     }
 
     private string GetDifficultyColoredText(DifficultyLevel difficulty)
@@ -332,7 +332,7 @@ public class SongSelectionManager : MonoBehaviour
 
         SongData selectedSong = availableSongs[selectedIndex];
 
-        Debug.Log($"► Starting song: {selectedSong.title} ({selectedSong.difficulty})");
+        // Debug.Log($"► Starting song: {selectedSong.title} ({selectedSong.difficulty})");
 
         // Convert SongSelectionManager.SongData to GameplayManager's expected format
         var gameplaySongData = new GameplaySongData
@@ -399,7 +399,7 @@ public class SongSelectionManager : MonoBehaviour
 
     private void GoBack()
     {
-        Debug.Log("◄ Going back to main menu");
+        // Debug.Log("◄ Going back to main menu");
 
         // Main menu'ye geri dön
         if (GameManager.Instance != null)

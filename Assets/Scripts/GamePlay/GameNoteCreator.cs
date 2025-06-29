@@ -69,56 +69,22 @@ public class GameNoteCreator : MonoBehaviour
             return;
         }
 
-        Debug.Log($"🎵 Loading song via SongData compatibility: {song.songName}");
-
         // JSON dosyasını yükle
         string jsonFileName = GetJsonFileName(song);
         string resourcePath = $"Song_Note_Jsons/Individual/{jsonFileName}".Replace(".json", "");
-
-        Debug.Log($"🔍 Trying to load JSON from path: {resourcePath}");
-        Debug.Log($"🔍 Generated filename: {jsonFileName}");
 
         TextAsset jsonFile = Resources.Load<TextAsset>(resourcePath);
         if (jsonFile == null)
         {
             Debug.LogError($"❌ Could not load JSON from: {resourcePath}");
-            Debug.LogError($"❌ Make sure the file exists in Resources/{resourcePath}.json");
-
-            // Alternative paths denemesi
-            string[] possiblePaths = {
-                $"Song_Note_Jsons/Individual/turkish_delight_mozart",
-                $"Song_Note_Jsons/Individual/turkish_delight_unknown",
-                $"Song_Note_Jsons/Individual/air_on_a_g_string_bach"
-            };
-
-            foreach (string altPath in possiblePaths)
-            {
-                Debug.Log($"🔍 Trying alternative path: {altPath}");
-                TextAsset altFile = Resources.Load<TextAsset>(altPath);
-                if (altFile != null)
-                {
-                    Debug.Log($"✅ Found file at: {altPath}");
-                    jsonFile = altFile;
-                    break;
-                }
-            }
-
-            if (jsonFile == null)
-            {
-                Debug.LogError("❌ No JSON file found for this song!");
-                return;
-            }
+            // Alternative path denemesi kaldırıldı, ana yola odaklanalım
+            return;
         }
 
         try
         {
-            Debug.Log($"📄 JSON file loaded, length: {jsonFile.text.Length} characters");
             var sequences = ParseIndividualJson(jsonFile.text);
-            Debug.Log($"📊 Parsed {sequences.Count} sequences");
-
             var chartSequences = ConvertToChartSequences(sequences);
-            Debug.Log($"📈 Converted to {chartSequences.Count} chart sequences");
-
             LoadSong(chartSequences, (int)song.bpm);
             Debug.Log($"🎵 DYNAMIC SYSTEM: {song.songName} loaded via compatibility layer!");
         }
@@ -144,14 +110,14 @@ public class GameNoteCreator : MonoBehaviour
         {
             if (accumulatedTime >= FIRST_DELAY_MS)
             {
-                Debug.Log($"✅ FIRST_DELAY completed! Starting dynamic generation...");
+                //Debug.Log($"✅ FIRST_DELAY completed! Starting dynamic generation...");
                 firstDelayCompleted = true;
 
                 // İlk paketi oluştur
                 currentNotePackage = CreatePackageAtCurrentMoment();
                 if (currentNotePackage != null)
                 {
-                    Debug.Log($"🎯 FIRST package: {currentNotePackage.gameNoteInfos.Count} notes, oneNote: {currentNotePackage.oneNote:F1}ms");
+                    //Debug.Log($"🎯 FIRST package: {currentNotePackage.gameNoteInfos.Count} notes, oneNote: {currentNotePackage.oneNote:F1}ms");
                     OnNotesGenerated?.Invoke(currentNotePackage.gameNoteInfos);
 
                     // *** FIX: Timing'i doğru reset et ***
@@ -177,11 +143,11 @@ public class GameNoteCreator : MonoBehaviour
             currentNotePackage = CreatePackageAtCurrentMoment();
             if (currentNotePackage != null)
             {
-                Debug.Log($"🎯 Next package: {currentNotePackage.gameNoteInfos.Count} notes, oneNote: {currentNotePackage.oneNote:F1}ms, dir: {directionCounter}");
+                //Debug.Log($"🎯 Next package: {currentNotePackage.gameNoteInfos.Count} notes, oneNote: {currentNotePackage.oneNote:F1}ms, dir: {directionCounter}");
 
                 // *** DEBUG: Event'i tetiklemeden önce subscriber sayısını kontrol et ***
                 int subscriberCount = OnNotesGenerated?.GetInvocationList()?.Length ?? 0;
-                Debug.Log($"🔥 EVENT DEBUG: OnNotesGenerated has {subscriberCount} subscribers");
+                //Debug.Log($"🔥 EVENT DEBUG: OnNotesGenerated has {subscriberCount} subscribers");
 
                 OnNotesGenerated?.Invoke(currentNotePackage.gameNoteInfos);
 
@@ -193,7 +159,7 @@ public class GameNoteCreator : MonoBehaviour
                 // Artık nota kalmadı
                 isAllCreated = true;
                 OnGenerationComplete?.Invoke();
-                Debug.Log("🏁 Generation complete!");
+                //Debug.Log("🏁 Generation complete!");
             }
         }
     }

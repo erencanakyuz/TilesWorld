@@ -16,8 +16,10 @@ public class InteractiveMusicSystem : MonoBehaviour
     [Header("🎵 Interactive Music Configuration")]
     [SerializeField] private InstrumentType currentInstrument = InstrumentType.Piano;
     [SerializeField] private MusicalScale currentScale = MusicalScale.CMajor;
-    [SerializeField] private bool enableJsonBasedMusic = true;  // Use JSON note data
-    [SerializeField] private bool showDebugInfo = false;         // Debug note playing
+    [Header("⚙️ System Configuration")]
+    // [SerializeField] private bool enableJsonBasedMusic = true;
+    [SerializeField] private bool showDebugInfo = false;
+    // [SerializeField] private InstrumentType defaultInstrument = InstrumentType.Piano;
 
     [Header("🎼 Musical Mapping (Original SOUND_RESOURCE_IDXS)")]
     [SerializeField] private int baseOctave = 4;
@@ -388,11 +390,12 @@ public class InteractiveMusicSystem : MonoBehaviour
     public void SetInstrument(InstrumentType instrument)
     {
         currentInstrument = instrument;
-
-        if (enableJsonBasedMusic && showDebugInfo)
-        {
-            Debug.Log($"🎵 JSON-based music enabled for {instrument}");
-        }
+        /*
+                if (enableJsonBasedMusic && showDebugInfo)
+                {
+                    Debug.Log($"🎵 JSON-based music enabled for {instrument}");
+                }
+        */
     }
 
     /// <summary>
@@ -413,7 +416,7 @@ public class InteractiveMusicSystem : MonoBehaviour
 
         if (showDebugInfo)
         {
-            Debug.Log($"🎵 TriggerNoteAudio called by {callingClass}.{callingMethod} - Note: {noteInfo.pitch}");
+            // Debug.Log($"🎵 TriggerNoteAudio called by {callingClass}.{callingMethod} - Note: {noteInfo.pitch}");
         }
 
         // Alert if called from unexpected source
@@ -445,7 +448,7 @@ public class InteractiveMusicSystem : MonoBehaviour
 
         if (showDebugInfo)
         {
-            Debug.Log($"🎵 Playing chord with {chordNotes.Count} notes");
+            // Debug.Log($"🎵 Playing chord with {chordNotes.Count} notes");
         }
 
         foreach (var note in chordNotes)
@@ -463,7 +466,7 @@ public class InteractiveMusicSystem : MonoBehaviour
 
             if (showDebugInfo)
             {
-                Debug.Log($"🎵 Enhanced chord detected: {detectedChord}");
+                // Debug.Log($"🎵 Enhanced chord detected: {detectedChord}");
             }
         }
     }
@@ -605,8 +608,8 @@ public class InteractiveMusicSystem : MonoBehaviour
         // 3. Debug logging (if enabled)
         if (showDebugInfo)
         {
-            Debug.Log($"🎵 Playing {instrumentType} pitch {pitch} " +
-                     $"lane {lane} volume {velocity:F2}");
+            // Debug.Log($"🎵 Playing {instrumentType} pitch {pitch} " +
+            //         $"lane {lane} volume {velocity:F2}");
         }
     }
 }

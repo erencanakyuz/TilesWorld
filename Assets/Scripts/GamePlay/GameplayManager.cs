@@ -107,13 +107,13 @@ public class GameplayManager : MonoBehaviour
 
     void SubscribeToEvents()
     {
-        Debug.Log("🔗 SUBSCRIBING TO EVENTS...");
+        //Debug.Log("🔗 SUBSCRIBING TO EVENTS...");
 
         // *** PREVENT DUPLICATE SUBSCRIPTION ***
         GameNoteCreator.OnNotesGenerated -= noteRenderer.SpawnNotes; // Remove if exists
 
         // GameNoteCreator events - True Dynamic System ile events kullanıyoruz!
-        Debug.Log("🔗 Subscribing to GameNoteCreator.OnNotesGenerated (duplicate-safe)");
+        //Debug.Log("🔗 Subscribing to GameNoteCreator.OnNotesGenerated (duplicate-safe)");
         GameNoteCreator.OnNotesGenerated += noteRenderer.SpawnNotes; // CRITICAL!
         GameNoteCreator.OnGenerationComplete += HandleSongComplete;
 
@@ -130,7 +130,7 @@ public class GameplayManager : MonoBehaviour
         // GameManager events
         GameManager.OnGameStateChanged += HandleGameStateChange;
 
-        Debug.Log("✅ Event subscriptions completed!");
+        //Debug.Log("✅ Event subscriptions completed!");
     }
 
     IEnumerator DelayedGameStartCoroutine(float delay)
@@ -220,7 +220,7 @@ public class GameplayManager : MonoBehaviour
         currentSong.noteChartPath = songData.chartFilePath;
         currentSong.songKey = songData.songKey;
 
-        Debug.Log($"🎮 Starting gameplay sequence for: {currentSong.songName} by {currentSong.artist}");
+        //Debug.Log($"🎮 Starting gameplay sequence for: {currentSong.songName} by {currentSong.artist}");
         StartCoroutine(StartGameplaySequence());
     }
 
@@ -239,7 +239,7 @@ public class GameplayManager : MonoBehaviour
 
     IEnumerator StartGameplaySequence()
     {
-        Debug.Log($"🎮 Starting gameplay: {currentSong.songName}");
+        //Debug.Log($"🎮 Starting gameplay: {currentSong.songName}");
 
         // Prepare all systems
         PrepareGameplaySystems();
@@ -272,13 +272,13 @@ public class GameplayManager : MonoBehaviour
 
         if (noteCreator != null && currentSong != null)
         {
-            Debug.Log($"🎵 Loading song with dynamic system: {currentSong.songName}");
+            //Debug.Log($"🎵 Loading song with dynamic system: {currentSong.songName}");
 
             // Direkt JSON loading deniyoruz
             try
             {
                 noteCreator.LoadSong(currentSong); // Bu metod kendi JSON loading'ini yapıyor
-                Debug.Log($"✅ Song loaded successfully!");
+                //Debug.Log($"✅ Song loaded successfully!");
             }
             catch (System.Exception e)
             {
@@ -287,7 +287,7 @@ public class GameplayManager : MonoBehaviour
                 // Fallback: JsonMusicParser deniyoruz
                 if (jsonMusicParser != null)
                 {
-                    Debug.Log("🎵 Fallback: Using JsonMusicParser...");
+                    //Debug.Log("🎵 Fallback: Using JsonMusicParser...");
                     noteCreator.LoadSong(currentSong);
                 }
                 else
@@ -318,7 +318,7 @@ public class GameplayManager : MonoBehaviour
 
         for (int i = (int)countdownDuration; i > 0; i--)
         {
-            Debug.Log($"🎮 Starting in {i}...");
+            //Debug.Log($"🎮 Starting in {i}...");
 
             // Show countdown UI number
             if (UIManager.Instance != null)
@@ -357,7 +357,7 @@ public class GameplayManager : MonoBehaviour
         isSongLoaded = true;
         songDuration = currentSong.duration;
 
-        Debug.Log($"🎮 Song loaded: {currentSong.songName} (Duration: {songDuration}s)");
+        //Debug.Log($"🎮 Song loaded: {currentSong.songName} (Duration: {songDuration}s)");
     }
 
     /// <summary>
@@ -377,7 +377,7 @@ public class GameplayManager : MonoBehaviour
         isGameActive = true;  // *** CRITICAL: Bu satır olmadan Update() çalışmaz! ***
         isGamePaused = false;
 
-        Debug.Log("🎮 *** GAMEPLAY AKTİF! *** Update() döngüsü başladı!");
+        //Debug.Log("🎮 *** GAMEPLAY AKTİF! *** Update() döngüsü başladı!");
 
         // Start music with configured delay
         StartCoroutine(StartMusicWithDelay());
@@ -393,7 +393,7 @@ public class GameplayManager : MonoBehaviour
         // Apply song start delay if configured
         if (songStartDelay > 0)
         {
-            Debug.Log($"🎵 Applying song start delay: {songStartDelay}s");
+            //Debug.Log($"🎵 Applying song start delay: {songStartDelay}s");
             yield return new WaitForSeconds(songStartDelay);
         }
 
@@ -405,12 +405,12 @@ public class GameplayManager : MonoBehaviour
             if (musicClip != null)
             {
                 audioManager.PlayMusic(musicClip, 0f);
-                Debug.Log($"🎵 Müzik başlatıldı: {musicClip.name}");
+                //Debug.Log($"🎵 Müzik başlatıldı: {musicClip.name}");
             }
             else
             {
                 // Background music not found - this is normal, game works with note-based music only
-                Debug.Log($"🎵 Background music not available: {currentSong.audioFilePath} (Playing with note-based music only)");
+                //Debug.Log($"🎵 Background music not available: {currentSong.audioFilePath} (Playing with note-based music only)");
             }
         }
     }
@@ -432,14 +432,14 @@ public class GameplayManager : MonoBehaviour
             GameManager.Instance.ChangeGameState(GameState.Paused);
         }
 
-        Debug.Log("⏸️ Gameplay paused");
+        //Debug.Log("⏸️ Gameplay paused");
     }
 
     public void ResumeGameplay()
     {
         if (!isGameActive || !isGamePaused)
         {
-            Debug.Log($"🎮 Resume blocked: isGameActive={isGameActive}, isGamePaused={isGamePaused}");
+            //Debug.Log($"🎮 Resume blocked: isGameActive={isGameActive}, isGamePaused={isGamePaused}");
             return;
         }
 
@@ -456,7 +456,7 @@ public class GameplayManager : MonoBehaviour
             GameManager.Instance.ChangeGameState(GameState.Playing);
         }
 
-        Debug.Log($"▶️ Gameplay resumed! TimeScale: {Time.timeScale}");
+        //Debug.Log($"▶️ Gameplay resumed! TimeScale: {Time.timeScale}");
     }
 
     public void EndGameplay()
@@ -484,7 +484,7 @@ public class GameplayManager : MonoBehaviour
 
         OnGameplayEnded?.Invoke();
 
-        Debug.Log($"🏁 Gameplay ended! Final score: Accuracy {accuracy:F1}%, Max combo: {maxCombo}");
+        //Debug.Log($"🏁 Gameplay ended! Final score: Accuracy {accuracy:F1}%, Max combo: {maxCombo}");
     }
     #endregion
 
@@ -494,7 +494,7 @@ public class GameplayManager : MonoBehaviour
 
     void HandleSongComplete()
     {
-        Debug.Log("🎵 Song generation complete!");
+        //Debug.Log("🎵 Song generation complete!");
         // Song will end when audio finishes or time runs out
     }
 
@@ -515,7 +515,7 @@ public class GameplayManager : MonoBehaviour
 
     void HandleMusicFinished()
     {
-        Debug.Log("🎵 Background music finished");
+        //Debug.Log("🎵 Background music finished");
         EndGameplay();
     }
 
@@ -578,7 +578,7 @@ public class GameplayManager : MonoBehaviour
             songName = currentSong != null ? currentSong.songName : "Unknown"
         };
 
-        Debug.Log($"🎮 Final Stats: {finalStats}");
+        //Debug.Log($"🎮 Final Stats: {finalStats}");
     }
 
     void ResetGameplayStats()

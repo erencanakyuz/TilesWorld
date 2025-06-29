@@ -239,10 +239,12 @@ public class NoteRenderer : MonoBehaviour
             activeNote.currentPosition.z -= currentSpeed * deltaTime;
 
             // Minimal debug only for first note to verify system working
+            /*
             if (i == 0 && totalNotesRendered <= 5)
             {
                 Debug.Log($"🚀 NOTE MOVE: Z {oldZ:F1} → {activeNote.currentPosition.z:F1}, speed={currentSpeed:F1}");
             }
+            */
 
             // Update Unity transform directly (no coordinate conversion needed)
             activeNote.gameObject.transform.position = activeNote.currentPosition;
@@ -480,10 +482,12 @@ public class NoteRenderer : MonoBehaviour
         totalNotesRendered++;
 
         // Debug only for first few spawns to check for duplicates
+        /*
         if (totalNotesRendered <= 10)
         {
             Debug.Log($"🎵 SPAWN #{totalNotesRendered}: Lane {noteInfo.idx}, Pitch {noteInfo.pitch}, Pos {spawnPosition}");
         }
+        */
     }
 
     GameObject GetPooledNote()
@@ -515,17 +519,14 @@ public class NoteRenderer : MonoBehaviour
 
     void HandleLaneTapped(int lane, Vector2 screenPosition)
     {
-        Debug.Log($"🎯 LANE TAPPED: Lane {lane}, Finding notes in hit zone... ACTIVE NOTES: {activeNotes.Count}");
+        // Early exit if game is paused
+        if (Time.timeScale <= 0f) return;
 
-        // Find notes in hit zone for this lane
         var candidateNotes = FindNotesInHitZone(lane);
-
-        Debug.Log($"🎯 Found {candidateNotes.Count} candidate notes in lane {lane}");
 
         if (candidateNotes.Count == 0)
         {
-            Debug.Log($"🎯 NO NOTES IN HIT ZONE for lane {lane} - but firing empty hit anyway");
-            // Even if no notes, show some feedback to player
+            // Optional: Register a "miss" or "empty hit"
             if (UIManager.Instance != null)
             {
                 UIManager.Instance.ShowHitEffect(HitAccuracy.Miss, screenPosition);
@@ -533,54 +534,45 @@ public class NoteRenderer : MonoBehaviour
             return;
         }
 
-        // Get closest note (like original Java onTap logic)
-        var bestNote = candidateNotes.OrderBy(n => Mathf.Abs(n.currentPosition.z - hitZoneZ)).FirstOrDefault();
-        if (bestNote == null) return;
+        // Sort by distance to hit zone to get the most accurate note
+        candidateNotes.Sort((a, b) =>
+            Mathf.Abs(a.currentPosition.z - hitZoneZ).CompareTo(Mathf.Abs(b.currentPosition.z - hitZoneZ)));
+
+        var bestNote = candidateNotes[0];
 
         float hitPos = bestNote.currentPosition.z;
 
-        Debug.Log($"🎯 BEST NOTE: Lane {lane}, Z-pos {hitPos:F2}, Hit Zone: {hitZoneZ}");
-
-        // 🎯 ORIGINAL JAVA HIT DETECTION - LAYERED TIMING WINDOWS
-        // Hit windows are relative to hitZoneZ (0.0f = perfect hit line)
-        // Calculate distance from hit zone center
+        // Determine hit accuracy
         float distanceFromHitZone = Mathf.Abs(hitPos - hitZoneZ);
-
-        HitAccuracy hitAccuracy;
+        HitAccuracy accuracy;
         int score;
 
         // Layered hit windows - closer to hit zone = better accuracy
-        if (distanceFromHitZone <= 0.8f)
+        if (distanceFromHitZone <= 0.8f) // PERFECT
         {
-            // PERFECT hit zone (very close to hit line)
-            hitAccuracy = HitAccuracy.Perfect;
+            accuracy = HitAccuracy.Perfect;
             score = 300;
         }
-        else if (distanceFromHitZone <= 1.5f)
+        else if (distanceFromHitZone <= 1.5f) // GOOD
         {
-            // GOOD hit zone 
-            hitAccuracy = HitAccuracy.Good;
+            accuracy = HitAccuracy.Good;
             score = 200;
         }
-        else if (distanceFromHitZone <= 3.0f)
+        else if (distanceFromHitZone <= 3.0f) // OKAY (using Miss as placeholder style)
         {
-            // OKAY hit zone (using Miss as placeholder)
-            hitAccuracy = HitAccuracy.Miss;
+            accuracy = HitAccuracy.Miss;
             score = 100;
         }
         else
         {
-            // Outside hit window - no action taken (like original Java)
-            Debug.Log($"🎯 Note outside hit window: Z={hitPos:F2}, distance from hit zone={distanceFromHitZone:F2}, ignoring hit");
+            // Outside hit window - no action taken
             return;
         }
 
-        Debug.Log($"✅ HIT SUCCESS: Lane {lane}, Accuracy {hitAccuracy}, Score {score}, Z-pos {hitPos:F2}");
+        // Process the successful hit
+        ProcessNoteHit(bestNote, score, accuracy, screenPosition);
 
-        // Process the hit with original Java timing precision
-        ProcessNoteHit(bestNote, score, hitAccuracy, screenPosition);
-
-        // Trigger audio (interactive music creation)
+        // Trigger audio 
         TriggerNoteAudio(bestNote.noteInfo);
 
         // Remove note from game
@@ -589,66 +581,64 @@ public class NoteRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Process note hit with original Java accuracy calculation
+    /// Processes a successful note hit, updating score, combo, and triggering effects.
     /// </summary>
     void ProcessNoteHit(RenderingNote activeNote, int score, HitAccuracy accuracy, Vector2 screenPosition)
     {
-        // Update game stats like original Java
+        // Update game stats
         if (GameManager.Instance != null)
         {
             GameManager.Instance.UpdateScore(score);
 
-            // Update combo based on accuracy
             if (accuracy == HitAccuracy.Perfect || accuracy == HitAccuracy.Good)
             {
                 GameManager.Instance.UpdateCombo(1); // Increase combo
             }
             else
             {
-                GameManager.Instance.UpdateCombo(0); // Reset combo for poor hits
+                GameManager.Instance.UpdateCombo(0); // Reset combo
             }
         }
 
-        // Trigger visual effect 
+        // Trigger visual effect
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowHitEffect(accuracy, screenPosition);
         }
     }
 
+    /// <summary>
+    /// Finds all notes in a specific lane that are currently within the hit zone.
+    /// </summary>
     List<RenderingNote> FindNotesInHitZone(int lane)
     {
-        var hitNotes = new List<RenderingNote>();
+        var candidates = new List<RenderingNote>();
+        float hitZoneDetectionRangeZ = hitZoneWidth * 2f; // Detection range based on width
 
-        Debug.Log($"🔍 Finding notes in hit zone for lane {lane}:");
-        Debug.Log($"🔍 Total active notes: {activeNotes.Count}");
-        Debug.Log($"🔍 Hit zone Z: {hitZoneZ}, Detection range: ±4.0f");
+        // Debug.Log($"🔍 Finding notes in hit zone for lane {lane}:");
+        // Debug.Log($"🔍 Total active notes: {activeNotes.Count}");
+        // Debug.Log($"🔍 Hit zone Z: {hitZoneZ}, Detection range: ±{hitZoneDetectionRangeZ}f");
 
-        foreach (var activeNote in activeNotes)
+        foreach (var note in activeNotes)
         {
-            Debug.Log($"🔍 Note in lane {activeNote.noteInfo.idx}, Z: {activeNote.currentPosition.z:F2}");
-
-            if (activeNote.noteInfo.idx == lane)
+            // Debug.Log($"🔍 Note in lane {note.noteInfo.idx}, Z: {note.currentPosition.z:F2}");
+            if (note.noteInfo.idx == lane)
             {
-                // Hit zone detection - allow notes within reasonable hitting distance
-                float distanceFromHitZone = Mathf.Abs(activeNote.currentPosition.z - hitZoneZ);
+                float distanceFromHitZone = Mathf.Abs(note.currentPosition.z - hitZoneZ);
+                // Debug.Log($"🔍 LANE MATCH! Distance from hit zone: {distanceFromHitZone:F2}");
 
-                Debug.Log($"🔍 LANE MATCH! Distance from hit zone: {distanceFromHitZone:F2}");
-
-                // Allow notes within expanded detection zone for better user experience
-                if (distanceFromHitZone <= 4.0f) // Generous detection zone (was 2.0f)
+                if (distanceFromHitZone <= hitZoneDetectionRangeZ)
                 {
-                    Debug.Log($"✅ NOTE IN HIT ZONE! Adding to candidates");
-                    hitNotes.Add(activeNote);
+                    // Debug.Log("✅ NOTE IN HIT ZONE! Adding to candidates");
+                    candidates.Add(note);
                 }
-                else
-                {
-                    Debug.Log($"❌ Note too far from hit zone: {distanceFromHitZone:F2} > 4.0");
-                }
+                // else
+                // {
+                //     Debug.Log($"❌ Note too far from hit zone: {distanceFromHitZone:F2} > {hitZoneDetectionRangeZ}");
+                // }
             }
         }
-
-        return hitNotes;
+        return candidates;
     }
 
     void HandleNoteMissed(RenderingNote activeNote)

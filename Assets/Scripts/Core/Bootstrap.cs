@@ -24,7 +24,7 @@ public class Bootstrap : MonoBehaviour
 
     private void LoadTargetScene()
     {
-        Debug.Log($"'{TargetSceneName}' sahnesi yükleniyor...");
+        // Debug.Log($"'{TargetSceneName}' sahnesi yükleniyor...");
         // Sahneyi asenkron olarak yükle, böylece oyun donmaz.
         SceneManager.LoadSceneAsync(TargetSceneName, LoadSceneMode.Additive);
     }

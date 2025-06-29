@@ -106,7 +106,7 @@ public class GameManager : MonoBehaviour
             UIManager.Instance != null &&
             InputManager.Instance != null)
         {
-            Debug.Log("🎮 All core systems initialized successfully");
+            // Debug.Log("🎮 All core systems initialized successfully");
         }
     }
 
@@ -118,11 +118,11 @@ public class GameManager : MonoBehaviour
             GameState previousState = CurrentGameState;
             CurrentGameState = newState;
 
-            Debug.Log($"🎮 Game State: {previousState} → {newState}");
+            // Debug.Log($"🎮 Game State: {previousState} → {newState}");
 
-            Debug.Log($"🔔 Firing OnGameStateChanged event with {newState}");
+            // Debug.Log($"🔔 Firing OnGameStateChanged event with {newState}");
             OnGameStateChanged?.Invoke(newState);
-            Debug.Log($"🔔 Event fired. Subscribers: {OnGameStateChanged?.GetInvocationList()?.Length ?? 0}");
+            // Debug.Log($"🔔 Event fired. Subscribers: {OnGameStateChanged?.GetInvocationList()?.Length ?? 0}");
 
             // Handle state-specific logic
             switch (newState)
@@ -170,13 +170,13 @@ public class GameManager : MonoBehaviour
     #region Scene Management
     public void LoadScene(string sceneName)
     {
-        Debug.Log($"🎭 Loading scene: {sceneName}");
+        // Debug.Log($"🎭 Loading scene: {sceneName}");
         SceneManager.LoadScene(sceneName);
     }
 
     public async void LoadSceneAsync(string sceneName)
     {
-        Debug.Log($"🎭 Loading scene async: {sceneName}");
+        // Debug.Log($"🎭 Loading scene async: {sceneName}");
 
         var operation = SceneManager.LoadSceneAsync(sceneName);
 
@@ -185,7 +185,7 @@ public class GameManager : MonoBehaviour
             await System.Threading.Tasks.Task.Yield();
         }
 
-        Debug.Log($"✅ Scene loaded: {sceneName}");
+        // Debug.Log($"✅ Scene loaded: {sceneName}");
     }
     #endregion
 
@@ -217,7 +217,7 @@ public class GameManager : MonoBehaviour
             PlayerPrefs.SetInt("PreferredInstrument", (int)currentPlayer.preferredInstrument);
             PlayerPrefs.Save();
 
-            Debug.Log("💾 Player data saved");
+            // Debug.Log("💾 Player data saved");
         }
     }
     #endregion
@@ -238,7 +238,7 @@ public class GameManager : MonoBehaviour
         };
 
         ChangeGameState(GameState.Playing);
-        Debug.Log($"🎵 Started new session: {song.songName} with {selectedInstrument}");
+        // Debug.Log($"🎵 Started new session: {song.songName} with {selectedInstrument}");
     }
 
     public void EndGameSession()
@@ -311,26 +311,26 @@ public class GameManager : MonoBehaviour
     #region UI Event Handlers
     void HandlePauseButtonPressed()
     {
-        Debug.Log("🎮 Pause button pressed");
+        // Debug.Log("🎮 Pause button pressed");
         PauseGame();
     }
 
     void HandleSettingsButtonPressed()
     {
-        Debug.Log("⚙️ Settings button pressed");
+        // Debug.Log("⚙️ Settings button pressed");
         // TODO: Settings panel functionality will be added later
         // For now, just open a simple settings overlay
     }
 
     void HandleResumeButtonPressed()
     {
-        Debug.Log("▶️ Resume button pressed");
+        // Debug.Log("▶️ Resume button pressed");
         ResumeGame();
     }
 
     void HandleRestartButtonPressed()
     {
-        Debug.Log("🔄 Restart button pressed");
+        // Debug.Log("🔄 Restart button pressed");
         // Restart current session
         if (currentSession != null)
         {
@@ -341,7 +341,7 @@ public class GameManager : MonoBehaviour
 
     void HandleMainMenuButtonPressed()
     {
-        Debug.Log("🏠 Main menu button pressed");
+        // Debug.Log("🏠 Main menu button pressed");
         ChangeGameState(GameState.MainMenu);
     }
     #endregion
@@ -406,7 +406,7 @@ public class GameManager : MonoBehaviour
         // Debug: S tuşuna basınca Song Selection'a geç
         if (Keyboard.current.sKey.wasPressedThisFrame)
         {
-            Debug.Log("🎵 Switching to Song Selection state...");
+            // Debug.Log("🎵 Switching to Song Selection state...");
             ChangeGameState(GameState.SongSelection);
         }
 #endif

@@ -236,8 +236,6 @@ public class InputManager : MonoBehaviour
             // Calculate screen position for the lane center
             Vector2 lanePosition = LaneToScreenPosition(lane);
 
-            Debug.Log($"🎮 KEY PRESSED: Lane {lane} (Key: {GetKeyForLane(lane)}), Screen Pos: {lanePosition}");
-
             // Fire lane tapped event
             OnLaneTapped?.Invoke(lane, lanePosition);
         }
