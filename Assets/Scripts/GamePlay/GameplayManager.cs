@@ -272,28 +272,13 @@ public class GameplayManager : MonoBehaviour
 
         if (noteCreator != null && currentSong != null)
         {
-            //Debug.Log($"🎵 Loading song with dynamic system: {currentSong.songName}");
-
-            // Direkt JSON loading deniyoruz
             try
             {
                 noteCreator.LoadSong(currentSong); // Bu metod kendi JSON loading'ini yapıyor
-                //Debug.Log($"✅ Song loaded successfully!");
             }
             catch (System.Exception e)
             {
                 Debug.LogError($"🚨 Song loading failed: {e.Message}");
-
-                // Fallback: JsonMusicParser deniyoruz
-                if (jsonMusicParser != null)
-                {
-                    //Debug.Log("🎵 Fallback: Using JsonMusicParser...");
-                    noteCreator.LoadSong(currentSong);
-                }
-                else
-                {
-                    Debug.LogError("🚨 JsonMusicParser not found! Manual JSON loading required.");
-                }
             }
         }
         else

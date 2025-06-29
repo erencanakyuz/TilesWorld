@@ -53,7 +53,9 @@ public class GameNoteCreator : MonoBehaviour
         ResetState();
 
         rawChartData = rawChart;
-        baseTimingMs = (60000f / tempo) / 8f;
+        // Orijinal oyunun zamanlaması (62.5ms @ 120BPM) Unity için çok hızlı.
+        // Oynanabilir bir hıza getirmek için geçici olarak 10x yavaşlatıyoruz.
+        baseTimingMs = ((60000f / tempo) / 8f) * 10f;
 
         Debug.Log($"🎵 Raw chart loaded with {rawChartData.Count} sequences. Base timing: {baseTimingMs:F2}ms");
     }
@@ -378,6 +380,7 @@ public class GameNoteCreator : MonoBehaviour
     {
         try
         {
+            // Bireysel JSON'lar zaten "sequences" anahtarı ile geldiği için tekrar sarmalamaya GEREK YOK.
             JsonSequenceArray wrapper = JsonUtility.FromJson<JsonSequenceArray>(jsonText);
             return wrapper?.sequences?.ToList() ?? new List<JsonSongSequence>();
         }
