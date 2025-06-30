@@ -476,9 +476,14 @@ public class NoteRenderer : MonoBehaviour
             col = noteObject.AddComponent<BoxCollider>();
             Debug.Log($"[NoteRenderer] Added BoxCollider to note {noteObject.name}");
         }
-        col.isTrigger = false; // note acts as solid body entering trigger
+        // PERFORMANCE: Notes don't need to be solid physical objects.
+        // Making the collider a trigger prevents unnecessary physics calculations.
+        col.isTrigger = true;
         col.size = new Vector3(laneWidth * 0.7f, 1.0f, laneWidth * 0.7f * noteLengthMultiplier); // Match visual scale
 
+        // PERFORMANCE: Rigidbody is not needed as we are moving the notes manually via transform.
+        // The physics engine adds unnecessary overhead.
+        /*
         Rigidbody rb = noteObject.GetComponent<Rigidbody>();
         if (rb == null)
         {
@@ -488,10 +493,11 @@ public class NoteRenderer : MonoBehaviour
         rb.isKinematic = true; // we move notes manually
         rb.useGravity = false; // no gravity
         rb.constraints = RigidbodyConstraints.FreezeAll; // prevent any physics movement
+        */
 
         if (showDebugLogs && totalNotesRendered <= 5)
         {
-            Debug.Log($"[NoteRenderer] Note {noteObject.name} setup: Collider={col != null}, Rigidbody={rb != null}, Tag='{noteObject.tag}'");
+            Debug.Log($"[NoteRenderer] Note {noteObject.name} setup: Collider={col != null}, Tag='{noteObject.tag}'");
         }
     }
 
