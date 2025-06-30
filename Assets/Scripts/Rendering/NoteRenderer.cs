@@ -40,8 +40,9 @@ public class NoteRenderer : MonoBehaviour
     // Original algorithm state
     private Camera mainCamera;
     private Material noteMaterial;                            // Material for notes
-    private bool isNoteHighlight = false;                     // Original: isInvaderHilight
-    private float noteTextureChangeTime = 0f;                 // Original: invaderTextureChangeTime
+    // PERFORMANCE FIX: These variables were part of the disabled highlighting system.
+    // private bool isNoteHighlight = false;                     // Original: isInvaderHilight
+    // private float noteTextureChangeTime = 0f;                 // Original: invaderTextureChangeTime
 
     // Lane positioning
     private Vector3[] lanePositions;
@@ -194,6 +195,11 @@ public class NoteRenderer : MonoBehaviour
     /// </summary>
     void UpdateNoteTextures(float deltaTime)
     {
+        // PERFORMANCE FIX: This entire highlighting logic creates new material instances per-frame
+        // and is a significant performance bottleneck. It has been temporarily disabled.
+        // TODO: Re-implement this using a more efficient method like MaterialPropertyBlock or by
+        // modifying shader properties directly if highlighting is required in the future.
+        /*
         noteTextureChangeTime += deltaTime;
         if (noteTextureChangeTime > 0.2f) // Original: 0.2F interval
         {
@@ -212,6 +218,7 @@ public class NoteRenderer : MonoBehaviour
                 }
             }
         }
+        */
     }
 
     /// <summary>
@@ -249,29 +256,18 @@ public class NoteRenderer : MonoBehaviour
         }
     }
 
-    void ApplyNoteHighlight(RenderingNote activeNote, bool highlight)
-    {
-        if (activeNote?.gameObject == null) return;
-
-        var renderer = activeNote.gameObject.GetComponent<Renderer>();
-        if (renderer != null)
-        {
-            mpb.Clear();
-            Color targetColor = highlight ? Color.Lerp(activeNote.baseColor, Color.white, 0.3f) : activeNote.baseColor;
-
-            // Use the same property name that was set during spawn
-            if (renderer.sharedMaterial.HasProperty("_BaseColor"))
-                mpb.SetColor("_BaseColor", targetColor);
-            else
-                mpb.SetColor("_Color", targetColor);
-
-            renderer.SetPropertyBlock(mpb);
-        }
-    }
+    // void ApplyNoteHighlight(RenderingNote activeNote, bool highlight)
+    // {
+    //     ...
+    // }
 
     /// <summary>
     /// Get material for specific pitch and instrument
     /// </summary>
+    // PERFORMANCE FIX: This entire method is a performance killer as it creates a new material instance for each note.
+    // It is kept here but commented out for future reference. If unique note colors are needed,
+    // this should be replaced with a system that uses MaterialPropertyBlock.
+    /*
     Material GetMaterialForPitch(int pitch, InstrumentType instrumentType)
     {
         // Create or reuse material with pitch-based color
@@ -295,6 +291,7 @@ public class NoteRenderer : MonoBehaviour
 
         return pitchMaterial;
     }
+    */
 
     /// <summary>
     /// Get color based on musical pitch (chromatic scale)
@@ -347,7 +344,9 @@ public class NoteRenderer : MonoBehaviour
         indicator.transform.localScale = Vector3.one * 0.3f;
 
         Renderer indicatorRenderer = indicator.GetComponent<Renderer>();
-        indicatorRenderer.material = GetMaterialForPitch(pitch, InstrumentType.Piano);
+        // PERFORMANCE FIX: The GetMaterialForPitch method was disabled for performance.
+        // This indicator will now use the default material.
+        // indicatorRenderer.material = GetMaterialForPitch(pitch, InstrumentType.Piano);
 
         // Auto-destroy after 1 second
         Destroy(indicator, 1f);
@@ -387,20 +386,25 @@ public class NoteRenderer : MonoBehaviour
         Renderer noteRenderer = noteObject.GetComponent<Renderer>();
         if (noteRenderer != null)
         {
-            // USE SHARED MATERIAL (no instancing)
-            noteRenderer.sharedMaterial = noteMaterial;
-
-            // Apply per-note color via MaterialPropertyBlock
-            mpb.Clear();
-            Color pitchColor = GetColorForPitch(noteInfo.pitch);
-            Color instrumentTint = GetColorForInstrument(noteInfo.instrumentType);
-            finalColor = Color.Lerp(pitchColor, instrumentTint, 0.3f);
-            // try _BaseColor first (URP Unlit), fall back to _Color
-            if (noteRenderer.sharedMaterial.HasProperty("_BaseColor"))
-                mpb.SetColor("_BaseColor", finalColor);
-            else
-                mpb.SetColor("_Color", finalColor);
-            noteRenderer.SetPropertyBlock(mpb);
+            // PERFORMANCE FIX: Disabled per-note material instancing to avoid excessive draw calls.
+            // All notes will now use the prefab's default material.
+            // TODO: To re-enable unique note colors, implement a MaterialPropertyBlock system
+            // instead of creating new material instances.
+            //
+            // // USE SHARED MATERIAL (no instancing)
+            // noteRenderer.sharedMaterial = noteMaterial;
+            //
+            // // Apply per-note color via MaterialPropertyBlock
+            // mpb.Clear();
+            // Color pitchColor = GetColorForPitch(noteInfo.pitch);
+            // Color instrumentTint = GetColorForInstrument(noteInfo.instrumentType);
+            // finalColor = Color.Lerp(pitchColor, instrumentTint, 0.3f);
+            // // try _BaseColor first (URP Unlit), fall back to _Color
+            // if (noteRenderer.sharedMaterial.HasProperty("_BaseColor"))
+            //     mpb.SetColor("_BaseColor", finalColor);
+            // else
+            //     mpb.SetColor("_Color", finalColor);
+            // noteRenderer.SetPropertyBlock(mpb);
         }
         else
         {

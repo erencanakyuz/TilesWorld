@@ -227,7 +227,7 @@ public class GameplayManager : MonoBehaviour
         currentSong.artist = songInfo.artist;
         currentSong.duration = songInfo.duration > 0 ? songInfo.duration : EstimateDuration(songInfo.tempo); // Use real duration if available
         currentSong.bpm = songInfo.tempo;
-        currentSong.audioFilePath = $"Music/{songInfo.songKey}";
+        currentSong.audioFilePath = $"Audio/{songInfo.songKey}";
         currentSong.noteChartPath = $"Song_Note_Jsons/Individual/{songInfo.songKey}";
         currentSong.songKey = songInfo.songKey;
 
@@ -287,23 +287,16 @@ public class GameplayManager : MonoBehaviour
         StartCoroutine(StartGameplaySequence());
     }
 
-    IEnumerator StartGameplaySequence()
+    private IEnumerator StartGameplaySequence()
     {
-        if (showDebugLogs) Debug.Log("🚀 Gameplay sequence started...");
-
-        // Prepare all systems
         PrepareGameplaySystems();
 
-        // Show countdown
-        if (countdownDuration > 0)
-        {
-            yield return StartCoroutine(ShowCountdown());
-        }
+        yield return StartCoroutine(ShowCountdown());
 
-        // Load and start song
-        yield return StartCoroutine(LoadAndStartSong());
+        // Music loading now happens in the background.
+        StartCoroutine(StartMusicWithDelay(songStartDelay));
 
-        // Begin gameplay
+        // Gameplay logic starts immediately.
         BeginActiveGameplay();
     }
 
@@ -375,7 +368,7 @@ public class GameplayManager : MonoBehaviour
         return 120f;                      // Very fast: 2 minutes
     }
 
-    IEnumerator ShowCountdown()
+    private IEnumerator ShowCountdown()
     {
         _isCountingDown = true;
 
@@ -409,18 +402,32 @@ public class GameplayManager : MonoBehaviour
         _isCountingDown = false;
     }
 
-    IEnumerator LoadAndStartSong()
+    private IEnumerator StartMusicWithDelay(float delay)
     {
-        isSongLoaded = false; // Mark as loading
+        if (string.IsNullOrEmpty(currentSong.audioFilePath))
+        {
+            if (showDebugLogs) Debug.Log("No background music path provided.");
+            yield break;
+        }
 
-        // Basic song setup - no audio loading required here
-        // Audio will be handled in BeginActiveGameplay
-        yield return new WaitForSeconds(0.1f); // Small delay for setup
+        ResourceRequest request = Resources.LoadAsync<AudioClip>(currentSong.audioFilePath);
+        yield return request; // Wait for the async operation to complete
 
-        isSongLoaded = true;
-        songDuration = currentSong.duration;
+        AudioClip clip = request.asset as AudioClip;
 
-        if (showDebugLogs) Debug.Log($"🎮 Song loaded: {currentSong.songName} (Duration: {songDuration}s)");
+        if (clip != null)
+        {
+            yield return new WaitForSeconds(delay);
+            if (audioManager != null)
+            {
+                audioManager.PlayMusic(clip);
+                if (showDebugLogs) Debug.Log($"🎵 Asynchronously loaded and playing: {clip.name}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"Audio clip not found at path: {currentSong.audioFilePath}.");
+        }
     }
 
     /// <summary>
@@ -429,57 +436,10 @@ public class GameplayManager : MonoBehaviour
     /// </summary>
     void BeginActiveGameplay()
     {
-        if (!isSongLoaded)
-        {
-            Debug.LogWarning("🎮 Song not fully loaded yet, delaying gameplay start...");
-            StartCoroutine(DelayedGameStartCoroutine(songStartDelay));
-            return;
-        }
-
-        gameStartTime = Time.time;
-        isGameActive = true;  // *** CRITICAL: Bu satır olmadan Update() çalışmaz! ***
+        isGameActive = true;
         isGamePaused = false;
-
-        //Debug.Log("🎮 *** GAMEPLAY AKTİF! *** Update() döngüsü başladı!");
-
-        // Start music with configured delay
-        StartCoroutine(StartMusicWithDelay());
-
-        // Trigger event for other systems  
+        gameStartTime = Time.time;
         OnGameplayStarted?.Invoke();
-
-        if (showDebugLogs) Debug.Log("🎮 Gameplay başarıyla başlatıldı! Notalar gelmeye başlayacak...");
-    }
-
-    IEnumerator StartMusicWithDelay()
-    {
-        // Apply song start delay if configured
-        if (songStartDelay > 0)
-        {
-            if (showDebugLogs) Debug.Log($"🎵 Applying song start delay: {songStartDelay}s");
-            yield return new WaitForSeconds(songStartDelay);
-        }
-
-        // Start music (using existing AudioManager functionality)
-        if (audioManager != null && !string.IsNullOrEmpty(currentSong.audioFilePath))
-        {
-            // Try to load audio clip from Resources asynchronously to prevent frame drops
-            ResourceRequest request = Resources.LoadAsync<AudioClip>(currentSong.audioFilePath);
-            yield return request;
-
-            AudioClip musicClip = request.asset as AudioClip;
-
-            if (musicClip != null)
-            {
-                audioManager.PlayMusic(musicClip, 0f);
-                if (showDebugLogs) Debug.Log($"🎵 Müzik başlatıldı: {musicClip.name}");
-            }
-            else
-            {
-                // Background music not found - this is normal, game works with note-based music only
-                if (showDebugLogs) Debug.Log($"🎵 Background music not available: {currentSong.audioFilePath} (Playing with note-based music only)");
-            }
-        }
     }
 
     public void PauseGameplay()
