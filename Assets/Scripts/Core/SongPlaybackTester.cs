@@ -19,7 +19,8 @@ public class SongPlaybackTester : MonoBehaviour
     [Tooltip(">1 = daha hızlı çalma, <1 = yavaşlatır. 2 = iki kat hız.")]
     [SerializeField] private float speedMultiplier = 2f;
 
-    [Header("Pitch Mapping Ayarları")]
+#if UNITY_EDITOR
+    [Header("Pitch Mapping Ayarları (Editor-Only)")]
     [Tooltip("Orijinal Java mapping'ini kullan (lane+pitch → sound index). Kapalıysa pitch'i direkt kullanır.")]
     [SerializeField] private bool useJavaMapping = true;
 
@@ -31,6 +32,12 @@ public class SongPlaybackTester : MonoBehaviour
 
     [Tooltip("Sound index'i çarpan değer. 1 = değişmez, 2 = iki kat, 0.5 = yarı.")]
     [SerializeField] private float pitchFactor = 1f;
+#else
+    private bool useJavaMapping = true; // Must exist in builds
+    private bool enableCustomMapping = false;
+    private int pitchOffset = 0;
+    private float pitchFactor = 1f;
+#endif
 
     [Header("Gerekli Komponentler")]
     [SerializeField] private AudioManager audioManager;
