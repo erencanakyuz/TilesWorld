@@ -53,7 +53,7 @@ public class UIManager : MonoBehaviour
     private Dictionary<GameState, GameObject> statePanelPrefabs;
     private GameObject currentPanelInstance;
     private Queue<GameObject> hitEffectPool;
-    private List<GameObject> activeEffects;
+    private List<ActiveHitEffect> activeEffects;
 
     // UI Data
     private int currentScore = 0;
@@ -74,6 +74,10 @@ public class UIManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+
+            // Initialize collections here to prevent NullReferenceException
+            hitEffectPool = new Queue<GameObject>();
+            activeEffects = new List<ActiveHitEffect>();
 
             // Event subscription'ları burada yap ki GameManager'dan önce hazır ol
             // Debug.Log("🔔 UIManager Awake - Event subscription yapılıyor...");
@@ -310,9 +314,9 @@ public class UIManager : MonoBehaviour
             { GameState.GameOver, gameOverPanelPrefab }
         };
 
-        // Initialize hit effect pool
-        hitEffectPool = new Queue<GameObject>();
-        activeEffects = new List<GameObject>();
+        // Initialization moved to Awake
+        // hitEffectPool = new Queue<GameObject>();
+        // activeEffects = new List<ActiveHitEffect>();
 
         InitializeHitEffectPool();
 
@@ -801,9 +805,15 @@ public class UIManager : MonoBehaviour
                 }
 
                 effect.SetActive(true);
-                activeEffects.Add(effect);
 
-                StartCoroutine(AnimateHitEffect(effect));
+                // Add to our managed list instead of starting a coroutine
+                activeEffects.Add(new ActiveHitEffect
+                {
+                    effectObject = effect,
+                    elapsedTime = 0f,
+                    originalScale = effect.transform.localScale,
+                    canvasGroup = effect.GetComponent<CanvasGroup>()
+                });
             }
         }
     }
@@ -833,36 +843,6 @@ public class UIManager : MonoBehaviour
         }
 
         return null;
-    }
-
-    IEnumerator AnimateHitEffect(GameObject effect)
-    {
-        float elapsed = 0f;
-        Vector3 originalScale = effect.transform.localScale;
-
-        while (elapsed < effectDuration)
-        {
-            elapsed += Time.deltaTime;
-            float progress = elapsed / effectDuration;
-
-            // Scale animation
-            float scale = fadeAnimation.Evaluate(progress);
-            effect.transform.localScale = originalScale * scale;
-
-            // Fade animation
-            CanvasGroup canvasGroup = effect.GetComponent<CanvasGroup>();
-            if (canvasGroup != null)
-            {
-                canvasGroup.alpha = 1f - progress;
-            }
-
-            yield return null;
-        }
-
-        // Return to pool
-        effect.SetActive(false);
-        activeEffects.Remove(effect);
-        hitEffectPool.Enqueue(effect);
     }
     #endregion
 
@@ -1101,6 +1081,47 @@ public class UIManager : MonoBehaviour
         // Yeni yüklenen sahneyi işle
         ProcessScene(scene);
     }
+
+    void Update()
+    {
+        // Animate all active hit effects in a single loop to avoid coroutine overhead
+        for (int i = activeEffects.Count - 1; i >= 0; i--)
+        {
+            var activeEffect = activeEffects[i];
+            activeEffect.elapsedTime += Time.deltaTime;
+
+            if (activeEffect.elapsedTime >= effectDuration)
+            {
+                // Animation finished, return to pool
+                activeEffect.effectObject.SetActive(false);
+                hitEffectPool.Enqueue(activeEffect.effectObject);
+                activeEffects.RemoveAt(i);
+            }
+            else
+            {
+                // Animate based on progress
+                float progress = activeEffect.elapsedTime / effectDuration;
+                float scale = fadeAnimation.Evaluate(progress);
+                activeEffect.effectObject.transform.localScale = activeEffect.originalScale * scale;
+
+                if (activeEffect.canvasGroup != null)
+                {
+                    activeEffect.canvasGroup.alpha = 1f - progress;
+                }
+            }
+        }
+    }
+
+    #region Private Data Structures
+    // This private class holds the state for an active hit effect animation
+    class ActiveHitEffect
+    {
+        public GameObject effectObject;
+        public float elapsedTime;
+        public Vector3 originalScale;
+        public CanvasGroup canvasGroup;
+    }
+    #endregion
 }
 
 // HitAccuracy enum moved to DataStructures.cs

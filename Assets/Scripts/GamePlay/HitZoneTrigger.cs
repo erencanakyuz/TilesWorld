@@ -32,13 +32,13 @@ public class HitZoneTrigger : MonoBehaviour
 
     void Update()
     {
-        // Clean up destroyed notes from the list
+        // Clean up destroyed or inactive (pooled) notes from the list
         for (int i = insideNotes.Count - 1; i >= 0; i--)
         {
-            if (insideNotes[i] == null)
+            if (insideNotes[i] == null || !insideNotes[i].activeInHierarchy)
             {
                 insideNotes.RemoveAt(i);
-                if (showDebug) Debug.Log($"[HitZoneTrigger] Lane {laneIndex} cleaned up destroyed note. insideNotes={insideNotes.Count}");
+                if (showDebug) Debug.Log($"[HitZoneTrigger] Lane {laneIndex} cleaned up destroyed or inactive note. insideNotes={insideNotes.Count}");
             }
         }
     }
@@ -80,8 +80,8 @@ public class HitZoneTrigger : MonoBehaviour
     /// <summary>
     /// Removes the specified note if present (to be called by HitZoneManager after successful hit).
     /// </summary>
-    public void RemoveNote(GameObject noteObj)
+    public void RemoveNote(GameObject noteObject)
     {
-        insideNotes.Remove(noteObj);
+        insideNotes.Remove(noteObject);
     }
 }

@@ -66,16 +66,6 @@ public class GameplayManager : MonoBehaviour
 
     void Awake()
     {
-        InitializeGameplayManager();
-    }
-
-    void Start()
-    {
-        InitializeGameplayManager();
-    }
-
-    void InitializeGameplayManager()
-    {
         // Get system references if not assigned in Inspector
         if (noteCreator == null)
             noteCreator = FindFirstObjectByType<GameNoteCreator>();
@@ -83,10 +73,22 @@ public class GameplayManager : MonoBehaviour
             noteRenderer = FindFirstObjectByType<NoteRenderer>();
         if (musicSystem == null)
             musicSystem = FindFirstObjectByType<InteractiveMusicSystem>();
+    }
+
+    void Start()
+    {
+        // Use singletons where available for efficiency - moved to Start to wait for Bootstrap scene
         if (audioManager == null)
-            audioManager = FindFirstObjectByType<AudioManager>();
+            audioManager = AudioManager.Instance;
         if (uiManager == null)
-            uiManager = FindFirstObjectByType<UIManager>();
+            uiManager = UIManager.Instance;
+
+        // Log errors if critical components are missing after attempting to find them
+        if (noteCreator == null) Debug.LogError("GameplayManager Error: GameNoteCreator reference not set and could not be found in scene!");
+        if (noteRenderer == null) Debug.LogError("GameplayManager Error: NoteRenderer reference not set and could not be found in scene!");
+        if (musicSystem == null) Debug.LogError("GameplayManager Error: InteractiveMusicSystem reference not set and could not be found in scene!");
+        if (audioManager == null) Debug.LogError("GameplayManager Error: AudioManager instance not available!");
+        if (uiManager == null) Debug.LogError("GameplayManager Error: UIManager instance not available!");
 
         SetupGameplaySystems();
     }
@@ -223,7 +225,7 @@ public class GameplayManager : MonoBehaviour
         currentSong = ScriptableObject.CreateInstance<SongData>();
         currentSong.songName = songInfo.title;
         currentSong.artist = songInfo.artist;
-        currentSong.duration = EstimateDuration(songInfo.tempo); // Estimate based on tempo
+        currentSong.duration = songInfo.duration > 0 ? songInfo.duration : EstimateDuration(songInfo.tempo); // Use real duration if available
         currentSong.bpm = songInfo.tempo;
         currentSong.audioFilePath = $"Music/{songInfo.songKey}";
         currentSong.noteChartPath = $"Song_Note_Jsons/Individual/{songInfo.songKey}";
@@ -316,6 +318,14 @@ public class GameplayManager : MonoBehaviour
         if (noteRenderer != null)
         {
             noteRenderer.ClearAllNotes();
+        }
+
+        // Wire up the note travel time to the note creator for perfect sync.
+        if (noteRenderer != null && noteCreator != null)
+        {
+            float travelTimeMs = noteRenderer.GetNoteTravelTime() * 1000f;
+            noteCreator.SetFirstDelay(travelTimeMs);
+            if (showDebugLogs) Debug.Log($"🎵 Note travel time set for perfect sync: {travelTimeMs:F0}ms");
         }
 
         if (noteCreator != null && currentSong != null)
@@ -453,8 +463,12 @@ public class GameplayManager : MonoBehaviour
         // Start music (using existing AudioManager functionality)
         if (audioManager != null && !string.IsNullOrEmpty(currentSong.audioFilePath))
         {
-            // Try to load audio clip from Resources
-            AudioClip musicClip = Resources.Load<AudioClip>(currentSong.audioFilePath);
+            // Try to load audio clip from Resources asynchronously to prevent frame drops
+            ResourceRequest request = Resources.LoadAsync<AudioClip>(currentSong.audioFilePath);
+            yield return request;
+
+            AudioClip musicClip = request.asset as AudioClip;
+
             if (musicClip != null)
             {
                 audioManager.PlayMusic(musicClip, 0f);

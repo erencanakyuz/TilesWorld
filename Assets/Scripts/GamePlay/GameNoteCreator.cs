@@ -28,12 +28,11 @@ public class GameNoteCreator : MonoBehaviour
     // ORIJINAL: {1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 7, 14, 28, 56, ...}
     // ARTIK ORİJİNAL DEĞERLERİ KULLANIYORUZ VE ÇARPANLA AYARLIYORUZ
     private static readonly int[] NOTE_LENGTH_FACTORS = {
-        1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 7, 14, 28, 56,
         1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 7, 14, 28, 56
     };
 
     private static readonly int[] LANE_PITCH_OFFSET = { 3, 5, 7, 11, 13, 17 };
-    private const float FIRST_DELAY_MS = 1500f; // Başlangıç gecikmesi (daha belirgin)
+    private float firstDelayMs = 1500f; // Başlangıç gecikmesi (daha sonra NoteRenderer'dan gelen travel time ile ayarlanacak)
 
     // --- Algoritma Durum Değişkenleri ---
     private float accumulatedTime = 0f;
@@ -49,6 +48,16 @@ public class GameNoteCreator : MonoBehaviour
     // --- Olaylar ---
     public static event Action<List<GameNoteInfo>> OnNotesGenerated;
     public static event Action OnGenerationComplete;
+
+    /// <summary>
+    /// Sets the initial delay before the first note package is spawned.
+    /// Should be set based on the note travel time from NoteRenderer.
+    /// </summary>
+    /// <param name="delayMs">The delay in milliseconds.</param>
+    public void SetFirstDelay(float delayMs)
+    {
+        this.firstDelayMs = delayMs;
+    }
 
     /// <summary>
     /// JSON'dan nota chart verilerini yükler
@@ -91,8 +100,9 @@ public class GameNoteCreator : MonoBehaviour
                 };
                 chartSequences.Add(chartSeq);
             }
-
+#if UNITY_EDITOR
             if (showDebugLogs) Debug.Log($"🎵 JSON nota verileri yüklendi: {chartSequences.Count} sekans, dosya: {jsonPath}");
+#endif
             return chartSequences;
         }
         catch (Exception e)
@@ -108,12 +118,12 @@ public class GameNoteCreator : MonoBehaviour
     public void LoadAndPrepareSong(List<NoteChartSequence> rawChart, int tempo)
     {
         ResetState();
-
+#if UNITY_EDITOR
         if (showDebugLogs) Debug.Log($"🎵 Şarkı işleniyor: {rawChart.Count} sekans, tempo: {tempo} BPM");
 
         // DEBUG: Note factors'ı logla
         LogNoteFactorInfo();
-
+#endif
         // 1. Ham veriyi, dikey dilimleme mantığıyla geçici bir formata dönüştür.
         List<TemporalNoteInfo> temporalNotes = ProcessChartWithVerticalSlicing(rawChart, tempo);
 
@@ -125,8 +135,9 @@ public class GameNoteCreator : MonoBehaviour
         {
             notePackageQueue.Enqueue(package);
         }
-
+#if UNITY_EDITOR
         if (showDebugLogs) Debug.Log($"🎵 Şarkı hazırlandı. Oynanacak {notePackageQueue.Count} nota paketi var.");
+#endif
     }
 
     /// <summary>
@@ -140,11 +151,13 @@ public class GameNoteCreator : MonoBehaviour
 
         if (!firstDelayCompleted)
         {
-            if (accumulatedTime >= FIRST_DELAY_MS)
+            if (accumulatedTime >= firstDelayMs)
             {
                 firstDelayCompleted = true;
                 accumulatedTime = 0; // Sayacı sıfırla
-                if (showDebugLogs) Debug.Log($"🎵 FIRST_DELAY tamamlandı ({FIRST_DELAY_MS}ms). İlk nota spawn ediliyor...");
+#if UNITY_EDITOR
+                if (showDebugLogs) Debug.Log($"🎵 FIRST_DELAY tamamlandı ({firstDelayMs}ms). İlk nota spawn ediliyor...");
+#endif
                 TrySpawnNextPackage();
             }
             return;
@@ -163,8 +176,10 @@ public class GameNoteCreator : MonoBehaviour
         {
             currentPackageToSpawn = notePackageQueue.Dequeue();
 
+#if UNITY_EDITOR
             // DEBUG: Spawn timing bilgisi
             if (showDebugLogs) Debug.Log($"🎵 SPAWN: {currentPackageToSpawn.gameNoteInfos.Count} nota, nextTiming: {currentPackageToSpawn.oneNote:F1}ms, queueLeft: {notePackageQueue.Count}");
+#endif
 
             OnNotesGenerated?.Invoke(currentPackageToSpawn.gameNoteInfos);
         }
@@ -172,7 +187,9 @@ public class GameNoteCreator : MonoBehaviour
         {
             isGenerationComplete = true;
             OnGenerationComplete?.Invoke();
+#if UNITY_EDITOR
             if (showDebugLogs) Debug.Log("🎵 Tüm nota paketleri oluşturuldu. Şarkı bitti.");
+#endif
         }
     }
 
@@ -184,12 +201,15 @@ public class GameNoteCreator : MonoBehaviour
     /// </summary>
     private List<TemporalNoteInfo> ProcessChartWithVerticalSlicing(List<NoteChartSequence> chart, int tempo)
     {
+#if UNITY_EDITOR
         if (showDebugLogs) Debug.Log($"🎵 Dikey zaman dilimlemesi başlıyor: {chart.Count} sekans, tempo: {tempo}");
+#endif
 
         // A. Temel Zaman Biriminin Hesaplanması (RefactorParse.md - Adım 2.2.A)
         float baseTimingMs = (60000f / tempo) / 8f; // 32'lik nota süresi (ms)
-        if (showDebugLogs) Debug.Log($"🎵 Temel zaman birimi: {baseTimingMs} ms (32'lik nota)");
-
+#if UNITY_EDITOR
+        if (showDebugLogs) Debug.Log($"🎵 Temel zaman birimi: {baseTimingMs:F2} ms (32'lik nota)");
+#endif
         var temporalNoteList = new List<TemporalNoteInfo>();
 
         // B. Tüm Veriyi Topla ve Maksimum Dilim Sayısını Bul (RefactorParse.md - Adım 3.2.1-2)
@@ -214,8 +234,9 @@ public class GameNoteCreator : MonoBehaviour
             allLineData[lane] = allSubdivisions.ToArray();
             maxSubdivisions = Math.Max(maxSubdivisions, allSubdivisions.Count);
         }
-
+#if UNITY_EDITOR
         if (showDebugLogs) Debug.Log($"🎵 Maksimum zaman dilimi sayısı: {maxSubdivisions}");
+#endif
 
         // C. Dikey Dilimleme ve Haritala (RefactorParse.md - Adım 3.2.3-4)
         var sliceMap = new Dictionary<int, List<(int lane, int pitch, int duration)>>();
@@ -262,6 +283,7 @@ public class GameNoteCreator : MonoBehaviour
             foreach (var (lane, pitch, duration) in sliceMap[sliceIndex])
             {
                 temporalInfo.pitches[lane] = pitch;
+                temporalInfo.originalLines[lane] = lane;
                 maxDuration = Math.Max(maxDuration, duration);
             }
 
@@ -273,24 +295,27 @@ public class GameNoteCreator : MonoBehaviour
                 // YENİ SİSTEM: Orijinal faktörü, ayarlanabilir çarpanımızla çarpıyoruz.
                 float calculatedTiming = (float)(NOTE_LENGTH_FACTORS[maxDuration] * timingMultiplier * baseTimingMs);
                 temporalInfo.timingMs = calculatedTiming;
-
+#if UNITY_EDITOR
                 // DEBUG: Timing hesaplama detayları (sadece ilk 5 paket için)
                 if (sliceIndex < 5)
                 {
                     if (showDebugLogs) Debug.Log($"🎵 TIMING CAL [{sliceIndex}]: maxDuration={maxDuration}, factor={NOTE_LENGTH_FACTORS[maxDuration]}, multiplier={timingMultiplier}, baseMs={baseTimingMs:F1}, result={calculatedTiming:F1}ms");
                 }
+#endif
             }
             else
             {
                 temporalInfo.timingMs = baseTimingMs; // Fallback
+#if UNITY_EDITOR
                 if (sliceIndex < 5)
                 {
                     if (showDebugLogs) Debug.Log($"🎵 TIMING FALLBACK [{sliceIndex}]: maxDuration={maxDuration} out of range, using baseMs={baseTimingMs:F1}ms");
                 }
+#endif
             }
 
             temporalNoteList.Add(temporalInfo);
-
+#if UNITY_EDITOR
             // Debug için - çok fazla spam önlemek için sadece ilk 10'unu göster
             if (sliceIndex < 10)
             {
@@ -298,9 +323,11 @@ public class GameNoteCreator : MonoBehaviour
                                                        .Where(x => x != null).ToArray();
                 if (showDebugLogs) Debug.Log($"🎵 Zaman dilimi {sliceIndex}: {string.Join(", ", activeNotes)}, maxDuration={maxDuration}, timingMs={temporalInfo.timingMs:F1}");
             }
+#endif
         }
-
+#if UNITY_EDITOR
         if (showDebugLogs) Debug.Log($"🎵 Dikey dilimleme tamamlandı: {temporalNoteList.Count} temporal note package oluşturuldu");
+#endif
         return temporalNoteList;
     }
 
@@ -325,7 +352,7 @@ public class GameNoteCreator : MonoBehaviour
                         // Kural uygulamadan önceki ham lane index'i ve pitch
                         idx = (tNote.pitches[lane] + LANE_PITCH_OFFSET[lane]) % laneCount,
                         pitch = tNote.pitches[lane],
-                        line = lane
+                        line = tNote.originalLines[lane]
                     };
                     tempGameNotes.Add(gameNote);
                 }
@@ -386,12 +413,13 @@ public class GameNoteCreator : MonoBehaviour
     private void LogNoteFactorInfo()
     {
         if (NOTE_LENGTH_FACTORS == null || NOTE_LENGTH_FACTORS.Length == 0) return;
-
+#if UNITY_EDITOR
         if (showDebugLogs) Debug.Log("🎵 NOTE_LENGTH_FACTORS dizisi:");
         for (int i = 0; i < Math.Min(10, NOTE_LENGTH_FACTORS.Length); i++)
         {
             if (showDebugLogs) Debug.Log($"  Factor[{i}] = {NOTE_LENGTH_FACTORS[i]}");
         }
+#endif
     }
     #endregion
 
@@ -416,9 +444,9 @@ public class GameNoteCreator : MonoBehaviour
             Debug.LogError("🎵 Cannot load null song data!");
             return;
         }
-
+#if UNITY_EDITOR
         if (showDebugLogs) Debug.Log($"🎵 Loading song: {songData.songName} with key: {songData.songKey}");
-
+#endif
         // Gerçek JSON nota verilerini yükle
         List<NoteChartSequence> chartData = LoadNoteChartFromJSON(songData.songKey);
 
@@ -432,8 +460,9 @@ public class GameNoteCreator : MonoBehaviour
         // Gerçek tempo ile yükle
         int tempo = songData.bpm > 0 ? (int)songData.bpm : 120; // Fallback tempo
         LoadAndPrepareSong(chartData, tempo);
-
+#if UNITY_EDITOR
         if (showDebugLogs) Debug.Log($"🎵 Song loaded successfully: {songData.songName} (BPM: {tempo})");
+#endif
     }
 
     #endregion
@@ -466,3 +495,4 @@ public class GameNoteCreator : MonoBehaviour
 
 // --- Veri Yapıları ---
 // Bu sınıflar artık DataStructures.cs'te tanımlanıyor.
+

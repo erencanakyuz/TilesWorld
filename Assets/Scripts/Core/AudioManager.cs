@@ -142,15 +142,14 @@ public class AudioManager : MonoBehaviour
     #region Note Playing (Simplified and Enhanced)
     public void PlayNote(InstrumentType instrument, int pitch, float volume = 1.0f, bool useJavaMapping = false, int line = 0)
     {
+        int initialPitch = pitch;
+        int javaMappedPitch = -1;
         int finalPitch = pitch;
 
         if (useJavaMapping)
         {
-            finalPitch = AudioConstants.GetSoundIndex(line, pitch);
-            if (showDebugLogs)
-            {
-                Debug.Log($"🎵 JAVA MAPPING: Line={line}, Pitch={pitch} → RealSoundIndex={finalPitch} ({instrument})");
-            }
+            javaMappedPitch = AudioConstants.GetSoundIndex(line, pitch);
+            finalPitch = javaMappedPitch;
         }
 
         int instrumentId = (int)instrument;
@@ -161,19 +160,33 @@ public class AudioManager : MonoBehaviour
         }
 
         int maxIdx = instruments[instrumentId].noteClips.Length - 1;
-        finalPitch = GetInstrumentAdjustedIndex(instrument, finalPitch, maxIdx);
-
-        /*
-        if (showDebugLogs)
-        {
-            Debug.Log($"🎵 AudioManager: Attempting to play note. Instrument='{instrument}', FinalPitch={finalPitch}, Volume={volume:F2}");
-        }
-        */
+        int instrumentAdjustedPitch = GetInstrumentAdjustedIndex(instrument, finalPitch, maxIdx);
+        finalPitch = instrumentAdjustedPitch;
 
         AudioSource audioSource = GetAvailableAudioSource();
         if (audioSource == null) return;
 
         AudioClip clip = GetNoteClip(instrument, finalPitch);
+
+        // --- DETAILED DEBUG LOG ---
+        var log = new System.Text.StringBuilder();
+        log.AppendLine("--- 🎵 AudioManager PlayNote Details ---");
+        log.AppendLine($"  - Instrument: {instrument}");
+        log.AppendLine($"  - Volume: {volume:F2}");
+        log.AppendLine($"  - Use Java Mapping: {useJavaMapping}");
+        if (useJavaMapping)
+        {
+            log.AppendLine($"    - Chart Line: {line}");
+            log.AppendLine($"    - Chart Pitch: {initialPitch}");
+            log.AppendLine($"    - Java Mapped Index: {javaMappedPitch}");
+        }
+        log.AppendLine($"  - Instrument Adjusted Pitch: {instrumentAdjustedPitch}");
+        log.AppendLine($"  - FINAL PITCH INDEX: {finalPitch}");
+        log.AppendLine($"  - Audio Clip: {(clip != null ? clip.name : "!!! NOT FOUND !!!")}");
+        log.AppendLine("------------------------------------");
+        Debug.Log(log.ToString());
+        // --- END DEBUG LOG ---
+
         if (clip == null)
         {
             if (showDebugLogs) Debug.LogWarning($"🎵 Audio clip not found for {instrument} pitch {finalPitch}");
@@ -438,7 +451,14 @@ public class AudioManager : MonoBehaviour
         if (source == null || source.clip == null) yield break;
 
         float waitTime = Mathf.Max(0f, source.clip.length - fadeTime);
-        yield return new WaitForSeconds(waitTime);
+
+        // Optimization: Avoid WaitForSeconds allocation by using a manual timer loop.
+        float timer = 0f;
+        while (timer < waitTime)
+        {
+            timer += Time.deltaTime;
+            yield return null;
+        }
 
         if (showDebugLogs)
         {

@@ -95,6 +95,7 @@ public class JsonSequenceArray
 internal class TemporalNoteInfo
 {
     public int[] pitches = { -1, -1, -1, -1, -1, -1 };
+    public int[] originalLines = { -1, -1, -1, -1, -1, -1 };
     public int maxDurationType = -1;
     public float timingMs = 0f;
 }
@@ -180,6 +181,7 @@ public class SongDatabaseInfo
     public string title;
     public string artist;
     public int tempo;
+    public float duration; // Duration of the song in seconds
     public DifficultyLevel difficulty;
     public string songKey; // JSON dosya adı için
 }
@@ -194,7 +196,6 @@ public class SongDatabaseListWrapper
 
 #region Musical Structures
 
-[System.Serializable]
 public class MusicalEvent
 {
     public float timestamp;
@@ -210,7 +211,6 @@ public class MusicalEvent
     public bool isPlayerTriggered;        // Whether triggered by player input
 }
 
-[System.Serializable]
 public class MusicalNoteInfo
 {
     public int pitch;                  // Musical pitch (0-26)
@@ -226,7 +226,6 @@ public class MusicalNoteInfo
     public bool isValid;              // Whether this note info is valid
 }
 
-[System.Serializable]
 public class GameplayStats
 {
     public int totalNotes;
@@ -246,7 +245,6 @@ public class GameplayStats
     }
 }
 
-[System.Serializable]
 public class PlayingNote
 {
     public MusicalNoteInfo noteInfo;
@@ -254,7 +252,6 @@ public class PlayingNote
     public bool isStillPlaying;
 }
 
-[System.Serializable]
 public struct MusicalSessionStats
 {
     public int notesPlayed;

@@ -50,6 +50,8 @@ public class NoteRenderer : MonoBehaviour
     // Performance tracking
     private int activeNoteCount = 0;
 
+    private MaterialPropertyBlock mpb; // NEW: for per-note color without new materials
+
     void Awake()
     {
         InitializeRenderer();
@@ -78,6 +80,9 @@ public class NoteRenderer : MonoBehaviour
         activeNotes = new List<RenderingNote>();
 
         CreateNoteMaterial();
+
+        // NEW: initialize property block once
+        mpb = new MaterialPropertyBlock();
 
         if (enableObjectPooling)
             CreateNotePool();
@@ -179,6 +184,9 @@ public class NoteRenderer : MonoBehaviour
         UpdateNoteTextures(deltaTime);
         UpdateActiveNotes(deltaTime);
         CleanupDestroyedNotes();
+
+        // Fix from performance report: keep statistics updated.
+        activeNoteCount = activeNotes.Count;
     }
 
     /// <summary>
@@ -200,7 +208,7 @@ public class NoteRenderer : MonoBehaviour
             {
                 if (activeNote != null && activeNote.gameObject != null)
                 {
-                    ApplyNoteHighlight(activeNote.gameObject, isNoteHighlight);
+                    ApplyNoteHighlight(activeNote, isNoteHighlight);
                 }
             }
         }
@@ -241,21 +249,23 @@ public class NoteRenderer : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Simplified perspective effects - keep notes as stable rectangular tiles
-    /// </summary>
-
-
-    void ApplyNoteHighlight(GameObject noteObject, bool highlight)
+    void ApplyNoteHighlight(RenderingNote activeNote, bool highlight)
     {
-        if (noteObject == null) return;
+        if (activeNote?.gameObject == null) return;
 
-        var renderer = noteObject.GetComponent<Renderer>();
-        if (renderer != null && renderer.material != null)
+        var renderer = activeNote.gameObject.GetComponent<Renderer>();
+        if (renderer != null)
         {
-            // Simple highlight effect - enhance existing color
-            Color baseColor = renderer.material.color;
-            renderer.material.color = highlight ? Color.Lerp(baseColor, Color.white, 0.3f) : baseColor;
+            mpb.Clear();
+            Color targetColor = highlight ? Color.Lerp(activeNote.baseColor, Color.white, 0.3f) : activeNote.baseColor;
+
+            // Use the same property name that was set during spawn
+            if (renderer.sharedMaterial.HasProperty("_BaseColor"))
+                mpb.SetColor("_BaseColor", targetColor);
+            else
+                mpb.SetColor("_Color", targetColor);
+
+            renderer.SetPropertyBlock(mpb);
         }
     }
 
@@ -370,20 +380,27 @@ public class NoteRenderer : MonoBehaviour
             return;
         }
 
+        // This will be the base color for the note, used for highlighting.
+        Color finalColor = Color.white;
+
         // *** CRITICAL: Ensure note has material ***
         Renderer noteRenderer = noteObject.GetComponent<Renderer>();
         if (noteRenderer != null)
         {
-            // Always assign material to ensure visibility
-            Material pitchMaterial = GetMaterialForPitch(noteInfo.pitch, noteInfo.instrumentType);
-            noteRenderer.material = pitchMaterial;
+            // USE SHARED MATERIAL (no instancing)
+            noteRenderer.sharedMaterial = noteMaterial;
 
-            // Double-check material is applied
-            if (noteRenderer.material == null)
-            {
-                Debug.LogError("🚨 Material assignment failed! Using fallback...");
-                noteRenderer.material = noteMaterial; // Use base material as fallback
-            }
+            // Apply per-note color via MaterialPropertyBlock
+            mpb.Clear();
+            Color pitchColor = GetColorForPitch(noteInfo.pitch);
+            Color instrumentTint = GetColorForInstrument(noteInfo.instrumentType);
+            finalColor = Color.Lerp(pitchColor, instrumentTint, 0.3f);
+            // try _BaseColor first (URP Unlit), fall back to _Color
+            if (noteRenderer.sharedMaterial.HasProperty("_BaseColor"))
+                mpb.SetColor("_BaseColor", finalColor);
+            else
+                mpb.SetColor("_Color", finalColor);
+            noteRenderer.SetPropertyBlock(mpb);
         }
         else
         {
@@ -421,8 +438,9 @@ public class NoteRenderer : MonoBehaviour
             wrapper = noteObject.AddComponent<NoteWrapper>();
         wrapper.gameNoteInfo = noteInfo;
 
-        // SIMPLE: Just set current time + rough estimate (no complex calculation)
-        wrapper.expectedHitTime = Time.time + 2.0f; // 2 seconds from now
+        // Reverted to original Time.time based calculation.
+        float travelTime = Mathf.Abs((spawnPosition.z - 0f)) / Mathf.Max(0.01f, speedMultiplier); // hitLineZ assumed 0
+        wrapper.expectedHitTime = Time.time + travelTime;
 
         // Create active note tracking
         var activeNote = new RenderingNote
@@ -430,7 +448,8 @@ public class NoteRenderer : MonoBehaviour
             gameObject = noteObject,
             noteInfo = noteInfo,
             currentPosition = spawnPosition,
-            spawnTime = Time.time // This is game clock time, not song time
+            spawnTime = Time.time, // This is game clock time, not song time
+            baseColor = finalColor
         };
 
         activeNotes.Add(activeNote);
@@ -497,7 +516,7 @@ public class NoteRenderer : MonoBehaviour
         return null;
     }
 
-    void ReturnNoteToPool(GameObject noteObject)
+    public void ReturnNoteToPool(GameObject noteObject)
     {
         if (noteObject == null) return;
 
@@ -558,6 +577,31 @@ public class NoteRenderer : MonoBehaviour
 
     #region Public Interface
 
+    /// <summary>
+    /// Processes a note that has been successfully hit by the player.
+    /// This finds the corresponding active note, removes it from tracking, and returns its GameObject to the pool.
+    /// </summary>
+    public void ProcessHitNote(GameObject noteObject)
+    {
+        if (noteObject == null) return;
+
+        // Find the active note entry that corresponds to this GameObject
+        int index = activeNotes.FindIndex(n => n.gameObject == noteObject);
+
+        if (index != -1)
+        {
+            // Remove it from the active list to stop it from being updated
+            activeNotes.RemoveAt(index);
+        }
+        else
+        {
+            if (showDebugLogs) Debug.LogWarning($"[NoteRenderer] ProcessHitNote was called for a GameObject that is not in the activeNotes list. This can happen with rapid hits but should be monitored.");
+        }
+
+        // Now, return the object to the pool
+        ReturnNoteToPool(noteObject);
+    }
+
     public int GetActiveNoteCount() => activeNoteCount;
     public int GetPooledNoteCount() => notePool.Count;
     public int GetTotalNotesRendered() => totalNotesRendered;
@@ -581,12 +625,26 @@ public class NoteRenderer : MonoBehaviour
     {
         speedMultiplier = Mathf.Max(0.1f, multiplier);
     }
+
+    /// <summary>
+    /// Calculates the time it takes for a note to travel from its spawn point to the hit line.
+    /// </summary>
+    /// <returns>Travel time in seconds.</returns>
+    public float GetNoteTravelTime()
+    {
+        // Assumes a fixed spawn Z of 25f and a hit line Z of 0f.
+        // This should be updated if these values become dynamic.
+        float spawnZ = 25f;
+        float hitZ = 0f;
+        return Mathf.Abs(spawnZ - hitZ) / Mathf.Max(0.01f, speedMultiplier);
+    }
     #endregion
 
     #region Debug Visualization
 
     void OnDrawGizmos()
     {
+#if UNITY_EDITOR
         // Gizmos for physical hit zones are now implicitly handled by their own GameObjects.
         // Active note debugging can be enabled here if needed.
         if (showDebugLogs && activeNotes != null)
@@ -600,6 +658,7 @@ public class NoteRenderer : MonoBehaviour
                 }
             }
         }
+#endif
     }
     #endregion
 
@@ -618,6 +677,7 @@ public class RenderingNote
     public GameNoteInfo noteInfo;
     public Vector3 currentPosition;
     public float spawnTime;
+    public Color baseColor;
 }
 
 #endregion

@@ -26,6 +26,7 @@ public class HitZoneManager : MonoBehaviour
 
     // Internal
     private HitZoneTrigger[] zones;
+    private NoteRenderer noteRenderer;
 
     void Awake()
     {
@@ -45,6 +46,7 @@ public class HitZoneManager : MonoBehaviour
         }
 
         if (audioManager == null) audioManager = AudioManager.Instance;
+        noteRenderer = FindFirstObjectByType<NoteRenderer>();
     }
 
     void OnEnable()
@@ -147,14 +149,19 @@ public class HitZoneManager : MonoBehaviour
 
     void ProcessSuccessfulHit(HitZoneTrigger zone, GameObject noteObj, GameNoteInfo noteInfo, HitAccuracy acc, Vector2 screenPos)
     {
-        // CRITICAL: Remove note from ALL zones to prevent double-hits
-        foreach (var z in zones)
-        {
-            z.RemoveNote(noteObj);
-        }
+        // Tell the trigger to remove this note from its internal list FIRST to prevent double-hits.
+        zone.RemoveNote(noteObj);
 
-        // Destroy the note object completely
-        Destroy(noteObj);
+        // Return the note to the pool instead of destroying it
+        if (noteRenderer != null)
+        {
+            noteRenderer.ProcessHitNote(noteObj);
+        }
+        else
+        {
+            // Fallback if renderer is not found (should not happen)
+            Destroy(noteObj);
+        }
 
         // Play audio & musical logic
         if (noteInfo != null)

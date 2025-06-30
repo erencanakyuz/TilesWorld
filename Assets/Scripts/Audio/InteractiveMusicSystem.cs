@@ -304,7 +304,7 @@ public class InteractiveMusicSystem : MonoBehaviour
         if (noteInfo == null) return;
 
         // Enhanced volume calculation based on note duration from JSON
-        float noteVolume = CalculateNoteVolume((int)noteInfo.duration);
+        float noteVolume = CalculateNoteVolume(noteInfo.duration);
 
 #if UNITY_EDITOR
         // Debug tracking to ensure only HitZoneManager calls this method
@@ -375,7 +375,7 @@ public class InteractiveMusicSystem : MonoBehaviour
     /// <summary>
     /// Calculate note volume based on JSON duration value
     /// </summary>
-    float CalculateNoteVolume(int duration)
+    float CalculateNoteVolume(float duration)
     {
         // Duration from JSON (1-9) maps to volume (0.3-1.0)
         return Mathf.Lerp(0.3f, 1.0f, (duration - 1) / 8f);

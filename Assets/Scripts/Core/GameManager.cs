@@ -75,7 +75,7 @@ public class GameManager : MonoBehaviour
     void InitializeGameManager()
     {
         // Set target frame rate for smooth performance, especially on mobile
-        Application.targetFrameRate = 60;
+        Application.targetFrameRate = targetFrameRate;
 
         LoadPlayerData();
         InitializeCoreComponents();
@@ -141,18 +141,23 @@ public class GameManager : MonoBehaviour
             switch (newState)
             {
                 case GameState.MainMenu:
+                    Application.targetFrameRate = 30;
                     HandleMainMenuState();
                     break;
                 case GameState.SongSelection:
+                    Application.targetFrameRate = 30;
                     HandleSongSelectionState();
                     break;
                 case GameState.Playing:
+                    Application.targetFrameRate = targetFrameRate;
                     HandlePlayingState();
                     break;
                 case GameState.Paused:
+                    Application.targetFrameRate = 30;
                     HandlePausedState();
                     break;
                 case GameState.GameOver:
+                    Application.targetFrameRate = 30;
                     HandleGameOverState();
                     break;
             }
@@ -220,6 +225,30 @@ public class GameManager : MonoBehaviour
         selectedInstrument = currentPlayer.preferredInstrument;
     }
 
+    /// <summary>
+    /// Updates the player data in memory (PlayerPrefs). Does not write to disk.
+    /// </summary>
+    public void UpdatePlayerDataInMemory()
+    {
+        if (currentPlayer != null)
+        {
+            PlayerPrefs.SetString("PlayerName", currentPlayer.playerName);
+            PlayerPrefs.SetInt("TotalScore", currentPlayer.totalScore);
+            PlayerPrefs.SetInt("HighestCombo", currentPlayer.highestCombo);
+            PlayerPrefs.SetInt("PreferredInstrument", (int)currentPlayer.preferredInstrument);
+        }
+    }
+
+    /// <summary>
+    /// Writes the current in-memory PlayerPrefs to disk.
+    /// </summary>
+    public void SavePlayerDataToDisk()
+    {
+        PlayerPrefs.Save();
+        // Debug.Log("💾 Player data saved to disk");
+    }
+
+    [System.Obsolete("Use UpdatePlayerDataInMemory and SavePlayerDataToDisk instead for better performance control.")]
     public void SavePlayerData()
     {
         if (currentPlayer != null)
@@ -268,7 +297,7 @@ public class GameManager : MonoBehaviour
             if (currentSession.currentCombo > currentPlayer.highestCombo)
                 currentPlayer.highestCombo = currentSession.currentCombo;
 
-            SavePlayerData();
+            UpdatePlayerDataInMemory();
             ChangeGameState(GameState.GameOver);
 
             Debug.Log($"🏁 Session ended - Score: {currentSession.currentScore}, Combo: {currentSession.currentCombo}");
@@ -372,9 +401,13 @@ public class GameManager : MonoBehaviour
     void OnApplicationPause(bool pauseStatus)
     {
 #if !UNITY_EDITOR
-        if (pauseStatus && CurrentGameState == GameState.Playing)
+        if (pauseStatus)
         {
-            PauseGame();
+            SavePlayerDataToDisk();
+            if (CurrentGameState == GameState.Playing)
+            {
+                PauseGame();
+            }
         }
 #endif
     }
@@ -414,7 +447,7 @@ public class GameManager : MonoBehaviour
             UIManager.Instance.OnMainMenuPressed -= HandleMainMenuButtonPressed;
         }
 
-        SavePlayerData();
+        SavePlayerDataToDisk();
     }
 
     void Update()
