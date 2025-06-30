@@ -28,18 +28,15 @@ public class GameManager : MonoBehaviour
 
     void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-            InitializeGameManager();
-        }
-        else
-        {
-            // Bu kısım artık Bootstrap mantığı sayesinde daha az önemli hale geliyor
-            // ama yine de bir güvenlik önlemi olarak kalabilir.
-            Destroy(gameObject);
-        }
+        // Bootstrap tarafından yaratıldığı için sadece Instance'ı set et
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    void Start()
+    {
+        // Initialize after all Awakes are done
+        InitializeGameManager();
     }
     #endregion
 
@@ -107,6 +104,10 @@ public class GameManager : MonoBehaviour
             UIManager.Instance.OnRestartPressed += HandleRestartButtonPressed;
             UIManager.Instance.OnMainMenuPressed += HandleMainMenuButtonPressed;
             Debug.Log("✅ UIManager event subscriptions complete!");
+
+            // Test if events are properly connected
+            int restartListenerCount = UIManager.Instance.OnRestartPressed?.GetInvocationList()?.Length ?? 0;
+            Debug.Log($"🔢 OnRestartPressed has {restartListenerCount} listeners");
         }
         else
         {

@@ -10,32 +10,36 @@ public class Bootstrap : MonoBehaviour
     [Header("🎵 Core Systems")]
     [SerializeField] private GameObject songDatabasePrefab;
 
+    private static bool s_isInitialized = false;
+
     private void Awake()
     {
-        Application.targetFrameRate = 60;
-    }
-
-    void Start()
-    {
-        // Ana sahnenin zaten yüklü olup olmadığını kontrol et.
-        // Bu, geliştirme sırasında Bootstrap sahnesinden değil de doğrudan başka bir sahneden başlarsak diye bir önlem.
-        if (SceneManager.GetSceneByName(TargetSceneName).isLoaded)
+        if (s_isInitialized)
         {
-            Debug.LogWarning($"'{TargetSceneName}' sahnesi zaten yüklü. Bootstrap işlemi atlanıyor.");
-
-            // CRITICAL FIX: Sahne zaten yüklü olsa bile core sistemleri başlat!
-            InitializeCoreSystemsFirst();
-
-            // İsteğe bağlı olarak, bu objeyi yok edebiliriz çünkü görevi tamamlandı.
             Destroy(gameObject);
             return;
         }
 
+        Application.targetFrameRate = 60;
+
+        // Bu objeyi sahneler arasında koru
+        DontDestroyOnLoad(gameObject);
+        s_isInitialized = true;
+
         // Core sistemleri başlat
         InitializeCoreSystemsFirst();
 
-        // Ana sahneyi yükle
-        LoadTargetScene();
+        // Ana sahnenin zaten yüklü olup olmadığını kontrol et.
+        if (!SceneManager.GetSceneByName(TargetSceneName).isLoaded)
+        {
+            // Ana sahneyi yükle
+            LoadTargetScene();
+        }
+    }
+
+    void Start()
+    {
+        // Artık Awake'de yapıldığı için bu fonksiyon boş kalabilir
     }
 
     /// <summary>
@@ -52,8 +56,14 @@ public class Bootstrap : MonoBehaviour
         // AudioManager singleton'u oluştur
         InitializeAudioManager();
 
+        // UIManager singleton'u oluştur (GameManager'dan önce!)
+        InitializeUIManager();
+
         // EventSystem oluştur (UI tıklamaları için CRITICAL!)
         InitializeEventSystem();
+
+        // GameManager'ı en son oluştur (tüm dependency'lerden sonra!)
+        InitializeGameManager();
 
         Debug.Log("🚀 Core systems initialized during bootstrap");
     }
@@ -107,11 +117,30 @@ public class Bootstrap : MonoBehaviour
             GameObject audioMgrObject = new GameObject("AudioManager");
             audioMgrObject.AddComponent<AudioManager>();
 
-            Debug.Log("🎧 AudioManager singleton created during bootstrap");
+            Debug.Log("🔊 AudioManager singleton created during bootstrap");
         }
         else
         {
-            Debug.Log("🎧 AudioManager already exists, skipping initialization");
+            Debug.Log("🔊 AudioManager already exists, skipping initialization");
+        }
+    }
+
+    /// <summary>
+    /// UIManager singleton'unu başlatır (GameManager'dan önce!)
+    /// </summary>
+    void InitializeUIManager()
+    {
+        // Eğer zaten var olan bir UIManager instance'ı yoksa oluştur
+        if (UIManager.Instance == null)
+        {
+            GameObject uiMgrObject = new GameObject("UIManager");
+            uiMgrObject.AddComponent<UIManager>();
+
+            Debug.Log("🎨 UIManager singleton created during bootstrap");
+        }
+        else
+        {
+            Debug.Log("🎨 UIManager already exists, skipping initialization");
         }
     }
 
@@ -132,6 +161,25 @@ public class Bootstrap : MonoBehaviour
         else
         {
             Debug.Log("🎮 EventSystem already exists, skipping initialization");
+        }
+    }
+
+    /// <summary>
+    /// GameManager singleton'unu başlatır (en son - tüm dependency'lerden sonra!)
+    /// </summary>
+    void InitializeGameManager()
+    {
+        // Eğer zaten var olan bir GameManager instance'ı yoksa oluştur
+        if (GameManager.Instance == null)
+        {
+            GameObject gameMgrObject = new GameObject("GameManager");
+            gameMgrObject.AddComponent<GameManager>();
+
+            Debug.Log("🎮 GameManager singleton created during bootstrap");
+        }
+        else
+        {
+            Debug.Log("🎮 GameManager already exists, skipping initialization");
         }
     }
 

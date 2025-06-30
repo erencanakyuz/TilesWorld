@@ -30,6 +30,19 @@ public class HitZoneTrigger : MonoBehaviour
         col.isTrigger = true;
     }
 
+    void Update()
+    {
+        // Clean up destroyed notes from the list
+        for (int i = insideNotes.Count - 1; i >= 0; i--)
+        {
+            if (insideNotes[i] == null)
+            {
+                insideNotes.RemoveAt(i);
+                if (showDebug) Debug.Log($"[HitZoneTrigger] Lane {laneIndex} cleaned up destroyed note. insideNotes={insideNotes.Count}");
+            }
+        }
+    }
+
     void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Note")) return;

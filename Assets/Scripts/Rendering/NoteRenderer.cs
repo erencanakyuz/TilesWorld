@@ -192,10 +192,16 @@ public class NoteRenderer : MonoBehaviour
             isNoteHighlight = !isNoteHighlight;
             noteTextureChangeTime = 0f;
 
+            // Clean up destroyed notes first
+            activeNotes.RemoveAll(note => note == null || note.gameObject == null);
+
             // Apply texture changes to all active notes
             foreach (var activeNote in activeNotes)
             {
-                ApplyNoteHighlight(activeNote.gameObject, isNoteHighlight);
+                if (activeNote != null && activeNote.gameObject != null)
+                {
+                    ApplyNoteHighlight(activeNote.gameObject, isNoteHighlight);
+                }
             }
         }
     }
@@ -223,17 +229,15 @@ public class NoteRenderer : MonoBehaviour
             // Update Unity transform directly (no coordinate conversion needed)
             activeNote.gameObject.transform.position = activeNote.currentPosition;
 
-            // Automatic destruction is currently disabled for testing and debugging.
-            // If re-enabled, this logic would handle notes that the player misses completely.
-            /*
-            if (activeNote.currentPosition.z < noteDestroyZ)
+            // Destroy notes that go too far behind (-4 on Z axis)
+            if (activeNote.currentPosition.z < -4f)
             {
+                if (showDebugLogs) Debug.Log($"🗑️ Destroying note at Z={activeNote.currentPosition.z:F2}");
                 HandleNoteMissed(activeNote);
                 ReturnNoteToPool(activeNote.gameObject);
                 activeNotes.RemoveAt(i);
                 continue;
             }
-            */
         }
     }
 
@@ -244,8 +248,10 @@ public class NoteRenderer : MonoBehaviour
 
     void ApplyNoteHighlight(GameObject noteObject, bool highlight)
     {
+        if (noteObject == null) return;
+
         var renderer = noteObject.GetComponent<Renderer>();
-        if (renderer != null)
+        if (renderer != null && renderer.material != null)
         {
             // Simple highlight effect - enhance existing color
             Color baseColor = renderer.material.color;
@@ -466,8 +472,20 @@ public class NoteRenderer : MonoBehaviour
 
     GameObject GetPooledNote()
     {
-        if (enableObjectPooling && notePool.Count > 0)
+        if (enableObjectPooling)
         {
+            // If pool is empty, create more notes
+            if (notePool.Count == 0)
+            {
+                Debug.Log($"🎨 Pool empty, expanding by {poolSize} notes...");
+                for (int i = 0; i < poolSize; i++)
+                {
+                    GameObject note = Instantiate(notePrefab, noteParent);
+                    note.SetActive(false);
+                    notePool.Enqueue(note);
+                }
+            }
+
             return notePool.Dequeue();
         }
         else if (notePrefab != null && noteParent != null)
@@ -475,13 +493,19 @@ public class NoteRenderer : MonoBehaviour
             return Instantiate(notePrefab, noteParent);
         }
 
+        Debug.LogError("🎨 Cannot create note: notePrefab or noteParent is missing!");
         return null;
     }
 
     void ReturnNoteToPool(GameObject noteObject)
     {
+        if (noteObject == null) return;
+
         if (enableObjectPooling)
         {
+            // Reset note state before returning to pool
+            noteObject.transform.position = Vector3.zero;
+            noteObject.transform.rotation = Quaternion.identity;
             noteObject.SetActive(false);
             notePool.Enqueue(noteObject);
         }

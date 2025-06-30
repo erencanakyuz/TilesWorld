@@ -68,6 +68,13 @@ public class AudioManager : MonoBehaviour
 
     void Start()
     {
+        // If instruments are not assigned in the inspector, try to load them automatically
+        if (instruments == null || instruments.Length == 0)
+        {
+            if (showDebugLogs) Debug.Log("🎵 Instruments not set in Inspector, attempting to auto-load from Resources...");
+            LoadInstrumentsFromResources();
+        }
+
         ApplyMobileOptimizations();
         LoadVolumeSettings();
     }
@@ -460,6 +467,51 @@ public class AudioManager : MonoBehaviour
             // The coroutine now exclusively manages this source,
             // so it returns it directly to the pool.
             audioSourcePool.Enqueue(source);
+        }
+    }
+
+    /// <summary>
+    /// Loads all instrument audio clips from the Resources folder.
+    /// This is a fallback for when instruments are not assigned in the Inspector.
+    /// It expects a folder structure like: Resources/Audio/[InstrumentType]/[clip_name].ogg
+    /// </summary>
+    private void LoadInstrumentsFromResources()
+    {
+        var loadedInstruments = new List<InstrumentAudioData>();
+
+        foreach (InstrumentType instrumentType in System.Enum.GetValues(typeof(InstrumentType)))
+        {
+            string instrumentName = instrumentType.ToString();
+            string path = $"Audio/{instrumentName}";
+
+            var clips = Resources.LoadAll<AudioClip>(path);
+
+            if (clips != null && clips.Length > 0)
+            {
+                // Sort clips alphabetically to ensure consistent pitch mapping
+                System.Array.Sort(clips, (a, b) => a.name.CompareTo(b.name));
+
+                var instrumentData = new InstrumentAudioData
+                {
+                    instrumentType = instrumentType,
+                    instrumentName = instrumentName,
+                    noteClips = clips
+                };
+                loadedInstruments.Add(instrumentData);
+
+                if (showDebugLogs) Debug.Log($"✅ Loaded {clips.Length} clips for instrument '{instrumentName}' from '{path}'");
+            }
+            else
+            {
+                if (showDebugLogs) Debug.LogWarning($"⚠️ No audio clips found for instrument '{instrumentName}' at path '{path}'");
+            }
+        }
+
+        instruments = loadedInstruments.ToArray();
+
+        if (instruments.Length == 0)
+        {
+            Debug.LogError("❌ FATAL: No instruments could be loaded at all! Check Resources/Audio folder structure. Notes will be silent.");
         }
     }
 }

@@ -147,9 +147,14 @@ public class HitZoneManager : MonoBehaviour
 
     void ProcessSuccessfulHit(HitZoneTrigger zone, GameObject noteObj, GameNoteInfo noteInfo, HitAccuracy acc, Vector2 screenPos)
     {
-        // Remove & recycle note
-        zone.RemoveNote(noteObj);
-        noteObj.SetActive(false);
+        // CRITICAL: Remove note from ALL zones to prevent double-hits
+        foreach (var z in zones)
+        {
+            z.RemoveNote(noteObj);
+        }
+
+        // Destroy the note object completely
+        Destroy(noteObj);
 
         // Play audio & musical logic
         if (noteInfo != null)
