@@ -642,12 +642,15 @@ public class UIManager : MonoBehaviour
         if (restartButton != null)
         {
             Debug.Log($"✅ Found restart button: {restartButton.name}");
-            restartButton.onClick.RemoveAllListeners(); // Önceki listener'ları temizle
-            restartButton.onClick.AddListener(() =>
+            restartButton.onClick.RemoveAllListeners();
+            restartButton.onClick.AddListener(() => GameManager.Instance.RestartGame());
+
+            // Also update the text to be more descriptive, including the shortcut
+            var restartText = restartButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (restartText != null)
             {
-                Debug.Log("🔄 Restart button clicked! Invoking OnRestartPressed event...");
-                OnRestartPressed?.Invoke();
-            });
+                restartText.text = "Restart ↻ (R)";
+            }
         }
         else
         {

@@ -1,7 +1,8 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using System.Collections.Generic;
-using System;
 using UnityEngine.InputSystem;
 
 public class GameManager : MonoBehaviour
@@ -499,6 +500,12 @@ public class GameManager : MonoBehaviour
         // Test: Switch to Song Selection state
         Debug.Log("🎵 Testing Song Selection - Press S to switch to SongSelection state");
         Debug.Log("🎮 Press K to show this debug info");
+    }
+
+    public void RestartGame()
+    {
+        // Reload the current scene to restart the game
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 }
 
