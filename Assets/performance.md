@@ -1,72 +1,72 @@
-✅ = iyi / tamam ⚠️ = iyileştirilebilir ❌ = sorun / kesin aksiyon
+✅ = iyi / tamam ⚠️ = iyileştirilebilir ❌ = sorun / kesin aksiyon (✅ ile işaretlenenler tamamlanmıştır)
 ====================================================================
 GameNoteCreator.cs (oyun akışı – dikey dilimleme & paket üretimi)
 ✅ • Dikey dilimleme algoritması, Java ile bire bir ve tempo-bağımlı.
 ✅ • Kural motoru (direction flow / anti-clustering) eksiksiz.
 ⚠️ • NOTE_LENGTH_FACTORS dizisinde 30+ eleman var; sadece 0-14 arası kullanılıyor.
   → 16-29 elemanlarını kaldır / sabit belleği düşür.
-⚠️ • TrySpawnNextPackage() her spawn’da Debug.Log mesajı üretiyor.
-  → Mobile build’de CONDITIONAL_LOG tanımıyla kapat.
-❌ • TimingMultiplier Inspector’da 4.0; BPM yüksek şarkılarda 1000+ package üretiyor → GC spikes.
-  → “dynamicMultiplier = 8f * (120 / tempo)” formülüyle otomatik ayarlama önerilir.
+⚠️ • TrySpawnNextPackage() her spawn'da Debug.Log mesajı üretiyor.
+  → Mobile build'de CONDITIONAL_LOG tanımıyla kapat.
+✅ • **[DÜZELTİLDİ]** TimingMultiplier sabitti; artık tempoya göre dinamik.
 Mobile Best-Practice Ekleri
-ObjectPool (GameNoteInfoPackage) yok; paketler GC’ye bırakılıyor. Queue<string> yerine ReusableList kullan.
+ObjectPool (GameNoteInfoPackage) yok; paketler GC'ye bırakılıyor. Queue<string> yerine ReusableList kullan.
 FIRST_DELAY_MS sabit (1.5 s). FPS < 60 cihazlarda açılış desync olabilir → Time.unscaledDeltaTime ile ölç.
 ====================================================================
 GameManager.cs (kilit singleton & state)
 ✅ • Bootstrap fallback mantığı sağlam.
 ⚠️ • PlayerPrefs save her sahne çıkışında çağrılıyor → IO cost. Oyun sonunda tek seferde kaydet.
-⚠️ • ChangeGameState() her frame K tuşu testleri var → RELEASE build’de #if UNITY_EDITOR ile sarmala.
-❌ • QualitySettings.vSyncCount = 0 ken targetFrameRate=60; GPU tasarrufu için düşük-hareket sahnelerde 30’a düşür.
-❌ • PauseGame() Time.timeScale = 0; AudioSource.pause MusicSource set edilmiş ama ActiveNotes Update hâlâ dönüyor (NoteRenderer). → Update() içinde Time.timeScale == 0 kontrolü ekle.
+⚠️ • ChangeGameState() her frame K tuşu testleri var → RELEASE build'de #if UNITY_EDITOR ile sarmala.
+❌ • QualitySettings.vSyncCount = 0 ken targetFrameRate=60; GPU tasarrufu için düşük-hareket sahnelerde 30'a düşür.
+✅ • **[DÜZELTİLDİ]** PauseGame() sırasında NoteRenderer.Update() çalışıyordu. Artık duruyor.
 ====================================================================
 GameplayManager.cs (maestro döngü)
 ✅ • Eski World.java Update akışı korunmuş.
-⚠️ • Update() de DeltaTime her frame noteCreator.GetNote() çağrısı yapılıyor; GC.Alloc 0.3 KB/frame (FindFirstObjectByType fallback). Öneri: Awake()’te referans al; null kontrolü kaldır.
-⚠️ • EstimateDuration() heuristik; SongDatabase zaten gerçek süre saklayabiliyor → JSON’a “duration” ekleyip tahmin yerine kullan.
-❌ • StartMusicWithDelay() Resources.Load her şarkı başında synchronous; büyük ogg dosyasını ana thread’de blokluyor.
-  → Addressables veya “PreloadedAudio” dizisiyle asenkron yükle.
+⚠️ • Update() de DeltaTime her frame noteCreator.GetNote() çağrısı yapılıyor; GC.Alloc 0.3 KB/frame (FindFirstObjectByType fallback). Öneri: Awake()'te referans al; null kontrolü kaldır.
+⚠️ • EstimateDuration() heuristik; SongDatabase zaten gerçek süre saklayabiliyor → JSON'a "duration" ekleyip tahmin yerine kullan.
+✅ • **[DÜZELTİLDİ]** StartMusicWithDelay() Resources.Load senkronize idi; artık asenkron.
 ====================================================================
 NoteRenderer.cs (görsel & havuzlama)
 ✅ • Obje havuzu var, lane hesaplaması doğru.
-⚠️ • UpdateActiveNotes(): List iterasyonu geriye doğru ama internal ‘activeNoteCount’ güncellenmiyor (istatistik bozuk).
-⚠️ • Mesh/Material yeni instance per note (GetMaterialForPitch) → 534 paket * 6 lane ≈ 3 k material alloc – GPU draw call patlar.
-  → “MaterialPropertyBlock + sharedMaterial” kullan; renk değişimini property ile yap.
-❌ • Gizmos çizimleri release build’de aktif; #if UNITY_EDITOR ile kapat.
+⚠️ • UpdateActiveNotes(): List iterasyonu geriye doğru ama internal 'activeNoteCount' güncellenmiyor (istatistik bozuk).
+✅ • **[DÜZELTİLDİ]** Her nota için yeni materyal oluşturuluyordu. Artık tek materyal kullanılıyor.
+❌ • Gizmos çizimleri release build'de aktif; #if UNITY_EDITOR ile kapat.
 Mobile Ek
-URP/Unlit materyal iyi; ama gerçek cihazda Shader.Find adı “Universal…” bulunmazsa fallback Standard shader çok pahalı. Build-time adresli shader kullan.
+URP/Unlit materyal iyi; ama gerçek cihazda Shader.Find adı "Universal..." bulunmazsa fallback Standard shader çok pahalı. Build-time adresli shader kullan.
 ====================================================================
 InteractiveMusicSystem.cs (ses & analiz)
 ✅ • Chord detection + bonus call GameplayManager.HandleChordDetected.
 ⚠️ • recentMusicalEvents Queue her frame en fazla 20 event saklıyor; LINQ Sort/Distinct Boxing CPU cost. 20 * 60fps ≈ 1.2 k ops, kabul edilebilir ama BurstRef struktürü ile iyileşir.
 ❌ • CalculateNoteVolume() duration parametresi GameNoteInfo.duration (float) ama çağrıda (int)cast ediliyor: hassasiyet kaybı.
-❌ • PlayNoteFromChart() stackTrace debug kodu mobilde maliyetli; #if UNITY_EDITOR kapsülüne alındı ancak stackTrace hesap hâlâ yapılıyor (her çağrıda).
+✅ • **[DÜZELTİLDİ]** PlayNoteFromChart() stackTrace debug kodu mobilde aktifti. Artık sadece Editor'de.
 ====================================================================
 SongDatabaseProcessor.cs (Editor)
 ✅ • CSV→JSON dönüştürme problemsiz.
 ⚠️ • JsonUtility ToJson prettyPrint=true; build time dosya boyutu +40%. Editor output; sorun değil.
-❌ • ParseCsvLine() kendi parser’ı; ‘CsvHelper’ gibi nuget paketine gerek yok ama tırnak içi virgül kaçırma çıkabilir.
+❌ • ParseCsvLine() kendi parser'ı; 'CsvHelper' gibi nuget paketine gerek yok ama tırnak içi virgül kaçırma çıkabilir.
 ====================================================================
 DataStructures.cs (merkezi enum & sabitler)
 ✅ • Duplicate enum yok.
 ⚠️ • SOUND_RESOURCE_IDXS 2D int[][] RAM maliyeti ihmal edilebilir (126 int).
-❌ • Several structs/classes [Serializable] ama hiç BinaryFormatter kullanılmıyor; gereksiz attribute.
+✅ • **[DÜZELTİLDİ]** Gereksiz [Serializable] etiketleri vardı. Temizlendi.
 ====================================================================
-GENEL PERFORMANS / DUPLICATION ÖZETİ
-• Draw-Calls: Pitch-bazlı materyal kullanımı 3000+ draw-call oluşturuyor (en kritik).
-GC.Alloc: StackTrace, LINQ Sort/Distinct, string.Format Log’ları frame içinde tahsis ediyor.
-Physics: Hiç kullanılmadığı hâlde note prefab’larda Collider olabilir – kontrol.
-Audio: FadeOut coroutine yeni WaitForSeconds tahsis ediyor; küçük ama sık.
+GENEL PERFORMANS / DUPLICATION ÖZETİ - GÜNCEL DURUM
+✅ • **Draw-Calls:** [İYİLEŞTİRİLDİ] Pitch-bazlı materyal kullanımı kaldırıldı.
+✅ • **GC.Alloc:** [İYİLEŞTİRİLDİ] StackTrace kaldırıldı, FadeOut korutinleri `Update` döngüsüne taşındı.
+• **Physics:** Hiç kullanılmadığı hâlde note prefab'larda Collider olabilir – kontrol.
 ====================================================================
-KESİN ÖNERİ LİSTESİ
-1. NoteRenderer – MaterialPropertyBlock ile tek sharedMaterial (kritik FPS).
-Resources.Load(ogg) →  Addressables/AssetBundle + Async; main-thread freeze’i gider.
-GameplayManager.StartGameplay(): NoteCreator + NoteRenderer referanslarını serialized field olarak sahne-prefabda ayarla; FindFirstObjectByType kaldır.
-GameNoteCreator: dynamic timingMultiplier = 32 / tempo; paket sayısını dengeler.
-InteractiveMusicSystem: stackTrace debug’u tamamen #if UNITY_EDITOR bloğuna al, mobilde kapat.
-GC & Logging: CONDITIONAL_LOG define ile Debug.Log’ları devre dışı bırak; Android IL2CPP’de %5 CPU kazancı.
-İzleme / Profiling’den sonra daha mikro optimizasyonlara geçilebilir.
+SONRAKİ ADIMLAR (ÖNCELİKLİ)
+1.  **Judgement Clock:** HitZoneManager'ı mesafe yerine zaman tabanlı hassasiyete geçir (En Kritik "Oyun Hissi" iyileştirmesi).
+2.  **Referans Yönetimi:** GameplayManager'daki `FindFirstObjectByType` çağrılarını kaldırıp referansları Inspector'dan ata.
+3.  **Loglama Sistemi:** Tüm `Debug.Log` çağrılarını release build'lerde devre dışı kalacak merkezi bir `Logger` sistemine taşı.
+4.  **Gizmos:** NoteRenderer'daki `OnDrawGizmos` kodunu `#if UNITY_EDITOR` bloğuna al.
+5.  **Diğer Maddeler:** Yukarıdaki listelerde "⚠️" ve "❌" ile işaretli kalan diğer maddeleri incele.
 
+Happy refactoring!
+
+
+
+
+PART2:
 
 
 
@@ -77,20 +77,26 @@ World-space journey
 HOW FAR each note must travel before it is hittable (visual clock).
 Player interaction window
 HOW MUCH early/late error you will forgive (judgement clock).
-Below is a deep dive into how your current scripts implement (and sometimes accidentally break) these pillars, where duplicate / dead code hides, and which lines are the “critical, silly” trouble-makers you asked for.
+Below is a deep dive into how your current scripts implement (and sometimes accidentally break) these 
+pillars, where duplicate / dead code hides, and which lines are the “critical, silly” trouble-makers you 
+asked for.
 1. Temporal blueprint –- package timing
 Source of truth
 GameNoteCreator.ProcessChartWithVerticalSlicing
 ```NOTE_LENGTH_FACTORS * timingMultiplier * baseTimingMs```
 Problems
-Variable “timingMultiplier” (default 4) is an artistically chosen knob but it is not stored anywhere else, so audio, judgements, UI are blind to it.
+Variable “timingMultiplier” (default 4) is an artistically chosen knob but it is not stored anywhere else, so 
+audio, judgements, UI are blind to it.
 The JSON chart’s “duration” field is only used for volume, not scheduling.
-FIRST_DELAY_MS (=1 500 ms) is hard-coded, therefore different BPM songs start drifting if their first playable slice is not exactly 1½ s after spawn.
-TemporalNoteInfo.timingMs is measured slice-to-slice, but GameplayManager never consults it; instead it just ticks noteCreator every frame – meaning Time.time decides WHEN to spawn, not AudioDSP time nor music position.
+FIRST_DELAY_MS (=1 500 ms) is hard-coded, therefore different BPM songs start drifting if their first 
+playable slice is not exactly 1½ s after spawn.
+TemporalNoteInfo.timingMs is measured slice-to-slice, but GameplayManager never consults it; instead it just 
+ticks noteCreator every frame – meaning Time.time decides WHEN to spawn, not AudioDSP time nor music position.
 Consequences
 Spawn jitter on low frame-rate devices.
 Tempo changes in a song cannot be expressed.
-Pausing (Time.timeScale=0) freezes spawns yet music is paused via AudioSource.Pause() (good), but manual latency adjustments will desync because no common clock.
+Pausing (Time.timeScale=0) freezes spawns yet music is paused via AudioSource.Pause() (good), but manual 
+latency adjustments will desync because no common clock.
 Fix direction
 Convert every Timing to double dspTime (AudioSettings.dspTime).
 After a package is dequeued, stamp each GameNoteInfo with an absolute hit-time (in dspTime).
@@ -105,9 +111,11 @@ speedMultiplier = 12 (units / sec)
 Hidden catch
 When Wrapper.expectedHitTime is set, you hard-code “+2.0f” seconds (not 2.08).
 If speedMultiplier slider is exposed to players, expectedHitTime is no longer correct.
-There is no easing for cameraAngle: notes appear to accelerate as they get closer (perspective) but movement is linear, producing a “rubber-band” perception.
+There is no easing for cameraAngle: notes appear to accelerate as they get closer (perspective) but movement 
+is linear, producing a “rubber-band” perception.
 Fix direction
-Compute travelTime = (startZ – hitLineZ) / speedMultiplier once, cache it, reuse it for FIRST_DELAY and Wrapper.expectedHitTime.
+Compute travelTime = (startZ – hitLineZ) / speedMultiplier once, cache it, reuse it for FIRST_DELAY and 
+Wrapper.expectedHitTime.
 Expose speedMultiplier via Gameplay settings UI but clamp and force travelTime to recompute.
 3. Judgement clock –- hit windows
 • HitZoneManager perfectWindowZ = 0.3, goodWindowZ = 0.6
@@ -120,19 +128,28 @@ or perform the entire judging directly in the time domain using Wrapper.expected
 4. Audio playback duplication / inconsistencies
 Duplicates you asked to spot:
 A. AudioConstants.GetSoundIndex lives in DataStructures.cs
-same lane/pitch mapping logic is re-implemented in AudioManager.PlayNote (lines 90-100) and SongPlaybackTester (lines 146-159).
+same lane/pitch mapping logic is re-implemented in AudioManager.PlayNote (lines 90-100) and 
+SongPlaybackTester (lines 146-159).
 Recommendation: centralize into AudioConstants; callers pass (lane,pitch) only.
-B. “pitchOffset / pitchFactor / enableCustomMapping” in SongPlaybackTester creates another mapping layer that never affects gameplay; it’s test-only. Keep, but mark as Editor-only code with #if UNITY_EDITOR.
-C. InstrumentType adjustment (guitar –4, harp +2) repeated twice: AudioManager.GetInstrumentAdjustedIndex and elsewhere in legacy code. Remove duplication.
-D. InteractiveMusicSystem.PlayNoteFromChart logs caller stack for debug then immediately delegates to AudioManager → good, keep.
-E. NoteRenderer.ApplyNoteHighlight toggles every 0.2 s on all active notes → causes 500+ material swaps per second on dense maps. Use MaterialPropertyBlock instead.
+B. “pitchOffset / pitchFactor / enableCustomMapping” in SongPlaybackTester creates another mapping layer that 
+never affects gameplay; it’s test-only. Keep, but mark as Editor-only code with #if UNITY_EDITOR.
+C. InstrumentType adjustment (guitar –4, harp +2) repeated twice: AudioManager.GetInstrumentAdjustedIndex and 
+elsewhere in legacy code. Remove duplication.
+D. InteractiveMusicSystem.PlayNoteFromChart logs caller stack for debug then immediately delegates to 
+AudioManager → good, keep.
+E. NoteRenderer.ApplyNoteHighlight toggles every 0.2 s on all active notes → causes 500+ material swaps per 
+second on dense maps. Use MaterialPropertyBlock instead.
 5. Expensive / risky patterns
-• Widespread use of FindFirstObjectByType each Start() (AudioManager, NoteRenderer, etc.). Cache or inject through Bootstrap.
-Every AudioSource fade-out spawns a coroutine; playing dense chords = hundreds of coroutines → pool fade tasks or implement in Update.
-HitZoneTrigger stores every entering note in insideNotes, but Update() cleans destroyed ones linearly. Use linked list or re-use pool index for O(1) remove.
+• Widespread use of FindFirstObjectByType each Start() (AudioManager, NoteRenderer, etc.). Cache or inject 
+through Bootstrap.
+Every AudioSource fade-out spawns a coroutine; playing dense chords = hundreds of coroutines → pool fade 
+tasks or implement in Update.
+HitZoneTrigger stores every entering note in insideNotes, but Update() cleans destroyed ones linearly. Use 
+linked list or re-use pool index for O(1) remove.
 6. Duplicate or empty files
 • Assets/Scripts/Rendering/NoteBehaviour.cs is empty. Either implement behaviour or delete.
-Assets/Scripts/Rendering/NoteRenderer.cs is duplicated at bottom of file list (“file is identical to original version”). Remove one copy to avoid Unity meta-guid mismatch.
+Assets/Scripts/Rendering/NoteRenderer.cs is duplicated at bottom of file list (“file is identical to original 
+version”). Remove one copy to avoid Unity meta-guid mismatch.
 7. Golden checklist for a crisp piano-like feel
 1. ONE authoritative clock: double songStartDsp captured before first spawn.
 timeToHit = (spawnZ – hitZ) / speed units.
@@ -149,15 +166,20 @@ wrapper.expectedHitTime = Time.time + 2.0f; // ← hard coded, ignores speed
 
 
 Problems  
- 1.  Variable “timingMultiplier” (default 4) is an **artistically chosen knob** but it is not stored anywhere else, so audio, judgements, UI are blind to it.  
+ 1.  Variable “timingMultiplier” (default 4) is an **artistically chosen knob** but it is not stored anywhere 
+ else, so audio, judgements, UI are blind to it.  
  2.  The JSON chart’s “duration” field is only used for volume, not scheduling.  
- 3.  FIRST_DELAY_MS (=1 500 ms) is hard-coded, therefore different BPM songs start drifting if their first playable slice is not exactly 1½ s after spawn.  
- 4.  TemporalNoteInfo.timingMs is measured **slice-to-slice**, but GameplayManager never consults it; instead it just ticks noteCreator every frame – meaning Time.time decides WHEN to spawn, not AudioDSP time nor music position.
+ 3.  FIRST_DELAY_MS (=1 500 ms) is hard-coded, therefore different BPM songs start drifting if their first 
+ playable slice is not exactly 1½ s after spawn.  
+ 4.  TemporalNoteInfo.timingMs is measured **slice-to-slice**, but GameplayManager never consults it; instead 
+ it just ticks noteCreator every frame – meaning Time.time decides WHEN to spawn, not AudioDSP time nor music 
+ position.
 
 Consequences  
 • Spawn jitter on low frame-rate devices.  
 • Tempo changes in a song cannot be expressed.  
-• Pausing (Time.timeScale=0) freezes spawns yet music is paused via AudioSource.Pause() (good), but manual latency adjustments will desync because no common clock.
+• Pausing (Time.timeScale=0) freezes spawns yet music is paused via AudioSource.Pause() (good), but manual 
+latency adjustments will desync because no common clock.
 
 Fix direction  
 • Convert every Timing to double dspTime (AudioSettings.dspTime).  
@@ -177,10 +199,12 @@ Visual clock
 Hidden catch  
   • When Wrapper.expectedHitTime is set, you hard-code “+2.0f” seconds (not 2.08).  
   • If speedMultiplier slider is exposed to players, expectedHitTime is no longer correct.  
-  • There is no easing for cameraAngle: notes appear to accelerate as they get closer (perspective) but movement is linear, producing a “rubber-band” perception.
+  • There is no easing for cameraAngle: notes appear to accelerate as they get closer (perspective) but 
+  movement is linear, producing a “rubber-band” perception.
 
 Fix direction  
-• Compute travelTime = (startZ – hitLineZ) / speedMultiplier once, cache it, reuse it for FIRST_DELAY and Wrapper.expectedHitTime.  
+• Compute travelTime = (startZ – hitLineZ) / speedMultiplier once, cache it, reuse it for FIRST_DELAY and 
+Wrapper.expectedHitTime.  
 • Expose speedMultiplier via Gameplay settings UI but clamp and force travelTime to recompute.
 
 ────────────────────────────────────────
@@ -201,29 +225,38 @@ Fix direction
 Duplicates you asked to spot:
 
 A. AudioConstants.GetSoundIndex lives in DataStructures.cs  
-   – same lane/pitch mapping logic is **re-implemented** in AudioManager.PlayNote (lines 90-100) and SongPlaybackTester (lines 146-159).  
+   – same lane/pitch mapping logic is **re-implemented** in AudioManager.PlayNote (lines 90-100) and 
+   SongPlaybackTester (lines 146-159).  
    Recommendation: centralize into AudioConstants; callers pass (lane,pitch) only.
 
-B. “pitchOffset / pitchFactor / enableCustomMapping” in SongPlaybackTester creates another mapping layer that never affects gameplay; it’s test-only. Keep, but mark as Editor-only code with `#if UNITY_EDITOR`.
+B. “pitchOffset / pitchFactor / enableCustomMapping” in SongPlaybackTester creates another mapping layer that 
+never affects gameplay; it’s test-only. Keep, but mark as Editor-only code with `#if UNITY_EDITOR`.
 
-C. InstrumentType adjustment (guitar –4, harp +2) repeated twice: AudioManager.GetInstrumentAdjustedIndex and elsewhere in legacy code. Remove duplication.
+C. InstrumentType adjustment (guitar –4, harp +2) repeated twice: AudioManager.GetInstrumentAdjustedIndex and 
+elsewhere in legacy code. Remove duplication.
 
-D. `InteractiveMusicSystem.PlayNoteFromChart` logs caller stack for debug then immediately delegates to AudioManager → good, keep.
+D. `InteractiveMusicSystem.PlayNoteFromChart` logs caller stack for debug then immediately delegates to 
+AudioManager → good, keep.
 
-E. NoteRenderer.ApplyNoteHighlight toggles every 0.2 s on **all** active notes → causes 500+ material swaps per second on dense maps. Use MaterialPropertyBlock instead.
+E. NoteRenderer.ApplyNoteHighlight toggles every 0.2 s on **all** active notes → causes 500+ material swaps 
+per second on dense maps. Use MaterialPropertyBlock instead.
 
 ────────────────────────────────────────
 5.  Expensive / risky patterns
 ────────────────────────────────────────
-• Widespread use of `FindFirstObjectByType` each Start() (AudioManager, NoteRenderer, etc.). Cache or inject through Bootstrap.  
-• Every AudioSource fade-out spawns a coroutine; playing dense chords = hundreds of coroutines → pool fade tasks or implement in Update.  
-• HitZoneTrigger stores every entering note in `insideNotes`, but Update() cleans destroyed ones linearly. Use linked list or re-use pool index for O(1) remove.
+• Widespread use of `FindFirstObjectByType` each Start() (AudioManager, NoteRenderer, etc.). Cache or inject 
+through Bootstrap.  
+• Every AudioSource fade-out spawns a coroutine; playing dense chords = hundreds of coroutines → pool fade 
+tasks or implement in Update.  
+• HitZoneTrigger stores every entering note in `insideNotes`, but Update() cleans destroyed ones linearly. 
+Use linked list or re-use pool index for O(1) remove.
 
 ────────────────────────────────────────
 6.  Duplicate or empty files
 ────────────────────────────────────────
 • Assets/Scripts/Rendering/NoteBehaviour.cs is empty. Either implement behaviour or delete.  
-• Assets/Scripts/Rendering/NoteRenderer.cs is duplicated at bottom of file list (“file is identical to original version”). Remove one copy to avoid Unity meta-guid mismatch.
+• Assets/Scripts/Rendering/NoteRenderer.cs is duplicated at bottom of file list (“file is identical to 
+original version”). Remove one copy to avoid Unity meta-guid mismatch.
 
 ────────────────────────────────────────
 7.  Golden checklist for a crisp piano-like feel
@@ -257,7 +290,8 @@ finalPitch = GetInstrumentAdjustedIndex(…)           // ← duplicate of mappi
 StartCoroutine(AnimateHitEffect(effect));            // ← spawns per-note coroutine
 ```
 
-Address these first; they control the core rhythm feeling and performance. After they are solid, profile again for material swaps and memory churn.
+Address these first; they control the core rhythm feeling and performance. After they are solid, profile 
+again for material swaps and memory churn.
 
 Happy refactoring!
 
@@ -271,5 +305,5 @@ finalPitch = GetInstrumentAdjustedIndex(…)           // ← duplicate of mappi
 StartCoroutine(AnimateHitEffect(effect));            // ← spawns per-note coroutine
 
 
-Address these first; they control the core rhythm feeling and performance. After they are solid, profile again for material swaps and memory churn.
-Happy refactoring!
+Address these first; they control the core rhythm feeling and performance. After they are solid, profile 
+again for material swaps and memory churn.

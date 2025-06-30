@@ -180,6 +180,9 @@ public class NoteRenderer : MonoBehaviour
     /// </summary>
     void Update()
     {
+        // PERFORMANCE FIX: As per performance.md, do not run update logic if the game is paused.
+        if (Time.timeScale <= 0f) return;
+
         float deltaTime = Time.deltaTime;
 
         UpdateNoteTextures(deltaTime);

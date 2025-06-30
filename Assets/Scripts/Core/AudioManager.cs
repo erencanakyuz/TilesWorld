@@ -37,6 +37,7 @@ public class AudioManager : MonoBehaviour
     // Audio Source Pool for low-latency playback
     private Queue<AudioSource> audioSourcePool;
     private List<AudioSource> activeAudioSources;
+    private List<FadingAudioSource> fadingAudioSources; // For managing fades in Update()
 
     // Current playing music
     private AudioSource musicAudioSource;
@@ -89,6 +90,7 @@ public class AudioManager : MonoBehaviour
     {
         audioSourcePool = new Queue<AudioSource>();
         activeAudioSources = new List<AudioSource>();
+        fadingAudioSources = new List<FadingAudioSource>(); // Initialize the new list
 
         for (int i = 0; i < audioSourcePoolSize; i++)
         {
@@ -196,13 +198,16 @@ public class AudioManager : MonoBehaviour
 
         if (enableNoteFadeOut)
         {
-            // This source's lifecycle is now managed by the coroutine.
-            // Remove it from the main recycling list to prevent conflicts.
+            // Instead of starting a coroutine, add to the list to be managed by Update()
+            fadingAudioSources.Add(new FadingAudioSource
+            {
+                source = audioSource,
+                fadeTimer = noteFadeDuration,
+                initialVolume = audioSource.volume
+            });
+            // The source is removed from the active list as it's now managed by the fade-out process
             activeAudioSources.Remove(audioSource);
-            StartCoroutine(FadeOutAndRecycle(audioSource, noteFadeDuration));
         }
-        // If not fading, the source remains in activeAudioSources and will be 
-        // recycled by the main Update loop when it finishes playing.
     }
 
     [System.Obsolete("Use PlayNote with useJavaMapping=true instead")]
@@ -307,6 +312,7 @@ public class AudioManager : MonoBehaviour
     void Update()
     {
         RecycleFinishedAudioSources();
+        ProcessFadeOuts();
 
         if (enableLatencyMonitoring && Time.frameCount % 60 == 0)
         {
@@ -326,6 +332,29 @@ public class AudioManager : MonoBehaviour
             {
                 activeAudioSources.RemoveAt(i);
                 audioSourcePool.Enqueue(source);
+            }
+        }
+    }
+
+    void ProcessFadeOuts()
+    {
+        for (int i = fadingAudioSources.Count - 1; i >= 0; i--)
+        {
+            var fadingSource = fadingAudioSources[i];
+            fadingSource.fadeTimer -= Time.deltaTime;
+
+            if (fadingSource.fadeTimer <= 0)
+            {
+                // Fade is complete, recycle the source
+                fadingSource.source.Stop();
+                fadingSource.source.volume = fadingSource.initialVolume; // Reset volume
+                audioSourcePool.Enqueue(fadingSource.source);
+                fadingAudioSources.RemoveAt(i);
+            }
+            else
+            {
+                // Still fading, update volume
+                fadingSource.source.volume = Mathf.Lerp(0f, fadingSource.initialVolume, fadingSource.fadeTimer / noteFadeDuration);
             }
         }
     }
@@ -425,50 +454,6 @@ public class AudioManager : MonoBehaviour
         return null;
     }
 
-    IEnumerator FadeOutAndRecycle(AudioSource source, float fadeTime)
-    {
-        if (source == null || source.clip == null) yield break;
-
-        float waitTime = Mathf.Max(0f, source.clip.length - fadeTime);
-
-        // Optimization: Avoid WaitForSeconds allocation by using a manual timer loop.
-        float timer = 0f;
-        while (timer < waitTime)
-        {
-            timer += Time.deltaTime;
-            yield return null;
-        }
-
-        if (showDebugLogs)
-        {
-            // Debug.Log($"🎵 FADE START: '{source.clip.name}' klibi {fadeTime} saniye içinde sönümleniyor. (Beklenen süre: {waitTime:F2}s)");
-        }
-
-        float startVol = source.volume;
-        float t = 0f;
-        while (t < fadeTime && source != null)
-        {
-            t += Time.deltaTime;
-            source.volume = Mathf.Lerp(startVol, 0f, t / fadeTime);
-            /*
-            if (showDebugLogs)
-            {
-                Debug.Log($"   > Fading '{source.clip.name}': Time={t:F2}s, Volume={source.volume:F3}");
-            }
-            */
-            yield return null;
-        }
-
-        if (source != null)
-        {
-            source.Stop();
-            source.volume = startVol;
-            // The coroutine now exclusively manages this source,
-            // so it returns it directly to the pool.
-            audioSourcePool.Enqueue(source);
-        }
-    }
-
     /// <summary>
     /// Loads all instrument audio clips from the Resources folder.
     /// This is a fallback for when instruments are not assigned in the Inspector.
@@ -526,6 +511,14 @@ public class AudioManager : MonoBehaviour
             return instruments[instrumentId].noteClips.Length;
         }
         return 0;
+    }
+
+    // Helper class to manage fade-out in Update() instead of using expensive coroutines
+    private class FadingAudioSource
+    {
+        public AudioSource source;
+        public float fadeTimer;
+        public float initialVolume;
     }
 }
 

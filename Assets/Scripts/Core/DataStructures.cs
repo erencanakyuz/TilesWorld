@@ -9,14 +9,12 @@ using System.Collections.Generic;
 #region Core Game Data Structures
 
 // --- Nota Yapıları ---
-[System.Serializable]
 public class GameNoteInfoPackage
 {
     public float oneNote; // Bu paketten sonraki paketin ne kadar süre sonra geleceği (ms)
     public List<GameNoteInfo> gameNoteInfos = new List<GameNoteInfo>();
 }
 
-[System.Serializable]
 public class GameNoteInfo
 {
     public int idx;           // Final lane indeksi (0-5)
@@ -27,7 +25,6 @@ public class GameNoteInfo
     public List<OneNote> noteInfoList = new List<OneNote>(); // Java uyumluluğu
 }
 
-[System.Serializable]
 public class OneNote
 {
     public int line;
@@ -35,7 +32,6 @@ public class OneNote
     public int instrument;
 }
 
-[System.Serializable]
 public class NoteInfo
 {
     public int line;
