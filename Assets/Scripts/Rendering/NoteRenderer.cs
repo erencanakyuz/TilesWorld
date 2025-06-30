@@ -445,9 +445,8 @@ public class NoteRenderer : MonoBehaviour
             wrapper = noteObject.AddComponent<NoteWrapper>();
         wrapper.gameNoteInfo = noteInfo;
 
-        // Reverted to original Time.time based calculation.
-        float travelTime = Mathf.Abs((spawnPosition.z - 0f)) / Mathf.Max(0.01f, speedMultiplier); // hitLineZ assumed 0
-        wrapper.expectedHitTime = Time.time + travelTime;
+        // Correctly calculate expected hit time based on the actual travel time.
+        wrapper.expectedHitTime = Time.time + GetNoteTravelTime();
 
         // Create active note tracking
         var activeNote = new RenderingNote
@@ -622,6 +621,19 @@ public class NoteRenderer : MonoBehaviour
         activeNotes.Clear();
     }
 
+    /// <summary>
+    /// Calculates the time it takes for a note to travel from its spawn point to the hit line.
+    /// This is the authority for visual timing.
+    /// </summary>
+    /// <returns>Travel time in seconds.</returns>
+    public float GetNoteTravelTime()
+    {
+        // Based on the fixed spawn Z position and the hit line Z position (assumed to be 0).
+        float spawnZ = 25f; // Must match the Z position set in SpawnNote()
+        float hitZ = 0f;    // The position of the hit line
+        return Mathf.Abs(spawnZ - hitZ) / Mathf.Max(0.01f, speedMultiplier);
+    }
+
     public void SetNoteSpeed(float speed)
     {
         // This method is obsolete as speed is now controlled by speedMultiplier.
@@ -631,19 +643,6 @@ public class NoteRenderer : MonoBehaviour
     public void SetSpeedMultiplier(float multiplier)
     {
         speedMultiplier = Mathf.Max(0.1f, multiplier);
-    }
-
-    /// <summary>
-    /// Calculates the time it takes for a note to travel from its spawn point to the hit line.
-    /// </summary>
-    /// <returns>Travel time in seconds.</returns>
-    public float GetNoteTravelTime()
-    {
-        // Assumes a fixed spawn Z of 25f and a hit line Z of 0f.
-        // This should be updated if these values become dynamic.
-        float spawnZ = 25f;
-        float hitZ = 0f;
-        return Mathf.Abs(spawnZ - hitZ) / Mathf.Max(0.01f, speedMultiplier);
     }
     #endregion
 

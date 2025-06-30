@@ -318,7 +318,7 @@ public class GameplayManager : MonoBehaviour
         {
             float travelTimeMs = noteRenderer.GetNoteTravelTime() * 1000f;
             noteCreator.SetFirstDelay(travelTimeMs);
-            if (showDebugLogs) Debug.Log($"🎵 Note travel time set for perfect sync: {travelTimeMs:F0}ms");
+            if (showDebugLogs) Debug.Log($"🎵 [TIMING CHECK] Note travel time set for perfect sync: {travelTimeMs:F0}ms");
         }
 
         if (noteCreator != null && currentSong != null)

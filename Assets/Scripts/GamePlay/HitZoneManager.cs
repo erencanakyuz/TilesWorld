@@ -11,11 +11,13 @@ using System.Linq;
 /// </summary>
 public class HitZoneManager : MonoBehaviour
 {
-    [Header("🎯 Position-Based Hit Windows (Z-axis distance)")]
-    [Tooltip("Z-distance from hit line for a 'Perfect' hit. From oldgame.md: 0.3 units is a good start.")]
-    public float perfectWindowZ = 0.3f;
-    [Tooltip("Z-distance from hit line for a 'Good' hit. From oldgame.md: 0.6 units is a good start.")]
-    public float goodWindowZ = 0.6f;
+    [Header("🎯 Time-Based Hit Windows (milliseconds)")]
+    [Tooltip("Time window in MS for a 'Perfect' hit.")]
+    public float perfectWindowMs = 50f;
+    [Tooltip("Time window in MS for a 'Good' hit.")]
+    public float goodWindowMs = 100f;
+    [Tooltip("Time window in MS for an 'Okay' hit. Taps outside this are misses.")]
+    public float okayWindowMs = 150f;
 
     [Header("CONFIGURATION")]
     [Tooltip("The ideal Z-position for a note to be hit. Must match NoteRenderer's hitZoneZ.")]
@@ -24,9 +26,12 @@ public class HitZoneManager : MonoBehaviour
     [Tooltip("Reference to active AudioManager clock (optional). If null, Time.time will be used.")]
     public AudioManager audioManager;
 
+    [Tooltip("Reference to the NoteRenderer to calculate note travel time for misses.")]
+    [SerializeField] private NoteRenderer noteRenderer;
+
     // Internal
     private HitZoneTrigger[] zones;
-    private NoteRenderer noteRenderer;
+    private float noteTravelTime;
 
     void Awake()
     {
@@ -46,7 +51,11 @@ public class HitZoneManager : MonoBehaviour
         }
 
         if (audioManager == null) audioManager = AudioManager.Instance;
-        noteRenderer = FindFirstObjectByType<NoteRenderer>();
+        if (noteRenderer == null) noteRenderer = FindFirstObjectByType<NoteRenderer>();
+        if (noteRenderer != null)
+        {
+            noteTravelTime = noteRenderer.GetNoteTravelTime();
+        }
     }
 
     void OnEnable()
@@ -92,53 +101,56 @@ public class HitZoneManager : MonoBehaviour
         var zone = zones[lane];
         if (zone == null || zone.insideNotes.Count == 0) return;
 
-        // FIXED: Find the note closest to the PLAYER (highest Z value approaching hit line)
-        // In rhythm games, you should hit the note that reached you first, not necessarily the most accurate one
+        // In a time-based system, we find the note with the smallest time difference to its expected hit time.
         GameObject bestCandidate = null;
-        float closestToPlayerZ = float.MinValue; // We want the highest Z (closest to player)
+        float bestTimeDiff = float.MaxValue;
+        NoteWrapper bestWrapper = null;
 
-        for (int i = zone.insideNotes.Count - 1; i >= 0; i--)
+        foreach (var noteObj in zone.insideNotes)
         {
-            var noteObj = zone.insideNotes[i];
             if (noteObj == null) continue;
+            var noteWrapper = noteObj.GetComponent<NoteWrapper>();
+            if (noteWrapper == null) continue;
 
-            float noteZ = noteObj.transform.position.z;
-
-            // Among all notes in trigger, choose the one closest to player (highest Z)
-            // No distance filtering here - if it's in the trigger zone, it's hittable
-            if (noteZ > closestToPlayerZ)
+            float timeDiff = Mathf.Abs(Time.time - noteWrapper.expectedHitTime);
+            if (timeDiff < bestTimeDiff)
             {
-                closestToPlayerZ = noteZ;
+                bestTimeDiff = timeDiff;
                 bestCandidate = noteObj;
+                bestWrapper = noteWrapper;
             }
         }
 
         if (bestCandidate == null) return;
 
-        var noteWrapper = bestCandidate.GetComponent<NoteWrapper>();
-        if (noteWrapper == null || noteWrapper.gameNoteInfo == null)
-        {
-            Debug.LogWarning($"[HitZoneManager] Best candidate note in lane {lane} has no valid info. Ignoring tap.");
-            return;
-        }
-
-        // Calculate accuracy based on distance from hit line
-        float distanceFromHitLine = Mathf.Abs(bestCandidate.transform.position.z - hitLineZ);
+        // Convert the time difference to milliseconds for judgement.
+        float timeDiffMs = bestTimeDiff * 1000f;
         HitAccuracy accuracy;
-        if (distanceFromHitLine <= perfectWindowZ)
+
+        if (timeDiffMs <= perfectWindowMs)
         {
             accuracy = HitAccuracy.Perfect;
         }
-        else if (distanceFromHitLine <= goodWindowZ)
+        else if (timeDiffMs <= goodWindowMs)
         {
             accuracy = HitAccuracy.Good;
         }
-        else
+        else if (timeDiffMs <= okayWindowMs)
         {
             accuracy = HitAccuracy.Okay;
         }
+        else
+        {
+            // The tap was too early or too late for the closest note, so it's a miss.
+            // We don't process it as a hit.
+            return;
+        }
 
-        ProcessSuccessfulHit(zone, bestCandidate, noteWrapper.gameNoteInfo, accuracy, screenPos);
+        // --- [TIMING CHECK] Log ---
+        Debug.Log($"[TIMING CHECK] Hit on Lane {lane} | Time Diff: {timeDiffMs:F1}ms | Accuracy: {accuracy}");
+        // -------------------------
+
+        ProcessSuccessfulHit(zone, bestCandidate, bestWrapper.gameNoteInfo, accuracy, screenPos);
     }
 
     float noteWrapperFallback(GameObject noteObj)
