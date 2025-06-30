@@ -90,37 +90,28 @@ public class HitZoneManager : MonoBehaviour
         var zone = zones[lane];
         if (zone == null || zone.insideNotes.Count == 0) return;
 
-        Debug.Log($"🎯 [TIMING DEBUG] === LANE {lane} HIT EVALUATION ===");
-        Debug.Log($"   📦 Notes in trigger zone: {zone.insideNotes.Count}");
-
-        // Find the note closest to the hit line (z=0)
+        // FIXED: Find the note closest to the PLAYER (highest Z value approaching hit line)
+        // In rhythm games, you should hit the note that reached you first, not necessarily the most accurate one
         GameObject bestCandidate = null;
-        float minDistance = float.MaxValue;
+        float closestToPlayerZ = float.MinValue; // We want the highest Z (closest to player)
 
-        // *** DEBUG: Her notanın Z pozisyonunu göster ***
-        Debug.Log($"   🔍 Checking all notes in zone:");
         for (int i = zone.insideNotes.Count - 1; i >= 0; i--)
         {
             var noteObj = zone.insideNotes[i];
             if (noteObj == null) continue;
 
             float noteZ = noteObj.transform.position.z;
-            float distance = Mathf.Abs(noteZ - hitLineZ);
-            Debug.Log($"     Note {i}: Z={noteZ:F3}, Distance from hit line={distance:F3}");
 
-            if (distance < minDistance)
+            // Among all notes in trigger, choose the one closest to player (highest Z)
+            // No distance filtering here - if it's in the trigger zone, it's hittable
+            if (noteZ > closestToPlayerZ)
             {
-                minDistance = distance;
+                closestToPlayerZ = noteZ;
                 bestCandidate = noteObj;
-                Debug.Log($"     ⭐ New best candidate! Distance={distance:F3}");
             }
         }
 
-        if (bestCandidate == null)
-        {
-            Debug.Log($"   ❌ No valid candidate found!");
-            return;
-        }
+        if (bestCandidate == null) return;
 
         var noteWrapper = bestCandidate.GetComponent<NoteWrapper>();
         if (noteWrapper == null || noteWrapper.gameNoteInfo == null)
@@ -129,35 +120,22 @@ public class HitZoneManager : MonoBehaviour
             return;
         }
 
-        // *** TIMING SİSTEMİNİN DETAYLI AÇIKLAMASI ***
-        Debug.Log($"📊 [TIMING SYSTEM EXPLANATION]:");
-        Debug.Log($"   🎯 Hit Line Z: {hitLineZ:F3} (player's position)");
-        Debug.Log($"   📍 Best Note Z: {bestCandidate.transform.position.z:F3}");
-        Debug.Log($"   📏 Distance: {minDistance:F3}");
-        Debug.Log($"   🎪 Perfect Window: ≤{perfectWindowZ:F3}");
-        Debug.Log($"   👍 Good Window: ≤{goodWindowZ:F3}");
-        Debug.Log($"   💡 NASIL ÇALIŞIR: Nota hit line'a ne kadar yakınsa o kadar perfect!");
-
-        // Determine accuracy based on Z-position distance
+        // Calculate accuracy based on distance from hit line
+        float distanceFromHitLine = Mathf.Abs(bestCandidate.transform.position.z - hitLineZ);
         HitAccuracy accuracy;
-        if (minDistance <= perfectWindowZ)
+        if (distanceFromHitLine <= perfectWindowZ)
         {
             accuracy = HitAccuracy.Perfect;
-            Debug.Log($"   🏆 RESULT: PERFECT! (distance {minDistance:F3} ≤ {perfectWindowZ:F3})");
         }
-        else if (minDistance <= goodWindowZ)
+        else if (distanceFromHitLine <= goodWindowZ)
         {
             accuracy = HitAccuracy.Good;
-            Debug.Log($"   👍 RESULT: GOOD! (distance {minDistance:F3} ≤ {goodWindowZ:F3})");
         }
         else
         {
-            // Any note inside the trigger but outside the 'Good' window is 'Okay'
             accuracy = HitAccuracy.Okay;
-            Debug.Log($"   👌 RESULT: OKAY! (distance {minDistance:F3} > {goodWindowZ:F3})");
         }
 
-        Debug.Log($"🎵 [FINAL] Lane {lane} HIT with {accuracy} accuracy!");
         ProcessSuccessfulHit(zone, bestCandidate, noteWrapper.gameNoteInfo, accuracy, screenPos);
     }
 

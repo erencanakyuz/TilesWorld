@@ -88,6 +88,7 @@ public class InputManager : MonoBehaviour
         if (UnityEngine.InputSystem.Touchscreen.current != null)
         {
             var touchscreen = UnityEngine.InputSystem.Touchscreen.current;
+
             for (int i = 0; i < touchscreen.touches.Count && i < maxSimultaneousTouches; i++)
             {
                 var touch = touchscreen.touches[i];
@@ -292,14 +293,28 @@ public class InputManager : MonoBehaviour
     {
         if (mainCamera == null || laneWorldPositions == null) return 0;
 
-        // Simple screen division approach for reliability
-        float normalizedX = screenPosition.x / Screen.width; // 0 to 1
-        int lane = Mathf.FloorToInt(normalizedX * laneCount);
+        // NEW: Use camera raycast to convert screen position to world coordinates
+        Ray ray = mainCamera.ScreenPointToRay(screenPosition);
 
-        // Clamp to valid range
-        lane = Mathf.Clamp(lane, 0, laneCount - 1);
+        // Calculate intersection with the game plane (Y = 0)
+        float distanceToPlane = -ray.origin.y / ray.direction.y;
+        Vector3 worldPosition = ray.origin + ray.direction * distanceToPlane;
 
-        return lane;
+        // Find the closest lane to this world position
+        int closestLane = 0;
+        float closestDistance = Mathf.Abs(worldPosition.x - laneWorldPositions[0].x);
+
+        for (int i = 1; i < laneWorldPositions.Length; i++)
+        {
+            float distance = Mathf.Abs(worldPosition.x - laneWorldPositions[i].x);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestLane = i;
+            }
+        }
+
+        return closestLane;
     }
 
     Vector2 LaneToScreenPosition(int lane)

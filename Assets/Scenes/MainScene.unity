@@ -782,9 +782,7 @@ MonoBehaviour:
   cameraAngle: 45
   laneCount: 6
   laneWidth: 1.85
-  worldDepth: 25
-  speedMultiplier: 2
-  accelerationIntensity: 0.8
+  speedMultiplier: 8
   enableObjectPooling: 1
   poolSize: 50
 --- !u!4 &486749171
@@ -1041,7 +1039,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &619394801
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1418,7 +1416,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &819820037
 MonoBehaviour:
   m_ObjectHideFlags: 0

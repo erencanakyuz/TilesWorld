@@ -100,11 +100,17 @@ public class GameManager : MonoBehaviour
         // Subscribe to UI events
         if (UIManager.Instance != null)
         {
+            Debug.Log("🔗 Subscribing to UIManager events...");
             UIManager.Instance.OnPausePressed += HandlePauseButtonPressed;
             UIManager.Instance.OnSettingsPressed += HandleSettingsButtonPressed;
             UIManager.Instance.OnResumePressed += HandleResumeButtonPressed;
             UIManager.Instance.OnRestartPressed += HandleRestartButtonPressed;
             UIManager.Instance.OnMainMenuPressed += HandleMainMenuButtonPressed;
+            Debug.Log("✅ UIManager event subscriptions complete!");
+        }
+        else
+        {
+            Debug.LogError("❌ UIManager.Instance is NULL during GameManager initialization!");
         }
 
         // This just verifies they're working
@@ -112,7 +118,7 @@ public class GameManager : MonoBehaviour
             UIManager.Instance != null &&
             InputManager.Instance != null)
         {
-            // Debug.Log("🎮 All core systems initialized successfully");
+            Debug.Log("🎮 All core systems initialized successfully");
         }
     }
 

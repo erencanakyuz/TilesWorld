@@ -390,33 +390,21 @@ public class UIManager : MonoBehaviour
 
     private void HandleStateChangeImmediate(GameState newState)
     {
-        // Debug.Log($"🎮 UIManager: Handling state change to {newState}");
-
-        // Destroy the previous panel instance
+        // Cleanup current panel first to prevent duplicates
         if (currentPanelInstance != null)
         {
-            // Debug.Log($"🗑️ Destroying previous panel: {currentPanelInstance.name}");
+            Debug.Log($"🗑️ Destroying existing panel: {currentPanelInstance.name}");
             Destroy(currentPanelInstance);
             currentPanelInstance = null;
         }
 
-        // Activate the correct panel for the new state by instantiating it
-        if (statePanelPrefabs.TryGetValue(newState, out GameObject prefab) && prefab != null)
+        // Create the appropriate panel for this state
+        Transform parentCanvas = GetParentCanvasForState(newState);
+
+        if (parentCanvas != null && statePanelPrefabs.ContainsKey(newState) && statePanelPrefabs[newState] != null)
         {
-            Transform parentCanvas = GetParentCanvasForState(newState);
-            if (parentCanvas != null)
-            {
-                currentPanelInstance = Instantiate(prefab, parentCanvas);
-                // Debug.Log($"✅ Created panel: {prefab.name} on canvas: {parentCanvas.name}");
-            }
-            else
-            {
-                Debug.LogError($"❌ Cannot create panel for {newState} - parentCanvas is NULL!");
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"⚠️ No panel prefab found for state: {newState}");
+            currentPanelInstance = Instantiate(statePanelPrefabs[newState], parentCanvas);
+            Debug.Log($"✅ Created panel for state: {newState}");
         }
 
         // Handle specific logic for each state
@@ -607,31 +595,74 @@ public class UIManager : MonoBehaviour
         if (hudCanvas != null)
             hudCanvas.gameObject.SetActive(false);
 
-        currentPanelInstance = Instantiate(gameOverPanelPrefab, GetParentCanvasForState(GameState.GameOver));
+        Transform parentCanvas = GetParentCanvasForState(GameState.GameOver);
+        if (parentCanvas == null)
+        {
+            Debug.LogError("❌ Cannot create GameOver panel - no parent canvas!");
+            return;
+        }
+
+        // Ensure parent canvas has GraphicRaycaster for UI interactions
+        Canvas canvas = parentCanvas.GetComponent<Canvas>();
+        if (canvas != null && canvas.GetComponent<GraphicRaycaster>() == null)
+        {
+            canvas.gameObject.AddComponent<GraphicRaycaster>();
+            Debug.Log("✅ Added GraphicRaycaster to canvas for UI interactions");
+        }
+
+        currentPanelInstance = Instantiate(gameOverPanelPrefab, parentCanvas);
         SetupGameOverPanelButtons();
         DisplayFinalScore();
     }
 
     private void SetupGameOverPanelButtons()
     {
-        if (currentPanelInstance == null) return;
+        if (currentPanelInstance == null)
+        {
+            Debug.LogError("❌ SetupGameOverPanelButtons: currentPanelInstance is NULL!");
+            return;
+        }
 
         // Butonları isimlerine göre bul
         var buttons = currentPanelInstance.GetComponentsInChildren<Button>();
+        Debug.Log($"🔍 Found {buttons.Length} buttons in GameOver panel:");
+
+        foreach (var btn in buttons)
+        {
+            Debug.Log($"   - Button: {btn.name}");
+        }
 
         Button restartButton = System.Array.Find(buttons, b => b.name.ToLower().Contains("restart") || b.name.ToLower().Contains("again"));
         Button mainMenuButton = System.Array.Find(buttons, b => b.name.ToLower().Contains("menu"));
 
         if (restartButton != null)
         {
+            Debug.Log($"✅ Found restart button: {restartButton.name}");
             restartButton.onClick.RemoveAllListeners(); // Önceki listener'ları temizle
-            restartButton.onClick.AddListener(() => OnRestartPressed?.Invoke());
+            restartButton.onClick.AddListener(() =>
+            {
+                Debug.Log("🔄 Restart button clicked! Invoking OnRestartPressed event...");
+                OnRestartPressed?.Invoke();
+            });
+        }
+        else
+        {
+            Debug.LogError("❌ Restart button NOT found! Looking for buttons containing 'restart' or 'again'");
         }
 
         if (mainMenuButton != null)
         {
+            Debug.Log($"✅ Found main menu button: {mainMenuButton.name}");
             mainMenuButton.onClick.RemoveAllListeners(); // Önceki listener'ları temizle
-            mainMenuButton.onClick.AddListener(() => OnMainMenuPressed?.Invoke());
+            mainMenuButton.onClick.AddListener(() =>
+            {
+                Debug.Log("🏠 Main menu button clicked! Invoking OnMainMenuPressed event...");
+                OnMainMenuPressed?.Invoke();
+            });
+        }
+        else
+        {
+            Debug.LogError("❌ Main menu button NOT found! Looking for buttons containing 'menu'");
         }
     }
 

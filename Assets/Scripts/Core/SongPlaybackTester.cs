@@ -40,25 +40,100 @@ public class SongPlaybackTester : MonoBehaviour
     private bool isTestRunning = false;
     private Coroutine testCoroutine;
 
+    // Mobile 3-finger touch detection
+    private float threeFingerHoldTime = 0f;
+    private const float requiredHoldDuration = 1f;
+
     void Update()
     {
-        // 'L' tuşuna her basıldığında testi başlat veya yeniden başlat
-        if (Keyboard.current.lKey.wasPressedThisFrame)
-        {
-            if (isTestRunning)
-            {
-                // Mevcut testi iptal et
-                if (testCoroutine != null)
-                {
-                    StopCoroutine(testCoroutine);
-                }
+        // Handle keyboard input (existing L key functionality)
+        HandleKeyboardInput();
 
-                // Aktif sesleri durdurmak istiyorsanız AudioManager'da global bir StopAll metodu ekleyebilirsiniz
+        // Handle mobile 3-finger touch input
+        HandleMobileInput();
+    }
+
+    void HandleKeyboardInput()
+    {
+        // 'L' tuşuna her basıldığında testi başlat veya yeniden başlat
+        if (Keyboard.current != null && Keyboard.current.lKey.wasPressedThisFrame)
+        {
+            StartTest();
+        }
+
+        // Additional keyboard shortcuts for different songs
+        if (Keyboard.current != null)
+        {
+            if (Keyboard.current.kKey.wasPressedThisFrame)
+            {
+                testSongTitle = "Cannon";
+                StartTest();
+            }
+            else if (Keyboard.current.jKey.wasPressedThisFrame)
+            {
+                testSongTitle = "Fur Elise";
+                StartTest();
+            }
+            else if (Keyboard.current.hKey.wasPressedThisFrame)
+            {
+                testSongTitle = "Moon Light";
+                StartTest();
+            }
+        }
+    }
+
+    void HandleMobileInput()
+    {
+#if UNITY_ANDROID || UNITY_IOS
+        if (UnityEngine.InputSystem.Touchscreen.current != null)
+        {
+            var touchscreen = UnityEngine.InputSystem.Touchscreen.current;
+
+            // Count active touches
+            int activeTouchCount = 0;
+            for (int i = 0; i < touchscreen.touches.Count; i++)
+            {
+                if (touchscreen.touches[i].isInProgress)
+                {
+                    activeTouchCount++;
+                }
             }
 
-            // Yeniden başlat
-            testCoroutine = StartCoroutine(PlaySongTest());
+            // Check for 3-finger hold
+            if (activeTouchCount >= 3)
+            {
+                threeFingerHoldTime += Time.deltaTime;
+
+                if (threeFingerHoldTime >= requiredHoldDuration && !isTestRunning)
+                {
+                    Debug.Log("📱 3-finger touch detected! Starting mobile test...");
+                    StartTest();
+                    threeFingerHoldTime = 0f; // Reset to prevent multiple triggers
+                }
+            }
+            else
+            {
+                threeFingerHoldTime = 0f; // Reset if not holding 3 fingers
+            }
         }
+#endif
+    }
+
+    void StartTest()
+    {
+        if (isTestRunning)
+        {
+            // Mevcut testi iptal et
+            if (testCoroutine != null)
+            {
+                StopCoroutine(testCoroutine);
+            }
+
+            // Aktif sesleri durdurmak istiyorsanız AudioManager'da global bir StopAll metodu ekleyebilirsiniz
+        }
+
+        // Yeniden başlat
+        testCoroutine = StartCoroutine(PlaySongTest());
     }
 
     private IEnumerator PlaySongTest()
