@@ -12,8 +12,9 @@ using System.Text;
 public class GameNoteCreator : MonoBehaviour
 {
     [Header("🎵 Konfigürasyon")]
-    [Tooltip("Nota zamanlama çarpanı. Orijinal Java hissiyatı için ~4.0 civarı bir değerle başlayın.")]
-    [SerializeField] private float timingMultiplier = 4.0f;
+    // PERFORMANCE: This is now calculated dynamically based on tempo.
+    // [SerializeField] private float timingMultiplier = 4.0f;
+    private float timingMultiplier;
     [SerializeField] private int laneCount = 6;
     [SerializeField] private int maxDirectionInterval = 10;
 
@@ -201,8 +202,14 @@ public class GameNoteCreator : MonoBehaviour
     /// </summary>
     private List<TemporalNoteInfo> ProcessChartWithVerticalSlicing(List<NoteChartSequence> chart, int tempo)
     {
+        // DYNAMIC TIMING MULTIPLIER (from performance.md)
+        // This value is calculated to maintain the "feel" of the original hardcoded value of 4.0 at 100 BPM.
+        // The magic number 400f can be adjusted later to change the overall note density.
+        // Formula: 4.0 (original multiplier) * 100 (reference BPM) = 400.
+        this.timingMultiplier = 400f / tempo;
+
 #if UNITY_EDITOR
-        if (showDebugLogs) Debug.Log($"🎵 Dikey zaman dilimlemesi başlıyor: {chart.Count} sekans, tempo: {tempo}");
+        if (showDebugLogs) Debug.Log($"🎵 Dikey zaman dilimlemesi başlıyor: {chart.Count} sekans, tempo: {tempo}, Dinamik Çarpan: {this.timingMultiplier:F2}");
 #endif
 
         // A. Temel Zaman Biriminin Hesaplanması (RefactorParse.md - Adım 2.2.A)
