@@ -142,16 +142,6 @@ public class AudioManager : MonoBehaviour
     #region Note Playing (Simplified and Enhanced)
     public void PlayNote(InstrumentType instrument, int pitch, float volume = 1.0f, bool useJavaMapping = false, int line = 0)
     {
-        int initialPitch = pitch;
-        int javaMappedPitch = -1;
-        int finalPitch = pitch;
-
-        if (useJavaMapping)
-        {
-            javaMappedPitch = AudioConstants.GetSoundIndex(line, pitch);
-            finalPitch = javaMappedPitch;
-        }
-
         int instrumentId = (int)instrument;
         if (instrumentId < 0 || instrumentId >= instruments.Length || instruments[instrumentId].noteClips == null || instruments[instrumentId].noteClips.Length == 0)
         {
@@ -159,28 +149,32 @@ public class AudioManager : MonoBehaviour
             return;
         }
 
-        int maxIdx = instruments[instrumentId].noteClips.Length - 1;
-        int instrumentAdjustedPitch = GetInstrumentAdjustedIndex(instrument, finalPitch, maxIdx);
-        finalPitch = instrumentAdjustedPitch;
+        int maxIndex = instruments[instrumentId].noteClips.Length - 1;
+
+        // --- CENTRALIZED PITCH CALCULATION ---
+        // All mapping logic (Java-style + instrument offset) is now in one place.
+        int finalPitch;
+        if (useJavaMapping)
+        {
+            finalPitch = AudioConstants.GetFinalSoundIndex(instrument, line, pitch, maxIndex);
+        }
+        else
+        {
+            // If not using Java mapping, just use the raw pitch, but still clamp it.
+            finalPitch = Mathf.Clamp(pitch, 0, maxIndex);
+        }
 
         AudioSource audioSource = GetAvailableAudioSource();
         if (audioSource == null) return;
 
         AudioClip clip = GetNoteClip(instrument, finalPitch);
 
-        // --- DETAILED DEBUG LOG ---
+        // --- DETAILED DEBUG LOG (Simplified) ---
         var log = new System.Text.StringBuilder();
         log.AppendLine("--- 🎵 AudioManager PlayNote Details ---");
         log.AppendLine($"  - Instrument: {instrument}");
         log.AppendLine($"  - Volume: {volume:F2}");
-        log.AppendLine($"  - Use Java Mapping: {useJavaMapping}");
-        if (useJavaMapping)
-        {
-            log.AppendLine($"    - Chart Line: {line}");
-            log.AppendLine($"    - Chart Pitch: {initialPitch}");
-            log.AppendLine($"    - Java Mapped Index: {javaMappedPitch}");
-        }
-        log.AppendLine($"  - Instrument Adjusted Pitch: {instrumentAdjustedPitch}");
+        log.AppendLine($"  - Java Mapping: {useJavaMapping} (Line: {line}, Pitch: {pitch})");
         log.AppendLine($"  - FINAL PITCH INDEX: {finalPitch}");
         log.AppendLine($"  - Audio Clip: {(clip != null ? clip.name : "!!! NOT FOUND !!!")}");
         log.AppendLine("------------------------------------");
@@ -431,21 +425,6 @@ public class AudioManager : MonoBehaviour
         return null;
     }
 
-    private int GetInstrumentAdjustedIndex(InstrumentType instrument, int baseIndex, int maxIndex)
-    {
-        int adjusted = baseIndex;
-        switch (instrument)
-        {
-            case InstrumentType.Guitar:
-                adjusted = baseIndex - 4;
-                break;
-            case InstrumentType.Harp:
-                adjusted = baseIndex + 2;
-                break;
-        }
-        return Mathf.Clamp(adjusted, 0, maxIndex);
-    }
-
     IEnumerator FadeOutAndRecycle(AudioSource source, float fadeTime)
     {
         if (source == null || source.clip == null) yield break;
@@ -533,6 +512,20 @@ public class AudioManager : MonoBehaviour
         {
             Debug.LogError("❌ FATAL: No instruments could be loaded at all! Check Resources/Audio folder structure. Notes will be silent.");
         }
+    }
+
+    /// <summary>
+    /// Helper function to safely get the number of clips for an instrument.
+    /// Used by external testing scripts.
+    /// </summary>
+    public int GetInstrumentClipCount(InstrumentType instrument)
+    {
+        int instrumentId = (int)instrument;
+        if (instrumentId >= 0 && instrumentId < instruments.Length && instruments[instrumentId] != null)
+        {
+            return instruments[instrumentId].noteClips.Length;
+        }
+        return 0;
     }
 }
 

@@ -206,26 +206,31 @@ public class SongPlaybackTester : MonoBehaviour
             foreach (var note in package.gameNoteInfos)
             {
                 int finalPitch;
+                int maxIndex = audioManager.GetInstrumentClipCount(testInstrument) - 1;
 
                 if (useJavaMapping)
                 {
-                    finalPitch = AudioConstants.GetSoundIndex(note.line, note.pitch);
+                    // Use the new, centralized function for consistent sound.
+                    finalPitch = AudioConstants.GetFinalSoundIndex(testInstrument, note.line, note.pitch, maxIndex);
                 }
                 else
                 {
-                    finalPitch = note.pitch;
+                    // If not using Java mapping, just use the raw pitch, but still clamp it.
+                    finalPitch = Mathf.Clamp(note.pitch, 0, maxIndex);
                 }
 
+#if UNITY_EDITOR
                 if (enableCustomMapping)
                 {
-                    // Uygula: önce factor, sonra offset
+                    // Apply test-specific custom mapping
                     finalPitch = Mathf.RoundToInt(finalPitch * pitchFactor) + pitchOffset;
                 }
+#endif
 
                 // Detaylı log (opsiyonel)
                 Debug.Log($"🎵 TEST PLAY: Lane={note.line}, BasePitch={note.pitch} → FinalIdx={finalPitch}");
 
-                // useJavaMapping=false çünkü finalPitch'i direkt veriyoruz
+                // useJavaMapping should be false here because we have already calculated the final index.
                 audioManager.PlayNote(testInstrument, finalPitch, 1.0f, false, note.line);
             }
 

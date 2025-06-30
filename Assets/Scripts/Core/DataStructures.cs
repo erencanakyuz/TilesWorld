@@ -306,6 +306,37 @@ public static class AudioConstants
 
         return SOUND_RESOURCE_IDXS[safeLane][pitch];
     }
+
+    /// <summary>
+    /// Calculates the final, playable sound index for a given note, 
+    /// applying both the Java-style lane/pitch mapping and any instrument-specific offsets.
+    /// This is the authoritative, centralized function for determining which audio clip to play.
+    /// </summary>
+    /// <param name="instrument">The instrument being played, which may have a pitch offset.</param>
+    /// <param name="line">The original line (0-5) of the note from the chart.</param>
+    /// <param name="pitch">The pitch value (1-18) of the note from the chart.</param>
+    /// <param name="maxIndex">The maximum valid index for the given instrument's audio clips, to prevent errors.</param>
+    /// <returns>The final, clamped audio clip index to be played.</returns>
+    public static int GetFinalSoundIndex(InstrumentType instrument, int line, int pitch, int maxIndex)
+    {
+        // 1. Apply the base Java mapping
+        int baseIndex = GetSoundIndex(line, pitch);
+
+        // 2. Apply instrument-specific adjustments
+        int adjustedIndex = baseIndex;
+        switch (instrument)
+        {
+            case InstrumentType.Guitar:
+                adjustedIndex = baseIndex - 4;
+                break;
+            case InstrumentType.Harp:
+                adjustedIndex = baseIndex + 2;
+                break;
+        }
+
+        // 3. Clamp the result to the valid range of the instrument's clips
+        return Mathf.Clamp(adjustedIndex, 0, maxIndex);
+    }
 }
 
 #endregion
