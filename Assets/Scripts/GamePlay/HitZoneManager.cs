@@ -63,12 +63,13 @@ public class HitZoneManager : MonoBehaviour
         if (audioManager == null)
             audioManager = AudioManager.Instance != null ? AudioManager.Instance : FindFirstObjectByType<AudioManager>();
 
+        // AUTO-HIT DEVRE DIŞI - Bu sürekli tetiklemeye neden oluyor
         // Auto-hit for held fingers
-        if (InputManager.Instance == null) return;
-        foreach (int lane in InputManager.Instance.GetActiveLanes())
-        {
-            TryAutoHit(lane);
-        }
+        // if (InputManager.Instance == null) return;
+        // foreach (int lane in InputManager.Instance.GetActiveLanes())
+        // {
+        //     TryAutoHit(lane);
+        // }
     }
 
     void HandleLaneTap(int lane, Vector2 screenPos)

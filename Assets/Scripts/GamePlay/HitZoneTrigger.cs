@@ -28,8 +28,8 @@ public class HitZoneTrigger : MonoBehaviour
     {
         var col = GetComponent<BoxCollider>();
         col.isTrigger = true;
-        // Make collider thin along Z so notes enter/exit precisely
-        col.size = new Vector3(col.size.x, col.size.y, 0.5f);
+        // Make collider thicker along Z for better note detection (orijinal Java'ya uygun)
+        col.size = new Vector3(col.size.x, col.size.y, 2.3f); // 2.3f = total hit window size from Java
 
         Debug.Log($"[HitZoneTrigger] Lane {laneIndex} initialized: Collider size={col.size}, isTrigger={col.isTrigger}");
     }
@@ -38,12 +38,14 @@ public class HitZoneTrigger : MonoBehaviour
     {
         if (!other.CompareTag("Note")) return;
         if (!insideNotes.Contains(other.gameObject))
+        {
             insideNotes.Add(other.gameObject);
 
-        if (showDebug && debugCount < maxDebugLogs)
-        {
-            Debug.Log($"[HitZoneTrigger] Lane {laneIndex} ENTER note '{other.gameObject.name}'. insideNotes={insideNotes.Count}");
-            debugCount++;
+            if (showDebug && debugCount < maxDebugLogs)
+            {
+                Debug.Log($"[HitZoneTrigger] Lane {laneIndex} ENTER note '{other.gameObject.name}' at Z={other.transform.position.z:F2}. insideNotes={insideNotes.Count}");
+                debugCount++;
+            }
         }
     }
 
@@ -53,7 +55,7 @@ public class HitZoneTrigger : MonoBehaviour
         insideNotes.Remove(other.gameObject);
         if (showDebug && debugCount < maxDebugLogs)
         {
-            Debug.Log($"[HitZoneTrigger] Lane {laneIndex} EXIT note '{other.gameObject.name}'. insideNotes={insideNotes.Count}");
+            Debug.Log($"[HitZoneTrigger] Lane {laneIndex} EXIT note '{other.gameObject.name}' at Z={other.transform.position.z:F2}. insideNotes={insideNotes.Count}");
             debugCount++;
         }
     }

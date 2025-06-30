@@ -307,7 +307,7 @@ public class InteractiveMusicSystem : MonoBehaviour
         float noteVolume = CalculateNoteVolume((int)noteInfo.duration);
 
 #if UNITY_EDITOR
-        // Debug tracking to ensure only NoteRenderer calls this method
+        // Debug tracking to ensure only HitZoneManager calls this method
         var stackTrace = new System.Diagnostics.StackTrace();
         var callingMethod = stackTrace.GetFrame(1)?.GetMethod()?.Name ?? "Unknown";
         var callingClass = stackTrace.GetFrame(1)?.GetMethod()?.DeclaringType?.Name ?? "Unknown";
@@ -317,8 +317,8 @@ public class InteractiveMusicSystem : MonoBehaviour
             // Debug.Log($"🎵 TriggerNoteAudio called by {callingClass}.{callingMethod} - Note: {noteInfo.pitch}");
         }
 
-        // Alert if called from unexpected source
-        if (callingClass != "NoteRenderer")
+        // Alert if called from unexpected source - now expects HitZoneManager
+        if (callingClass != "HitZoneManager")
         {
             Debug.LogWarning($"⚠️ TriggerNoteAudio called from unexpected source: {callingClass}.{callingMethod}");
         }
