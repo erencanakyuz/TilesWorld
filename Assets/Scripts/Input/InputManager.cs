@@ -16,7 +16,6 @@ public class InputManager : MonoBehaviour
 
     [Header("🎯 Lane Configuration")]
     [SerializeField] private int laneCount = 6;
-    private float laneWidth = 2.4f;        // Updated to match NoteRenderer
 
     // Input Events
     public static event Action<int, Vector2> OnLaneTapped;     // lane, position
@@ -65,8 +64,10 @@ public class InputManager : MonoBehaviour
 
         for (int i = 0; i < laneCount; i++)
         {
-            // EXACT same algorithm as NoteRenderer
-            float xOffset = (i - (laneCount - 1) * 0.5f) * laneWidth;
+            // Match NoteRenderer and existing HitZoneTrigger positions:
+            // Lane 0: x: -4.5, Lane 1: x: -2.7, Lane 2: x: -0.9
+            // Lane 3: x: 0.9, Lane 4: x: 2.7, Lane 5: x: 4.5
+            float xOffset = (i - 2.5f) * 1.8f; // 1.8f spacing between lanes
             laneWorldPositions[i] = new Vector3(xOffset, 0, 0);
         }
     }

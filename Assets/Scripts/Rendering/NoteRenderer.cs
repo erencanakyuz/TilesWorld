@@ -33,7 +33,6 @@ public class NoteRenderer : MonoBehaviour
     [Header("🎯 Hit Zone Configuration")]
     [SerializeField] private float hitZoneZ = 0.0f;            // Hit line at Z=0 for easier calculation
     [SerializeField] private float hitZoneWidth = 2f;          // Will be set to laneWidth dynamically
-    [SerializeField] private float noteDestroyZ = -20f;        // Far behind: Notes destroyed at -20f (much later)
 
     [Header("📊 Performance & Debug")]
     [SerializeField] private bool enableObjectPooling = true;
@@ -144,8 +143,10 @@ public class NoteRenderer : MonoBehaviour
 
         for (int i = 0; i < laneCount; i++)
         {
-            // Center lanes around world origin
-            float xOffset = (i - (laneCount - 1) * 0.5f) * laneWidth;
+            // Match existing HitZoneTrigger positions in scene:
+            // Lane 0: x: -4.5, Lane 1: x: -2.7, Lane 2: x: -0.9
+            // Lane 3: x: 0.9, Lane 4: x: 2.7, Lane 5: x: 4.5
+            float xOffset = (i - 2.5f) * 1.8f; // 1.8f spacing between lanes
             lanePositions[i] = new Vector3(xOffset, 0, 0);
         }
 
@@ -174,8 +175,8 @@ public class NoteRenderer : MonoBehaviour
 
     void SubscribeToEvents()
     {
-        // Using direct call from GameplayManager instead of events
-        InputManager.OnLaneTapped += HandleLaneTapped;
+        // Removed hit detection subscription; HitZoneManager now handles all input hit logic.
+        // InputManager.OnLaneTapped += HandleLaneTapped; // DEPRECATED
     }
 
     #region Original WorldRenderer Algorithm
@@ -447,13 +448,23 @@ public class NoteRenderer : MonoBehaviour
         noteObject.transform.position = spawnPosition;
         noteObject.SetActive(true);
 
+        // NEW ► Ensure note has tag and NoteWrapper for HitZone system
+        noteObject.tag = "Note";
+        var wrapper = noteObject.GetComponent<NoteWrapper>();
+        if (wrapper == null)
+            wrapper = noteObject.AddComponent<NoteWrapper>();
+        wrapper.gameNoteInfo = noteInfo;
+
+        // SIMPLE: Just set current time + rough estimate (no complex calculation)
+        wrapper.expectedHitTime = Time.time + 2.0f; // 2 seconds from now
+
         // Create active note tracking
         var activeNote = new RenderingNote
         {
             gameObject = noteObject,
             noteInfo = noteInfo,
             currentPosition = spawnPosition,
-            spawnTime = Time.time
+            spawnTime = Time.time // This is game clock time, not song time
         };
 
         activeNotes.Add(activeNote);
@@ -466,6 +477,31 @@ public class NoteRenderer : MonoBehaviour
             Debug.Log($"🎵 SPAWN #{totalNotesRendered}: Lane {noteInfo.idx}, Pitch {noteInfo.pitch}, Pos {spawnPosition}");
         }
         */
+
+        // Ensure collider & Rigidbody configuration for trigger detection
+        BoxCollider col = noteObject.GetComponent<BoxCollider>();
+        if (col == null)
+        {
+            col = noteObject.AddComponent<BoxCollider>();
+            Debug.Log($"[NoteRenderer] Added BoxCollider to note {noteObject.name}");
+        }
+        col.isTrigger = false; // note acts as solid body entering trigger
+        col.size = new Vector3(laneWidth * 0.7f, 1.0f, laneWidth * 0.7f * noteLengthMultiplier); // Match visual scale
+
+        Rigidbody rb = noteObject.GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            rb = noteObject.AddComponent<Rigidbody>();
+
+        }
+        rb.isKinematic = true; // we move notes manually
+        rb.useGravity = false; // no gravity
+        rb.constraints = RigidbodyConstraints.FreezeAll; // prevent any physics movement
+
+        if (showDebugLogs && totalNotesRendered <= 5)
+        {
+            Debug.Log($"[NoteRenderer] Note {noteObject.name} setup: Collider={col != null}, Rigidbody={rb != null}, Tag='{noteObject.tag}'");
+        }
     }
 
     GameObject GetPooledNote()
@@ -493,130 +529,6 @@ public class NoteRenderer : MonoBehaviour
         {
             Destroy(noteObject);
         }
-    }
-
-    void HandleLaneTapped(int lane, Vector2 screenPosition)
-    {
-        // Early exit if game is paused
-        if (Time.timeScale <= 0f) return;
-
-        var candidateNotes = FindNotesInHitZone(lane);
-
-        if (candidateNotes.Count == 0)
-        {
-            // Optional: Register a "miss" or "empty hit"
-            if (UIManager.Instance != null)
-            {
-                UIManager.Instance.ShowHitEffect(HitAccuracy.Miss, screenPosition);
-            }
-            return;
-        }
-
-        // Sort by distance to hit zone to get the most accurate note
-        candidateNotes.Sort((a, b) =>
-            Mathf.Abs(a.currentPosition.z - hitZoneZ).CompareTo(Mathf.Abs(b.currentPosition.z - hitZoneZ)));
-
-        var bestNote = candidateNotes[0];
-
-        float hitPos = bestNote.currentPosition.z;
-
-        // Determine hit accuracy
-        float distanceFromHitZone = Mathf.Abs(hitPos - hitZoneZ);
-        HitAccuracy accuracy;
-        int score;
-
-        // Layered hit windows - closer to hit zone = better accuracy
-        if (distanceFromHitZone <= 0.8f) // PERFECT
-        {
-            accuracy = HitAccuracy.Perfect;
-            score = 300;
-        }
-        else if (distanceFromHitZone <= 1.5f) // GOOD
-        {
-            accuracy = HitAccuracy.Good;
-            score = 200;
-        }
-        else if (distanceFromHitZone <= 3.0f) // OKAY (using Miss as placeholder style)
-        {
-            accuracy = HitAccuracy.Miss;
-            score = 100;
-        }
-        else
-        {
-            // Outside hit window - no action taken
-            return;
-        }
-
-        // Process the successful hit
-        ProcessNoteHit(bestNote, score, accuracy, screenPosition);
-
-        // Trigger audio 
-        TriggerNoteAudio(bestNote.noteInfo);
-
-        // Remove note from game
-        ReturnNoteToPool(bestNote.gameObject);
-        activeNotes.Remove(bestNote);
-    }
-
-    /// <summary>
-    /// Processes a successful note hit, updating score, combo, and triggering effects.
-    /// </summary>
-    void ProcessNoteHit(RenderingNote activeNote, int score, HitAccuracy accuracy, Vector2 screenPosition)
-    {
-        // Update game stats
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.UpdateScore(score);
-
-            if (accuracy == HitAccuracy.Perfect || accuracy == HitAccuracy.Good)
-            {
-                GameManager.Instance.UpdateCombo(1); // Increase combo
-            }
-            else
-            {
-                GameManager.Instance.UpdateCombo(0); // Reset combo
-            }
-        }
-
-        // Trigger visual effect
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.ShowHitEffect(accuracy, screenPosition);
-        }
-    }
-
-    /// <summary>
-    /// Finds all notes in a specific lane that are currently within the hit zone.
-    /// </summary>
-    List<RenderingNote> FindNotesInHitZone(int lane)
-    {
-        var candidates = new List<RenderingNote>();
-        float hitZoneDetectionRangeZ = hitZoneWidth * 2f; // Detection range based on width
-
-        // Debug.Log($"🔍 Finding notes in hit zone for lane {lane}:");
-        // Debug.Log($"🔍 Total active notes: {activeNotes.Count}");
-        // Debug.Log($"🔍 Hit zone Z: {hitZoneZ}, Detection range: ±{hitZoneDetectionRangeZ}f");
-
-        foreach (var note in activeNotes)
-        {
-            // Debug.Log($"🔍 Note in lane {note.noteInfo.idx}, Z: {note.currentPosition.z:F2}");
-            if (note.noteInfo.idx == lane)
-            {
-                float distanceFromHitZone = Mathf.Abs(note.currentPosition.z - hitZoneZ);
-                // Debug.Log($"🔍 LANE MATCH! Distance from hit zone: {distanceFromHitZone:F2}");
-
-                if (distanceFromHitZone <= hitZoneDetectionRangeZ)
-                {
-                    // Debug.Log("✅ NOTE IN HIT ZONE! Adding to candidates");
-                    candidates.Add(note);
-                }
-                // else
-                // {
-                //     Debug.Log($"❌ Note too far from hit zone: {distanceFromHitZone:F2} > {hitZoneDetectionRangeZ}");
-                // }
-            }
-        }
-        return candidates;
     }
 
     void HandleNoteMissed(RenderingNote activeNote)
@@ -693,35 +605,7 @@ public class NoteRenderer : MonoBehaviour
     {
         if (!showHitZone) return;
 
-        // Draw hit zone
-        if (showHitZone)
-        {
-            Gizmos.color = Color.green;
-            for (int i = 0; i < laneCount; i++)
-            {
-                Vector3 lanePos = lanePositions != null && i < lanePositions.Length ?
-                    lanePositions[i] : new Vector3((i - (laneCount - 1) * 0.5f) * laneWidth, 0, 0);
-
-                Vector3 hitZonePos = lanePos + Vector3.forward * hitZoneZ;
-
-                // Draw hit zone box
-                Gizmos.DrawWireCube(hitZonePos, new Vector3(laneWidth * 0.8f, 1f, hitZoneWidth));
-            }
-
-            // Draw note destroy line
-            Gizmos.color = Color.red;
-            Vector3 destroyLineStart = new Vector3(-worldWidth * 0.5f, 0, noteDestroyZ);
-            Vector3 destroyLineEnd = new Vector3(worldWidth * 0.5f, 0, noteDestroyZ);
-            Gizmos.DrawLine(destroyLineStart, destroyLineEnd);
-
-            // Draw world depth
-            Gizmos.color = Color.blue;
-            Vector3 worldDepthStart = new Vector3(-worldWidth * 0.5f, 0, worldDepth);
-            Vector3 worldDepthEnd = new Vector3(worldWidth * 0.5f, 0, worldDepth);
-            Gizmos.DrawLine(worldDepthStart, worldDepthEnd);
-        }
-
-        // Draw active notes as spheres for debugging
+        // Removed legacy hit-zone gizmos. Only keep optional active-note debug spheres.
         if (activeNotes != null)
         {
             Gizmos.color = Color.yellow;
@@ -729,9 +613,7 @@ public class NoteRenderer : MonoBehaviour
             {
                 if (note.gameObject != null)
                 {
-                    Gizmos.DrawWireSphere(note.currentPosition, 0.5f);
-                    // Draw note direction arrow
-                    Gizmos.DrawLine(note.currentPosition, note.currentPosition + Vector3.back * 2f);
+                    Gizmos.DrawWireSphere(note.currentPosition, 0.4f);
                 }
             }
         }
@@ -740,8 +622,8 @@ public class NoteRenderer : MonoBehaviour
 
     void OnDestroy()
     {
-        // Unsubscribe from events
-        InputManager.OnLaneTapped -= HandleLaneTapped;
+        // No longer subscribed to lane tapped events.
+        // InputManager.OnLaneTapped -= HandleLaneTapped;
     }
 }
 

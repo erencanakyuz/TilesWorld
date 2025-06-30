@@ -66,10 +66,14 @@ public class SongPlaybackTester : MonoBehaviour
         isTestRunning = true;
         Debug.Log($"--- BAŞLATILIYOR: '{testSongTitle}' çalma testi ---");
 
-        // 1. Gerekli sistemlerin varlığını kontrol et
+        // 1. Auto-find components if not assigned
+        if (audioManager == null) audioManager = AudioManager.Instance;
+        if (gameNoteCreator == null) gameNoteCreator = FindFirstObjectByType<GameNoteCreator>();
+        if (songDatabase == null) songDatabase = SongDatabase.Instance;
+
         if (audioManager == null || gameNoteCreator == null || songDatabase == null)
         {
-            Debug.LogError("Test başarısız: Lütfen Inspector'dan tüm gerekli komponentleri (AudioManager, GameNoteCreator, SongDatabase) atayın.");
+            Debug.LogError("Test başarısız: Gerekli komponentler bulunamadı. AudioManager, GameNoteCreator, SongDatabase singleton'ları kontrol edin.");
             isTestRunning = false;
             yield break;
         }
