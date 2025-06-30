@@ -24,11 +24,9 @@ public class NoteRenderer : MonoBehaviour
     [SerializeField] private int laneCount = 6;
     [SerializeField] private float laneWidth = 2.4f;       // Genişletildi: 1.8f → 2.4f
 
-    [Header("🚀 Perspective Movement (Original Algorithm)")]
-    [SerializeField] private float worldDepth = 25f;           // Original: 25.0F depth
-    [SerializeField] private float speedMultiplier = 8.0f;    // Adapted for Unity
-    [Range(0.1f, 1.0f)]
-    [SerializeField] private float accelerationIntensity = 0.8f; // İvme yoğunluğu (0.8 = standart Java hissi)
+    [Header("🚀 Note Movement")]
+    [Tooltip("The constant speed at which notes travel towards the player.")]
+    [SerializeField] private float speedMultiplier = 12.0f;    // Increased default speed
 
     [Header("📊 Performance & Debug")]
     [SerializeField] private bool enableObjectPooling = true;
@@ -78,10 +76,6 @@ public class NoteRenderer : MonoBehaviour
     {
         notePool = new Queue<GameObject>();
         activeNotes = new List<RenderingNote>();
-
-        // *** FORCE FIX: Unity-adapted speed (Java 35.0f was too fast) ***
-        speedMultiplier = 8.0f;
-        if (showDebugLogs) Debug.Log($"🚀 SPEED FORCED: speedMultiplier set to {speedMultiplier} (Unity-adapted)");
 
         CreateNoteMaterial();
 
@@ -170,8 +164,7 @@ public class NoteRenderer : MonoBehaviour
 
     void SubscribeToEvents()
     {
-        // Removed hit detection subscription; HitZoneManager now handles all input hit logic.
-        // InputManager.OnLaneTapped += HandleLaneTapped; // DEPRECATED
+        // Hit detection is now handled entirely by HitZoneManager.
     }
 
     #region Original WorldRenderer Algorithm
@@ -220,55 +213,27 @@ public class NoteRenderer : MonoBehaviour
             var activeNote = activeNotes[i];
             if (activeNote == null || activeNote.gameObject == null) continue;
 
-            // --- ORİJİNAL İVMELENME MANTIĞI (Yoğunluk Ayarlı) ---
-            float currentSpeed;
-            if (activeNote.currentPosition.z > 0)
-            {
-                // Uzaklığa göre hızlanma formülü (Inspector'dan ayarlanabilir)
-                float distanceRatio = (activeNote.currentPosition.z - 0) / worldDepth;
-                currentSpeed = speedMultiplier * (1.0f - distanceRatio * accelerationIntensity);
-
-                // Minimum hızı da yoğunluğa göre belirle
-                float minSpeed = speedMultiplier * (1.0f - accelerationIntensity);
-                currentSpeed = Mathf.Max(currentSpeed, minSpeed);
-            }
-            else
-            {
-                // Hit zone'u geçtikten sonra sabit ve yavaş hız (Java ile aynı)
-                currentSpeed = speedMultiplier * (1.0f - accelerationIntensity);
-            }
+            // --- Constant Speed Movement (Acceleration Removed) ---
+            // Notes now move at a single, consistent speed.
+            float currentSpeed = speedMultiplier;
 
             // *** UNITY COORDINATE: Move notes TOWARD player (Z decreases) ***
-            float oldZ = activeNote.currentPosition.z;
             activeNote.currentPosition.z -= currentSpeed * deltaTime;
-
-            // Minimal debug only for first note to verify system working
-            /*
-            if (i == 0 && totalNotesRendered <= 5)
-            {
-                Debug.Log($"🚀 NOTE MOVE: Z {oldZ:F1} → {activeNote.currentPosition.z:F1}, speed={currentSpeed:F1}");
-            }
-            */
 
             // Update Unity transform directly (no coordinate conversion needed)
             activeNote.gameObject.transform.position = activeNote.currentPosition;
 
-            // *** OTOMATIK DESTROY KAPATILDI! (TEST AMAÇLI) ***
+            // Automatic destruction is currently disabled for testing and debugging.
+            // If re-enabled, this logic would handle notes that the player misses completely.
             /*
             if (activeNote.currentPosition.z < noteDestroyZ)
             {
-                if (totalNotesRendered <= 15)
-                {
-                    Debug.Log($"💥 NOTE DESTROYED: Z={activeNote.currentPosition.z:F1}, destroyZ={noteDestroyZ} (notes pass -20f)");
-                }
                 HandleNoteMissed(activeNote);
                 ReturnNoteToPool(activeNote.gameObject);
                 activeNotes.RemoveAt(i);
                 continue;
             }
             */
-
-
         }
     }
 
@@ -434,7 +399,7 @@ public class NoteRenderer : MonoBehaviour
         }
 
         // *** UNITY COORDINATE: Spawn notes at FAR END (positive Z) ***
-        spawnPosition.z = worldDepth; // Start far from player (+25.0f)
+        spawnPosition.z = 25f; // Start at a fixed distance from the player
         spawnPosition.y = 0;
 
         // Set note properties - fit exactly to lane width
@@ -584,7 +549,7 @@ public class NoteRenderer : MonoBehaviour
 
     public void SetNoteSpeed(float speed)
     {
-        // DEPRECATED: baseNoteSpeed removed - using speedMultiplier directly
+        // This method is obsolete as speed is now controlled by speedMultiplier.
         Debug.LogWarning("⚠️ SetNoteSpeed is deprecated - use SetSpeedMultiplier instead");
     }
 
@@ -599,10 +564,8 @@ public class NoteRenderer : MonoBehaviour
     void OnDrawGizmos()
     {
         // Gizmos for physical hit zones are now implicitly handled by their own GameObjects.
-        // No need to draw them from here.
-
-        // Keep optional active-note debug spheres.
-        if (activeNotes != null)
+        // Active note debugging can be enabled here if needed.
+        if (showDebugLogs && activeNotes != null)
         {
             Gizmos.color = Color.yellow;
             foreach (var note in activeNotes)
@@ -618,8 +581,7 @@ public class NoteRenderer : MonoBehaviour
 
     void OnDestroy()
     {
-        // No longer subscribed to lane tapped events.
-        // InputManager.OnLaneTapped -= HandleLaneTapped;
+        // Event subscriptions are no longer handled here.
     }
 }
 

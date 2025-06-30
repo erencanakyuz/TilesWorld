@@ -77,6 +77,9 @@ public class GameManager : MonoBehaviour
 
     void InitializeGameManager()
     {
+        // Set target frame rate for smooth performance, especially on mobile
+        Application.targetFrameRate = 60;
+
         LoadPlayerData();
         InitializeCoreComponents();
     }
@@ -333,19 +336,16 @@ public class GameManager : MonoBehaviour
 
     void HandleRestartButtonPressed()
     {
-        // Debug.Log("🔄 Restart button pressed");
-        // Restart current session
-        if (currentSession != null)
-        {
-            EndGameSession();
-            StartNewGameSession(currentSession.songData);
-        }
+        Debug.Log("🔄 Restart button pressed. Reloading current scene...");
+        Time.timeScale = 1f; // Ensure time is running
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     void HandleMainMenuButtonPressed()
     {
-        // Debug.Log("🏠 Main menu button pressed");
-        ChangeGameState(GameState.MainMenu);
+        Debug.Log("🏠 Main Menu button pressed. Loading MainScene...");
+        Time.timeScale = 1f; // Ensure time is running
+        SceneManager.LoadScene("MainScene"); // Assuming your main menu scene is named "MainScene"
     }
     #endregion
 

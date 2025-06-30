@@ -607,7 +607,32 @@ public class UIManager : MonoBehaviour
         if (hudCanvas != null)
             hudCanvas.gameObject.SetActive(false);
 
+        currentPanelInstance = Instantiate(gameOverPanelPrefab, GetParentCanvasForState(GameState.GameOver));
+        SetupGameOverPanelButtons();
         DisplayFinalScore();
+    }
+
+    private void SetupGameOverPanelButtons()
+    {
+        if (currentPanelInstance == null) return;
+
+        // Butonları isimlerine göre bul
+        var buttons = currentPanelInstance.GetComponentsInChildren<Button>();
+
+        Button restartButton = System.Array.Find(buttons, b => b.name.ToLower().Contains("restart") || b.name.ToLower().Contains("again"));
+        Button mainMenuButton = System.Array.Find(buttons, b => b.name.ToLower().Contains("menu"));
+
+        if (restartButton != null)
+        {
+            restartButton.onClick.RemoveAllListeners(); // Önceki listener'ları temizle
+            restartButton.onClick.AddListener(() => OnRestartPressed?.Invoke());
+        }
+
+        if (mainMenuButton != null)
+        {
+            mainMenuButton.onClick.RemoveAllListeners(); // Önceki listener'ları temizle
+            mainMenuButton.onClick.AddListener(() => OnMainMenuPressed?.Invoke());
+        }
     }
 
     void ShowMainMenuUI()
