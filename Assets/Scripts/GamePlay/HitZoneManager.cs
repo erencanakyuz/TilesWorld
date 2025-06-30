@@ -11,9 +11,15 @@ using System.Linq;
 /// </summary>
 public class HitZoneManager : MonoBehaviour
 {
-    [Header("Timing Windows (milliseconds)")]
-    public float perfectWindow = 100f;
-    public float goodWindow = 200f;
+    [Header("🎯 Position-Based Hit Windows (Z-axis distance)")]
+    [Tooltip("Z-distance from hit line for a 'Perfect' hit. From oldgame.md: 0.3 units is a good start.")]
+    public float perfectWindowZ = 0.3f;
+    [Tooltip("Z-distance from hit line for a 'Good' hit. From oldgame.md: 0.6 units is a good start.")]
+    public float goodWindowZ = 0.6f;
+
+    [Header("CONFIGURATION")]
+    [Tooltip("The ideal Z-position for a note to be hit. Must match NoteRenderer's hitZoneZ.")]
+    public float hitLineZ = 0.0f;
 
     [Tooltip("Reference to active AudioManager clock (optional). If null, Time.time will be used.")]
     public AudioManager audioManager;
@@ -79,21 +85,53 @@ public class HitZoneManager : MonoBehaviour
     {
         if (lane < 0 || lane >= zones.Length) return;
         var zone = zones[lane];
-        if (zone == null) return;
+        if (zone == null || zone.insideNotes.Count == 0) return;
 
-        var noteObj = zone.PeekEarliestNote();
-        if (noteObj == null) return;
+        // Find the note closest to the hit line (z=0)
+        GameObject bestCandidate = null;
+        float minDistance = float.MaxValue;
 
-        var noteWrapper = noteObj.GetComponent<NoteWrapper>();
+        // Iterate backwards to avoid issues if a note is somehow removed during iteration
+        for (int i = zone.insideNotes.Count - 1; i >= 0; i--)
+        {
+            var noteObj = zone.insideNotes[i];
+            if (noteObj == null) continue;
+
+            float distance = Mathf.Abs(noteObj.transform.position.z - hitLineZ);
+            if (distance < minDistance)
+            {
+                minDistance = distance;
+                bestCandidate = noteObj;
+            }
+        }
+
+        if (bestCandidate == null) return;
+
+        var noteWrapper = bestCandidate.GetComponent<NoteWrapper>();
         if (noteWrapper == null || noteWrapper.gameNoteInfo == null)
         {
-            Debug.LogWarning($"[HitZoneManager] Note in lane {lane} has no valid note info. Ignoring tap.");
+            Debug.LogWarning($"[HitZoneManager] Best candidate note in lane {lane} has no valid info. Ignoring tap.");
             return;
         }
 
-        // SIMPLE: If note is in trigger zone, it's a hit! No timing check.
-        Debug.Log($"[HitZoneManager] HIT! Lane {lane} - Note is in trigger zone.");
-        ProcessSuccessfulHit(zone, noteObj, noteWrapper.gameNoteInfo, HitAccuracy.Good, screenPos);
+        // Determine accuracy based on Z-position distance
+        HitAccuracy accuracy;
+        if (minDistance <= perfectWindowZ)
+        {
+            accuracy = HitAccuracy.Perfect;
+        }
+        else if (minDistance <= goodWindowZ)
+        {
+            accuracy = HitAccuracy.Good;
+        }
+        else
+        {
+            // Any note inside the trigger but outside the 'Good' window is 'Okay'
+            accuracy = (HitAccuracy)2; // Assuming 'Okay' or a third value exists. If not, this will be Good.
+        }
+
+        Debug.Log($"[HitZoneManager] HIT! Lane {lane} - Note '{bestCandidate.name}' with accuracy {accuracy} (Z-dist: {minDistance:F2})");
+        ProcessSuccessfulHit(zone, bestCandidate, noteWrapper.gameNoteInfo, accuracy, screenPos);
     }
 
     float noteWrapperFallback(GameObject noteObj)
@@ -122,7 +160,7 @@ public class HitZoneManager : MonoBehaviour
         {
             HitAccuracy.Perfect => 300,
             HitAccuracy.Good => 100,
-            _ => 50
+            _ => 50 // This will be our "Okay" hit
         };
         GameManager.Instance?.UpdateScore(points);
     }

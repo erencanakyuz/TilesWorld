@@ -30,14 +30,9 @@ public class NoteRenderer : MonoBehaviour
     [Range(0.1f, 1.0f)]
     [SerializeField] private float accelerationIntensity = 0.8f; // İvme yoğunluğu (0.8 = standart Java hissi)
 
-    [Header("🎯 Hit Zone Configuration")]
-    [SerializeField] private float hitZoneZ = 0.0f;            // Hit line at Z=0 for easier calculation
-    [SerializeField] private float hitZoneWidth = 2f;          // Will be set to laneWidth dynamically
-
     [Header("📊 Performance & Debug")]
     [SerializeField] private bool enableObjectPooling = true;
     [SerializeField] private int poolSize = 50;
-    [SerializeField] private bool showHitZone = true;
 
     // Object pooling system (from MD analysis)
     private Queue<GameObject> notePool;
@@ -138,8 +133,8 @@ public class NoteRenderer : MonoBehaviour
         worldWidth = laneCount * laneWidth;
         lanePositions = new Vector3[laneCount];
 
-        // Set hit zone width to match lane width exactly
-        hitZoneWidth = laneWidth;
+        // Hit zone width is now determined by the physical trigger colliders in the scene.
+        // hitZoneWidth = laneWidth; 
 
         for (int i = 0; i < laneCount; i++)
         {
@@ -150,7 +145,7 @@ public class NoteRenderer : MonoBehaviour
             lanePositions[i] = new Vector3(xOffset, 0, 0);
         }
 
-        if (showDebugLogs) Debug.Log($"🎯 Lanes setup: {laneCount} lanes, {laneWidth:F2} width each, hitZone: {hitZoneWidth:F2}, total world width: {worldWidth:F1}");
+        if (showDebugLogs) Debug.Log($"🎯 Lanes setup: {laneCount} lanes, {laneWidth:F2} width each, total world width: {worldWidth:F1}");
     }
 
     void SetupCamera()
@@ -227,10 +222,10 @@ public class NoteRenderer : MonoBehaviour
 
             // --- ORİJİNAL İVMELENME MANTIĞI (Yoğunluk Ayarlı) ---
             float currentSpeed;
-            if (activeNote.currentPosition.z > hitZoneZ)
+            if (activeNote.currentPosition.z > 0)
             {
                 // Uzaklığa göre hızlanma formülü (Inspector'dan ayarlanabilir)
-                float distanceRatio = (activeNote.currentPosition.z - hitZoneZ) / worldDepth;
+                float distanceRatio = (activeNote.currentPosition.z - 0) / worldDepth;
                 currentSpeed = speedMultiplier * (1.0f - distanceRatio * accelerationIntensity);
 
                 // Minimum hızı da yoğunluğa göre belirle
@@ -603,9 +598,10 @@ public class NoteRenderer : MonoBehaviour
 
     void OnDrawGizmos()
     {
-        if (!showHitZone) return;
+        // Gizmos for physical hit zones are now implicitly handled by their own GameObjects.
+        // No need to draw them from here.
 
-        // Removed legacy hit-zone gizmos. Only keep optional active-note debug spheres.
+        // Keep optional active-note debug spheres.
         if (activeNotes != null)
         {
             Gizmos.color = Color.yellow;

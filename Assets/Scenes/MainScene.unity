@@ -673,8 +673,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c75339cca913d32428293b6628925de5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  perfectWindow: 40
-  goodWindow: 80
+  perfectWindowZ: 0.3
+  goodWindowZ: 0.6
+  hitLineZ: 0
   audioManager: {fileID: 0}
 --- !u!1 &452870428
 GameObject:
@@ -784,9 +785,8 @@ MonoBehaviour:
   worldDepth: 25
   speedMultiplier: 2
   accelerationIntensity: 0.8
-  hitZoneZ: -1
+  hitZoneZ: 0
   hitZoneWidth: 2
-  noteDestroyZ: 2
   enableObjectPooling: 1
   poolSize: 50
   showHitZone: 1
