@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System.Linq; // For convenient searches
 
 public class UIManager : MonoBehaviour
 {
@@ -568,6 +569,37 @@ public class UIManager : MonoBehaviour
     {
         if (hudCanvas != null)
             hudCanvas.gameObject.SetActive(true); // Keep HUD visible on pause
+
+        // Otomatik olarak Resume / Restart butonlarını dinamik bağla
+        SetupPausePanelButtons();
+    }
+
+    /// <summary>
+    /// Pause panelindeki Resume ve Restart tuşlarını bulup uygun event'lere bağlar.
+    /// Böylece Inspector'da manuel ayar gerektirmez.
+    /// </summary>
+    private void SetupPausePanelButtons()
+    {
+        if (currentPanelInstance == null) return;
+
+        // Panel içindeki tüm Button bileşenlerini bul
+        var buttons = currentPanelInstance.GetComponentsInChildren<Button>(true);
+        foreach (var btn in buttons)
+        {
+            string lowerName = btn.name.ToLower();
+
+            // Mevcut listener'ları temizle ki tekrarlı eklenmesin
+            btn.onClick.RemoveAllListeners();
+
+            if (lowerName.Contains("resume"))
+            {
+                btn.onClick.AddListener(() => OnResumePressed?.Invoke());
+            }
+            else if (lowerName.Contains("restart"))
+            {
+                btn.onClick.AddListener(() => OnRestartPressed?.Invoke());
+            }
+        }
     }
 
     void ShowGameOverUI()

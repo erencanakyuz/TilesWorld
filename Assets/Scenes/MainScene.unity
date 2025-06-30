@@ -698,6 +698,7 @@ MonoBehaviour:
   musicSystem: {fileID: 1554464276}
   audioManager: {fileID: 0}
   uiManager: {fileID: 0}
+  showDebugLogs: 0
 --- !u!4 &440843741
 Transform:
   m_ObjectHideFlags: 0
@@ -742,8 +743,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f7970b342b4d1aa4e8535df6b9d456b5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  showDebugLogs: 0
   notePrefab: {fileID: 6626783956275190528, guid: 8913b5b518dedbe4889eee660de1001e, type: 3}
   noteParent: {fileID: 1870890062}
+  laneColors: []
+  noteLengthMultiplier: 1
+  cameraAngle: 45
   laneCount: 6
   laneWidth: 1.85
   worldDepth: 25
@@ -1231,6 +1236,8 @@ MonoBehaviour:
   timingMultiplier: 4
   laneCount: 6
   maxDirectionInterval: 10
+  showDebugLogs: 0
+  autoSpawnEnabled: 1
 --- !u!4 &667145113
 Transform:
   m_ObjectHideFlags: 0
@@ -2799,12 +2806,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   currentInstrument: 0
-  currentScale: 0
   showDebugInfo: 1
-  baseOctave: 4
   notesPlayedThisSession: 0
   chordsPlayedThisSession: 0
-  currentMelodyComplexity: 0
 --- !u!4 &1554464277
 Transform:
   m_ObjectHideFlags: 0
@@ -2981,6 +2985,60 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1641295999
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1641296000}
+  - component: {fileID: 1641296001}
+  m_Layer: 0
+  m_Name: SongPlaybackTester
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1641296000
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1641295999}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -2.6834, y: 5.60214, z: 0.08068}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1641296001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1641295999}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 21f0122726602d74c940e0da3a6c6733, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  testSongTitle: Turkish Delight
+  testInstrument: 0
+  speedMultiplier: 2
+  useJavaMapping: 1
+  enableCustomMapping: 0
+  pitchOffset: 0
+  pitchFactor: 1
+  audioManager: {fileID: 0}
+  gameNoteCreator: {fileID: 0}
+  songDatabase: {fileID: 0}
 --- !u!1 &1655431782
 GameObject:
   m_ObjectHideFlags: 0
@@ -3677,3 +3735,4 @@ SceneRoots:
   - {fileID: 1359653918}
   - {fileID: 433745371}
   - {fileID: 1272230543}
+  - {fileID: 1641296000}

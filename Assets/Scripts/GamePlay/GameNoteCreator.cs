@@ -20,6 +20,10 @@ public class GameNoteCreator : MonoBehaviour
     [Header("🔧 Debugging")]
     [SerializeField] private bool showDebugLogs = false;
 
+    [Header("🕒 Spawn Control (Testing)")]
+    [Tooltip("If false, GameNoteCreator will NOT dequeue packages automatically. Use external scripts to pull them.")]
+    public bool autoSpawnEnabled = true;
+
     // --- Orijinal Java'dan Port Edilen Sabitler (Unity için ayarlanmış) ---
     // ORIJINAL: {1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 48, 7, 14, 28, 56, ...}
     // ARTIK ORİJİNAL DEĞERLERİ KULLANIYORUZ VE ÇARPANLA AYARLIYORUZ
@@ -130,7 +134,7 @@ public class GameNoteCreator : MonoBehaviour
     /// </summary>
     public void Tick(float deltaTime)
     {
-        if (isGenerationComplete) return;
+        if (!autoSpawnEnabled || isGenerationComplete) return;
 
         accumulatedTime += deltaTime * 1000f; // Zamanı milisaniye olarak biriktir
 
@@ -433,6 +437,31 @@ public class GameNoteCreator : MonoBehaviour
     }
 
     #endregion
+
+    // ========================
+    // Testing Helper Methods
+    // ========================
+    /// <summary>
+    /// Returns the number of prepared note packages currently waiting in the internal queue.
+    /// </summary>
+    public int GetQueueCount()
+    {
+        return notePackageQueue.Count;
+    }
+
+    /// <summary>
+    /// Dequeues and returns the next <see cref="GameNoteInfoPackage"/> from the internal queue.
+    /// Intended for use by isolated playback tests such as <c>SongPlaybackTester</c>.
+    /// Returns <c>null</c> when the queue is empty.
+    /// </summary>
+    public GameNoteInfoPackage GetNextTestPackage()
+    {
+        if (notePackageQueue.Count > 0)
+        {
+            return notePackageQueue.Dequeue();
+        }
+        return null;
+    }
 }
 
 // --- Veri Yapıları ---
