@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 1668800693489524511}
   - component: {fileID: 5195950925959139450}
   - component: {fileID: -7833943671698045464}
+  - component: {fileID: 5743112635712228885}
   m_Layer: 0
   m_Name: NotePrefab
   m_TagString: Note
@@ -136,3 +137,15 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &5743112635712228885
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6626783956275190528}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8adfea00c7bbe040aeeddd1125c0379, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

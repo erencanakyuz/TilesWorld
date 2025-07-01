@@ -706,7 +706,6 @@ MonoBehaviour:
   okayWindowMs: 150
   hitLineZ: 0
   audioManager: {fileID: 0}
-  noteRenderer: {fileID: 0}
 --- !u!1 &452870428
 GameObject:
   m_ObjectHideFlags: 0
@@ -840,7 +839,9 @@ MonoBehaviour:
   cameraAngle: 45
   laneCount: 6
   laneWidth: 1.85
+  hitZoneZ: 0
   speedMultiplier: 8
+  spawnZ: 25
   enableObjectPooling: 1
   poolSize: 50
 --- !u!4 &486749171
@@ -1097,7 +1098,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &619394801
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1473,7 +1474,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!108 &819820037
 Light:
   m_ObjectHideFlags: 0

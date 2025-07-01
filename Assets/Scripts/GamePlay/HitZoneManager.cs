@@ -26,36 +26,23 @@ public class HitZoneManager : MonoBehaviour
     [Tooltip("Reference to active AudioManager clock (optional). If null, Time.time will be used.")]
     public AudioManager audioManager;
 
-    [Tooltip("Reference to the NoteRenderer to calculate note travel time for misses.")]
-    [SerializeField] private NoteRenderer noteRenderer;
-
     // Internal
     private HitZoneTrigger[] zones;
     private float noteTravelTime;
 
     void Awake()
     {
-        // Find all triggers in the scene
         zones = FindObjectsByType<HitZoneTrigger>(FindObjectsSortMode.None);
-
-        // IMPORTANT: Sort the zones array by laneIndex to ensure zones[i] corresponds to lane i
         System.Array.Sort(zones, (a, b) => a.laneIndex.CompareTo(b.laneIndex));
 
-        // Optional: Log the sorted order to confirm
-        for (int i = 0; i < zones.Length; i++)
-        {
-            if (zones[i].laneIndex != i)
-            {
-                Debug.LogWarning($"[HitZoneManager] Zone sorting mismatch: zones[{i}] has laneIndex {zones[i].laneIndex}");
-            }
-        }
-
         if (audioManager == null) audioManager = AudioManager.Instance;
-        if (noteRenderer == null) noteRenderer = FindFirstObjectByType<NoteRenderer>();
-        if (noteRenderer != null)
-        {
-            noteTravelTime = noteRenderer.GetNoteTravelTime();
-        }
+
+        // NoteRenderer'a referans artık gerekli değil.
+        // if (noteRenderer == null) noteRenderer = FindFirstObjectByType<NoteRenderer>();
+        // if (noteRenderer != null)
+        // {
+        //     noteTravelTime = noteRenderer.GetNoteTravelTime();
+        // }
     }
 
     void OnEnable()
@@ -68,40 +55,17 @@ public class HitZoneManager : MonoBehaviour
         InputManager.OnLaneTapped -= HandleLaneTap;
     }
 
-    void Update()
-    {
-        // Lazy-resolve AudioManager in case it was spawned after this component.
-        if (audioManager == null)
-            audioManager = AudioManager.Instance != null ? AudioManager.Instance : FindFirstObjectByType<AudioManager>();
-
-        // Auto-hit for held fingers was disabled as it caused constant re-triggering.
-        // The current system requires a distinct tap for each hit.
-        /*
-        if (InputManager.Instance == null) return;
-        foreach (int lane in InputManager.Instance.GetActiveLanes())
-        {
-            TryAutoHit(lane);
-        }
-        */
-    }
-
     void HandleLaneTap(int lane, Vector2 screenPos)
     {
         EvaluateHit(lane, screenPos);
     }
 
-    void TryAutoHit(int lane)
-    {
-        EvaluateHit(lane, Vector2.zero, auto: true);
-    }
-
-    void EvaluateHit(int lane, Vector2 screenPos, bool auto = false)
+    void EvaluateHit(int lane, Vector2 screenPos)
     {
         if (lane < 0 || lane >= zones.Length) return;
         var zone = zones[lane];
         if (zone == null || zone.insideNotes.Count == 0) return;
 
-        // In a time-based system, we find the note with the smallest time difference to its expected hit time.
         GameObject bestCandidate = null;
         double bestTimeDiff = double.MaxValue;
         NoteWrapper bestWrapper = null;
@@ -112,7 +76,6 @@ public class HitZoneManager : MonoBehaviour
             var noteWrapper = noteObj.GetComponent<NoteWrapper>();
             if (noteWrapper == null) continue;
 
-            // Use the high-precision DSP time for comparison.
             double timeDiff = System.Math.Abs(AudioSettings.dspTime - noteWrapper.dspHitTime);
             if (timeDiff < bestTimeDiff)
             {
@@ -124,7 +87,6 @@ public class HitZoneManager : MonoBehaviour
 
         if (bestCandidate == null) return;
 
-        // Convert the time difference to milliseconds for judgement.
         double timeDiffMs = bestTimeDiff * 1000.0;
         HitAccuracy accuracy;
 
@@ -142,50 +104,42 @@ public class HitZoneManager : MonoBehaviour
         }
         else
         {
-            // The tap was too early or too late for the closest note, so it's a miss.
-            // We don't process it as a hit.
             return;
         }
-
-        // --- [TIMING CHECK] Log ---
-        Debug.Log($"[TIMING CHECK] Hit on Lane {lane} | Time Diff: {timeDiffMs:F1}ms | Accuracy: {accuracy}");
-        // -------------------------
 
         ProcessSuccessfulHit(zone, bestCandidate, bestWrapper.gameNoteInfo, accuracy, screenPos);
     }
 
-    float noteWrapperFallback(GameObject noteObj)
-    {
-        // If no wrapper, approximate using Z position vs speed. Fallback only.
-        return Time.time;
-    }
-
+    // DEĞİŞİKLİK: Bu metod artık NoteAnimator'ı çağırıyor.
     void ProcessSuccessfulHit(HitZoneTrigger zone, GameObject noteObj, GameNoteInfo noteInfo, HitAccuracy acc, Vector2 screenPos)
     {
-        // Tell the trigger to remove this note from its internal list FIRST to prevent double-hits.
+        // 1. Notayı trigger listesinden çıkar (ÇİFT VURMA ÖNLEMİ - KRİTİK)
         zone.RemoveNote(noteObj);
 
-        // Return the note to the pool instead of destroying it
-        if (noteRenderer != null)
+        // 2. Notanın animatörünü al ve VURULMA ANİMASYONUNU OYNAT
+        var animator = noteObj.GetComponent<NoteAnimator>();
+        if (animator != null)
         {
-            noteRenderer.ProcessHitNote(noteObj);
+            // Yeni animasyon sistemimizi çağırıyoruz! Notayı yok etme işini bu metod üstlenecek.
+            animator.AnimateHit(acc);
         }
         else
         {
-            // Fallback if renderer is not found (should not happen)
+            // Fallback: Animatör yoksa eski usul yok et
             Destroy(noteObj);
         }
 
-        // Play audio & musical logic
+        // 3. Ses ve Müzik sistemlerini tetikle (BU DEĞİŞMİYOR)
         if (noteInfo != null)
         {
             InteractiveMusicSystem.Instance?.PlayNoteFromChart(noteInfo);
         }
 
-        // UI feedback
-        UIManager.Instance?.ShowHitEffect(acc, screenPos);
+        // 4. UIManager efektini ÇAĞIRMIYORUZ, çünkü kendi animasyonumuz var.
+        // Bu satır artık gerekli değil ve çakışmalara yol açabilir.
+        // UIManager.Instance?.ShowHitEffect(acc, screenPos);
 
-        // Score
+        // 5. Skoru güncelle (BU DEĞİŞMİYOR)
         int points = acc switch
         {
             HitAccuracy.Perfect => 300,
