@@ -112,11 +112,10 @@ public class GameplayManager : MonoBehaviour
         //Debug.Log("🔗 SUBSCRIBING TO EVENTS...");
 
         // *** PREVENT DUPLICATE SUBSCRIPTION ***
-        GameNoteCreator.OnNotesGenerated -= noteRenderer.SpawnNotes; // Remove if exists
+        GameNoteCreator.OnNotesGenerated -= OnNotesSpawnRequest;
 
         // GameNoteCreator events - True Dynamic System ile events kullanıyoruz!
-        //Debug.Log("🔗 Subscribing to GameNoteCreator.OnNotesGenerated (duplicate-safe)");
-        GameNoteCreator.OnNotesGenerated += noteRenderer.SpawnNotes; // CRITICAL!
+        GameNoteCreator.OnNotesGenerated += OnNotesSpawnRequest; // CRITICAL!
         GameNoteCreator.OnGenerationComplete += HandleSongComplete;
 
         // InteractiveMusicSystem events
@@ -133,6 +132,14 @@ public class GameplayManager : MonoBehaviour
         GameManager.OnGameStateChanged += HandleGameStateChange;
 
         //Debug.Log("✅ Event subscriptions completed!");
+    }
+
+    private void OnNotesSpawnRequest(List<GameNoteInfo> notes, double dspTime)
+    {
+        if (noteRenderer != null)
+        {
+            noteRenderer.SpawnNotes(notes, dspTime);
+        }
     }
 
     IEnumerator DelayedGameStartCoroutine(float delay)
@@ -153,6 +160,7 @@ public class GameplayManager : MonoBehaviour
     {
         if (!isGameActive || isGamePaused) return;
 
+        double dspTime = AudioSettings.dspTime;
         float deltaTime = Time.deltaTime;
 
         // *** ORİJİNAL JAVA: Ana zamanlama döngüsü ***
@@ -160,7 +168,7 @@ public class GameplayManager : MonoBehaviour
 
         // *** CRITICAL: Sürekli nota generation çağrısı! ***
         // Bu oldgame.md'deki en önemli mekanik!
-        UpdateNoteGeneration(deltaTime);
+        UpdateNoteGeneration(deltaTime, dspTime);
     }
 
     void UpdateGameTiming(float deltaTime)
@@ -191,11 +199,11 @@ public class GameplayManager : MonoBehaviour
     /// *** EXACT JAVA: Main game loop calls getNote() ***
     /// Original Java: World.java updateInvaders() calls gameNoteCreator.getNote()
     /// </summary>
-    void UpdateNoteGeneration(float deltaTime)
+    void UpdateNoteGeneration(float deltaTime, double dspTime)
     {
         if (noteCreator != null && isGameActive)
         {
-            noteCreator.GetNote(deltaTime);
+            noteCreator.GetNote(deltaTime, dspTime);
         }
     }
 
@@ -677,7 +685,7 @@ public class GameplayManager : MonoBehaviour
     void OnDestroy()
     {
         // Unsubscribe from events
-        GameNoteCreator.OnNotesGenerated -= noteRenderer.SpawnNotes;
+        GameNoteCreator.OnNotesGenerated -= OnNotesSpawnRequest;
         GameNoteCreator.OnGenerationComplete -= HandleSongComplete;
         InteractiveMusicSystem.OnChordDetected -= HandleChordDetected;
         InteractiveMusicSystem.OnMusicalEventCreated -= HandleMusicalEvent;

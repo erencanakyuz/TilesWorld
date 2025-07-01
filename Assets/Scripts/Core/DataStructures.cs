@@ -96,6 +96,16 @@ internal class TemporalNoteInfo
     public float timingMs = 0f;
 }
 
+[System.Serializable]
+public class RenderingNote
+{
+    public GameObject gameObject;
+    public GameNoteInfo noteInfo;
+    public Vector3 currentPosition;
+    public float spawnTime;
+    public Color baseColor;
+}
+
 #endregion
 
 #region Enums

@@ -358,22 +358,16 @@ public class NoteRenderer : MonoBehaviour
 
     #region Note Management
 
-    public void SpawnNotes(List<GameNoteInfo> notes)
+    public void SpawnNotes(List<GameNoteInfo> notes, double dspTime)
     {
-        // *** DEBUG: Kim çağırıyor? ***
-        string caller = System.Environment.StackTrace.Split('\n')[1].Trim();
-
-
         // Called directly from GameplayManager (no events)
         foreach (var note in notes)
         {
-            SpawnNote(note);
+            SpawnNote(note, dspTime);
         }
-
-
     }
 
-    void SpawnNote(GameNoteInfo noteInfo)
+    void SpawnNote(GameNoteInfo noteInfo, double dspTime)
     {
         GameObject noteObject = GetPooledNote();
         if (noteObject == null)
@@ -445,8 +439,8 @@ public class NoteRenderer : MonoBehaviour
             wrapper = noteObject.AddComponent<NoteWrapper>();
         wrapper.gameNoteInfo = noteInfo;
 
-        // Correctly calculate expected hit time based on the actual travel time.
-        wrapper.expectedHitTime = Time.time + GetNoteTravelTime();
+        // Set the precise hit time using the provided DSP time and calculated travel time.
+        wrapper.dspHitTime = dspTime + GetNoteTravelTime();
 
         // Create active note tracking
         var activeNote = new RenderingNote
@@ -679,17 +673,3 @@ public class NoteRenderer : MonoBehaviour
         // Event subscriptions are no longer handled here.
     }
 }
-
-#region Data Structures
-
-[System.Serializable]
-public class RenderingNote
-{
-    public GameObject gameObject;
-    public GameNoteInfo noteInfo;
-    public Vector3 currentPosition;
-    public float spawnTime;
-    public Color baseColor;
-}
-
-#endregion

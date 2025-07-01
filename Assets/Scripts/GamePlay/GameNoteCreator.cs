@@ -47,7 +47,7 @@ public class GameNoteCreator : MonoBehaviour
     private bool isFlowingRight = true;
 
     // --- Olaylar ---
-    public static event Action<List<GameNoteInfo>> OnNotesGenerated;
+    public static event Action<List<GameNoteInfo>, double> OnNotesGenerated;
     public static event Action OnGenerationComplete;
 
     /// <summary>
@@ -144,7 +144,7 @@ public class GameNoteCreator : MonoBehaviour
     /// <summary>
     /// Oyun döngüsünde sürekli çağrılır. Doğru zamanda nota spawn olayını tetikler.
     /// </summary>
-    public void Tick(float deltaTime)
+    public void Tick(float deltaTime, double dspTime)
     {
         if (!autoSpawnEnabled || isGenerationComplete) return;
 
@@ -159,7 +159,7 @@ public class GameNoteCreator : MonoBehaviour
 #if UNITY_EDITOR
                 if (showDebugLogs) Debug.Log($"🎵 FIRST_DELAY tamamlandı ({firstDelayMs}ms). İlk nota spawn ediliyor...");
 #endif
-                TrySpawnNextPackage();
+                TrySpawnNextPackage(dspTime);
             }
             return;
         }
@@ -167,11 +167,11 @@ public class GameNoteCreator : MonoBehaviour
         if (currentPackageToSpawn != null && accumulatedTime >= currentPackageToSpawn.oneNote)
         {
             accumulatedTime -= currentPackageToSpawn.oneNote;
-            TrySpawnNextPackage();
+            TrySpawnNextPackage(dspTime);
         }
     }
 
-    private void TrySpawnNextPackage()
+    private void TrySpawnNextPackage(double dspTime)
     {
         if (notePackageQueue.Count > 0)
         {
@@ -182,7 +182,7 @@ public class GameNoteCreator : MonoBehaviour
             if (showDebugLogs) Debug.Log($"🎵 SPAWN: {currentPackageToSpawn.gameNoteInfos.Count} nota, nextTiming: {currentPackageToSpawn.oneNote:F1}ms, queueLeft: {notePackageQueue.Count}");
 #endif
 
-            OnNotesGenerated?.Invoke(currentPackageToSpawn.gameNoteInfos);
+            OnNotesGenerated?.Invoke(currentPackageToSpawn.gameNoteInfos, dspTime);
         }
         else
         {
@@ -435,9 +435,9 @@ public class GameNoteCreator : MonoBehaviour
     /// <summary>
     /// Eski sistemle uyumluluk için - GetNote() metodunu Tick() ile eşler
     /// </summary>
-    public void GetNote(float deltaTime)
+    public void GetNote(float deltaTime, double dspTime)
     {
-        Tick(deltaTime);
+        Tick(deltaTime, dspTime);
     }
 
     /// <summary>

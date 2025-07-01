@@ -103,7 +103,7 @@ public class HitZoneManager : MonoBehaviour
 
         // In a time-based system, we find the note with the smallest time difference to its expected hit time.
         GameObject bestCandidate = null;
-        float bestTimeDiff = float.MaxValue;
+        double bestTimeDiff = double.MaxValue;
         NoteWrapper bestWrapper = null;
 
         foreach (var noteObj in zone.insideNotes)
@@ -112,7 +112,8 @@ public class HitZoneManager : MonoBehaviour
             var noteWrapper = noteObj.GetComponent<NoteWrapper>();
             if (noteWrapper == null) continue;
 
-            float timeDiff = Mathf.Abs(Time.time - noteWrapper.expectedHitTime);
+            // Use the high-precision DSP time for comparison.
+            double timeDiff = System.Math.Abs(AudioSettings.dspTime - noteWrapper.dspHitTime);
             if (timeDiff < bestTimeDiff)
             {
                 bestTimeDiff = timeDiff;
@@ -124,7 +125,7 @@ public class HitZoneManager : MonoBehaviour
         if (bestCandidate == null) return;
 
         // Convert the time difference to milliseconds for judgement.
-        float timeDiffMs = bestTimeDiff * 1000f;
+        double timeDiffMs = bestTimeDiff * 1000.0;
         HitAccuracy accuracy;
 
         if (timeDiffMs <= perfectWindowMs)
@@ -201,6 +202,7 @@ public class HitZoneManager : MonoBehaviour
 /// </summary>
 public class NoteWrapper : MonoBehaviour
 {
-    public float expectedHitTime; // seconds (AudioManager clock)
+    // The precise DSP time when this note is expected to be perfectly hit.
+    public double dspHitTime;
     public GameNoteInfo gameNoteInfo;
 }
