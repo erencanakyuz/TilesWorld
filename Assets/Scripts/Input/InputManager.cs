@@ -122,8 +122,14 @@ public class InputManager : MonoBehaviour
                 currentlyActiveLanes.Add(lane);
             }
 
-            // Fire tap event
-            OnLaneTapped?.Invoke(lane, screenPosition);
+            // Prevent duplicate tap events when multiple touches start in the
+            // same lane almost simultaneously (common on multi-touch screens).
+            // Only fire the tap if this lane wasn't already considered active.
+            if (!currentlyActiveLanes.Contains(lane))
+            {
+                currentlyActiveLanes.Add(lane);
+                OnLaneTapped?.Invoke(lane, screenPosition);
+            }
         }
     }
 
@@ -172,10 +178,26 @@ public class InputManager : MonoBehaviour
         if (activeTouches.ContainsKey(touchId))
         {
             TouchData touchData = activeTouches[touchId];
-            currentlyActiveLanes.Remove(touchData.lane);
+            // Remove this touch from tracking
             activeTouches.Remove(touchId);
 
-            OnLaneReleased?.Invoke(touchData.lane);
+            // If NO other active touch is still using this lane, mark lane as released
+            bool laneStillActive = false;
+            foreach (var kvp in activeTouches)
+            {
+                if (kvp.Value.lane == touchData.lane)
+                {
+                    laneStillActive = true;
+                    break;
+                }
+            }
+
+            if (!laneStillActive)
+            {
+                currentlyActiveLanes.Remove(touchData.lane);
+                OnLaneReleased?.Invoke(touchData.lane);
+            }
+            // If the lane is still active via another finger, we keep its active state.
         }
     }
 

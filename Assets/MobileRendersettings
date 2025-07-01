@@ -1,0 +1,59 @@
+Projenin hedefi
+“Piano Tiles” benzeri dikey-kaydırmalı bir oyun
+Zemin, blok veya notalar 3 B mesh (köşeli “tuğla” gibi) olsun, üzerine gerçek ışık ve yumuşak gölge düşsün
+Arayüz ve arkaplan öğeleri 2 B (Sprite/UI) kalsın
+Bu senaryoda en verimli çözüm:
+1. Render Pipeline seçimi
+1) URP – Universal Renderer (Forward)
+3 B ışık / gölgeyi tam destekler (Directional, Point, Spot, Shadow Cascades)
+2 B SpriteRenderer ve UI Canvas’ları sorunsuz çizer
+Mobil-PC herkese aynı shader seti; performans ayarlarını (MSAA, Shadow, Render Scale) tek asset’ten kontrol edersin
+Unity 6’da varsayılan olduğu için gelecekteki paketlerle uyumlu
+2) URP – 2D Renderer
+2 D projelere özel; 2D Light ve normal-map’li sprite aydınlatması var
+3 B mesh gölgesi YOK, dolayısıyla bloklarını gölgeli yapmak zorlaşır
+Tamamen sprite tabanlı projelerde tercih edilir
+3) Built-in Pipeline
+Unity 6’da hâlâ var ama güncelleme almayacak, yeni paketler URP’ye odaklanıyor
+Yalnızca çok eski eklenti/asset’lere bağımlıysan mantıklı
+→ 2.5 D + gerçek gölge istediğin için “URP (Universal Renderer asset)” kalman en mantıklısı.
+2. Örnek kurulum adımları
+A) URP Asset’leri
+Assets/Settings/UniversalRP.asset (kalite & genel)
+Assets/Settings/UniversalRenderer.asset (render path & post-process)
+Post Process Data slotuna bir PostProcessData asset’i koy (hazır paket dosyası veya kendi oluşturduğun).
+Shadow Transparent Receive, Soft Shadows gibi opsiyonları mobil performansına göre ayarla.
+B) Kamera
+Ana kamerayı Perspective yap (İstiyorsan Orthographic de olur, 3 B gölgeler yine çıkar).
+URP Camera Inspector’da “Post-processing” tikini ihtiyacın varsa aç. Yoksa kapatıp boş uyarıdan kurtulursun.
+C) Işık
+Directional Light = ana ışık (Shadows: Soft; Strength 0.8)
+Spot veya Point ışıkları efekt amacıyla ekleyebilirsin.
+Shadow Distance’i (URP Asset) 30-50 m civarında tut; mobilde performans için cascades=1 yeter.
+D) Blok/Nota Mesh’leri
+Basit Cube ya da kendi low-poly prefab’ların.
+Mobile/URP Lit shader kullan; GPU Instancing kutusunu aç (Project Settings > Graphics’de SRP Batcher açık kalsın).
+E) Sprite & UI
+SpriteRenderer, Canvas/GraphicRaycaster hepsi Universal Renderer’da problemsizdir.
+Eğer Sprite’larda da ışık etkisi istiyorsan; materyali “URP/Lit” yapıp normal map ekleyebilirsin (performansa dikkat).
+F) Post-processing (opsiyon)
+Hafif tonemapping + Bloom düşük threshold oyuna canlılık katar.
+PostProcessData içinde eksik shader kalmadığı sürece konsola uyarı düşmez. Kullanmayacaksan hem URP Asset’te hem Camera’da Post-processing’i kapat.
+3. Konsoldaki “Missing shader” hatası
+Sebep: UniversalRenderer.asset → Post Process Data alanı ‘None’.
+Çözüm:
+Project → Create ► Rendering ► URP ► Post-process Data
+Dosyayı Renderer’daki “Post Process Data” slotuna sürükle.
+Shaders & Textures listesi dolu >> hata kesilir.
+Post-processing’i hiç kullanmayacaksan Renderer’daki “Post-processing” kutusunu kapatman da yeter.
+4. Performans ipuçları (mobil)
+• URP Asset → MSAA = 2× veya “Disabled” (UI parçacıklarında aliasing azsa).
+ShadowResolution: 256–512; CascadeCount = 1.
+RenderScale = 0.9 (dinamik çözünürlük hissedilmez, fps kazanırsın).
+Shader Variant Log Level = Disabled (build süresi kısalır).
+Textures sıkıştırma ayarı ASTC/ETC2.
+DOTween vb. efektlerin GC alokasyonunu profil ederken kontrol et.
+Özetle:
+Universal Renderer’ı koru, Post Process Data referansını düzelt;
+3 B bloklar için gerçek ışık/gölgeyi kullan, UI & Sprite’lar normal çizilsin;
+Gerekmiyorsa post-processing’i kapatarak mobilde ekstra fps kazan.
