@@ -46,7 +46,7 @@ public class HitZoneManager : MonoBehaviour
     // Internal
     private HitZoneTrigger[] zones;
     private float noteTravelTime;
-    private Renderer hitZoneRenderer;
+    private Dictionary<int, Renderer> hitZoneRenderers = new Dictionary<int, Renderer>();
     private Dictionary<HitAccuracy, Color> hitColors = new Dictionary<HitAccuracy, Color>()
     {
         { HitAccuracy.Perfect, new Color(0f, 1f, 1f, 0.8f) }, // Cyan
@@ -67,8 +67,8 @@ public class HitZoneManager : MonoBehaviour
             AutoFindPrefabs();
         }
 
-        // Create hit zone visual
-        CreateHitZoneVisual();
+        // Create hit zone visuals
+        CreateHitZoneVisuals();
     }
 
     private void AutoFindPrefabs()
@@ -120,35 +120,77 @@ public class HitZoneManager : MonoBehaviour
         Debug.Log($"✅ HitZoneManager: Auto-found {foundCount}/4 prefabs - HitZone={hitZoneVisualPrefab != null}, Perfect={perfectHitEffectPrefab != null}, Good={goodHitEffectPrefab != null}, Miss={missEffectPrefab != null}");
     }
 
-    private void CreateHitZoneVisual()
+    private void CreateHitZoneVisuals()
     {
-        if (hitZoneVisualPrefab != null)
+        if (hitZoneVisualPrefab == null)
         {
-            GameObject visual = Instantiate(hitZoneVisualPrefab, new Vector3(0, 0.1f, hitLineZ), Quaternion.identity, transform);
-            hitZoneRenderer = visual.GetComponent<Renderer>();
+            Debug.LogWarning("⚠️ HitZoneVisual prefab not found! Please assign it in the inspector or run the HitZone fixer tool.");
+            return;
+        }
 
-            // Ensure visibility
-            if (hitZoneRenderer != null)
+        // Create visuals for each lane
+        foreach (var zone in zones)
+        {
+            if (zone == null) continue;
+
+            // Get the collider to match size
+            BoxCollider collider = zone.GetComponent<BoxCollider>();
+            if (collider == null) continue;
+
+            // Create visual for this lane
+            GameObject visual = Instantiate(hitZoneVisualPrefab, zone.transform);
+            visual.name = $"HitZoneVisual_Lane{zone.laneIndex}";
+
+            // Match position to collider center
+            visual.transform.localPosition = collider.center;
+
+            // Match rotation (90 degrees on X to face up)
+            visual.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+
+            // Match scale to collider size
+            // The visual is a quad (plane), so we map:
+            // - collider.size.x to visual.scale.x (width)
+            // - collider.size.z to visual.scale.y (depth)
+            visual.transform.localScale = new Vector3(
+                collider.size.x * zone.transform.localScale.x,
+                collider.size.z * zone.transform.localScale.z,
+                1f
+            );
+
+            // Get and configure the renderer
+            Renderer renderer = visual.GetComponent<Renderer>();
+            if (renderer != null)
             {
-                // Set initial color with high visibility
-                if (hitZoneRenderer.material != null)
+                // Store reference for later use
+                hitZoneRenderers[zone.laneIndex] = renderer;
+
+                // Configure material
+                if (renderer.material != null)
                 {
-                    hitZoneRenderer.material.color = new Color(1f, 1f, 1f, 0.8f);
-                    if (hitZoneRenderer.material.HasProperty("_EmissionColor"))
+                    // Set initial color (bright white with high alpha)
+                    renderer.material.color = new Color(1f, 1f, 1f, 0.8f);
+
+                    // Set bright emission for glow effect
+                    if (renderer.material.HasProperty("_EmissionColor"))
                     {
-                        hitZoneRenderer.material.SetColor("_EmissionColor", new Color(0.5f, 0.5f, 1f, 1f));
+                        renderer.material.SetColor("_EmissionColor", new Color(0.5f, 0.5f, 2f, 1f));
+                        renderer.material.EnableKeyword("_EMISSION");
+                    }
+
+                    // Ensure proper transparency
+                    if (renderer.material.HasProperty("_Surface"))
+                    {
+                        renderer.material.SetFloat("_Surface", 1); // Transparent
+                        renderer.material.SetFloat("_Blend", 0);   // Alpha blend
+                        renderer.material.renderQueue = 3000;
                     }
                 }
 
                 // Ensure it renders on top
-                hitZoneRenderer.sortingOrder = 10;
+                renderer.sortingOrder = 20;
             }
 
-            Debug.Log("✅ Hit zone visual created and should be visible!");
-        }
-        else
-        {
-            Debug.LogWarning("⚠️ HitZoneVisual prefab not found! Please assign it in the inspector or run the HitZone fixer tool.");
+            Debug.Log($"✅ Created hit zone visual for Lane {zone.laneIndex} matching collider size: {collider.size}");
         }
     }
 
@@ -280,31 +322,37 @@ public class HitZoneManager : MonoBehaviour
 
     private void FlashHitZone(HitAccuracy accuracy)
     {
-        if (hitZoneRenderer == null || !hitColors.ContainsKey(accuracy)) return;
-
-        Color targetColor = hitColors[accuracy];
-
-        // Kill any ongoing color animation
-        hitZoneRenderer.material.DOKill();
-
-        // Create a more visible flash sequence
-        Sequence seq = DOTween.Sequence();
-
-        // Flash to bright color
-        seq.Append(hitZoneRenderer.material.DOColor(targetColor, "_BaseColor", 0.1f));
-
-        // Flash back to normal
-        seq.Append(hitZoneRenderer.material.DOColor(new Color(1f, 1f, 1f, 0.8f), "_BaseColor", 0.3f));
-
-        // Also animate emission for extra visibility
-        if (hitZoneRenderer.material.HasProperty("_EmissionColor"))
+        // Flash all lane visuals with the accuracy color
+        foreach (var kvp in hitZoneRenderers)
         {
-            Color emissionColor = targetColor * 3f; // Make emission very bright
-            seq.Join(hitZoneRenderer.material.DOColor(emissionColor, "_EmissionColor", 0.1f));
-            seq.Append(hitZoneRenderer.material.DOColor(new Color(0.5f, 0.5f, 1f, 1f), "_EmissionColor", 0.3f));
-        }
+            Renderer renderer = kvp.Value;
+            if (renderer != null && hitColors.ContainsKey(accuracy))
+            {
+                Color targetColor = hitColors[accuracy];
 
-        Debug.Log($"💫 Hit zone flashed with {accuracy} color: {targetColor}");
+                // Kill any ongoing color animation
+                renderer.material.DOKill();
+
+                // Create a more visible flash sequence
+                Sequence seq = DOTween.Sequence();
+
+                // Flash to bright color
+                seq.Append(renderer.material.DOColor(targetColor, "_BaseColor", 0.1f));
+
+                // Flash back to normal
+                seq.Append(renderer.material.DOColor(new Color(1f, 1f, 1f, 0.8f), "_BaseColor", 0.3f));
+
+                // Also animate emission for extra visibility
+                if (renderer.material.HasProperty("_EmissionColor"))
+                {
+                    Color emissionColor = targetColor * 3f; // Make emission very bright
+                    seq.Join(renderer.material.DOColor(emissionColor, "_EmissionColor", 0.1f));
+                    seq.Append(renderer.material.DOColor(new Color(0.5f, 0.5f, 1f, 1f), "_EmissionColor", 0.3f));
+                }
+
+                Debug.Log($"💫 Hit zone {kvp.Key} flashed with {accuracy} color: {targetColor}");
+            }
+        }
     }
 
     // Debug helper
