@@ -322,37 +322,22 @@ public class HitZoneManager : MonoBehaviour
 
     private void FlashHitZone(HitAccuracy accuracy)
     {
-        // Flash all lane visuals with the accuracy color
-        foreach (var kvp in hitZoneRenderers)
+        Color flashColor = hitColors.ContainsKey(accuracy) ? hitColors[accuracy] : Color.white;
+
+        // Flash all hit zones with the specified color
+        foreach (var renderer in hitZoneRenderers.Values)
         {
-            Renderer renderer = kvp.Value;
-            if (renderer != null && hitColors.ContainsKey(accuracy))
-            {
-                Color targetColor = hitColors[accuracy];
+            if (renderer == null) continue;
 
-                // Kill any ongoing color animation
-                renderer.material.DOKill();
-
-                // Create a more visible flash sequence
-                Sequence seq = DOTween.Sequence();
-
-                // Flash to bright color
-                seq.Append(renderer.material.DOColor(targetColor, "_BaseColor", 0.1f));
-
-                // Flash back to normal
-                seq.Append(renderer.material.DOColor(new Color(1f, 1f, 1f, 0.8f), "_BaseColor", 0.3f));
-
-                // Also animate emission for extra visibility
-                if (renderer.material.HasProperty("_EmissionColor"))
-                {
-                    Color emissionColor = targetColor * 3f; // Make emission very bright
-                    seq.Join(renderer.material.DOColor(emissionColor, "_EmissionColor", 0.1f));
-                    seq.Append(renderer.material.DOColor(new Color(0.5f, 0.5f, 1f, 1f), "_EmissionColor", 0.3f));
-                }
-
-                Debug.Log($"💫 Hit zone {kvp.Key} flashed with {accuracy} color: {targetColor}");
-            }
+            // Use DOTween for a smooth, punchy flash effect
+            renderer.material.DOKill(); // Kill previous tweens on this material
+            renderer.material.SetColor("_EmissionColor", flashColor * 2f); // Make it glow intensely
+            renderer.material.DOColor(Color.white, "_EmissionColor", 0.5f)
+                .SetEase(Ease.OutQuad);
         }
+
+        // Log the hit zone flash event
+        // Debug.Log($"💫 Hit zone {accuracy} flashed with {accuracy} color: {flashColor}");
     }
 
     // Debug helper

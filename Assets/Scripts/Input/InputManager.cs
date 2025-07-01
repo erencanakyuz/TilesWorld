@@ -2,13 +2,15 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
 using System;
+using System.Linq;
+using UnityEngine.InputSystem.EnhancedTouch;
 
 public class InputManager : MonoBehaviour
 {
     public static InputManager Instance { get; private set; }
 
     [Header("🎮 Input Configuration")]
-    [SerializeField] private int maxSimultaneousTouches = 6; // 6 lanes support
+    // [SerializeField] private int maxSimultaneousTouches = 6; // 6 lanes support
 
     [Header("📱 Mobile Settings")]
     [SerializeField] private float touchSensitivity = 1.0f;
@@ -17,8 +19,13 @@ public class InputManager : MonoBehaviour
     [Header("🎯 Lane Configuration")]
     [SerializeField] private int laneCount = 6;
 
+    // This header was causing an error because it was not attached to a field.
+    // [Header("🔧 Configuration")] 
+    // [SerializeField] private int maxSimultaneousTouches = 10; // No longer used
+
     // Input Events
-    public static event Action<int, Vector2> OnLaneTapped;     // lane, position
+    public delegate void LaneTapHandler(int lane, Vector2 screenPos);
+    public static event LaneTapHandler OnLaneTapped;     // lane, position
     public static event Action<int, float> OnLaneHeld;        // lane, holdTime
     public static event Action<int> OnLaneReleased;           // lane
 
@@ -48,6 +55,22 @@ public class InputManager : MonoBehaviour
     {
         // Setup lane positions after SerializeField values are loaded
         SetupLanePositions();
+
+        // ================== ADIM 1: KONTROL LOGU ==================
+        if (laneWorldPositions != null && laneWorldPositions.Length > 0)
+        {
+            string positions = "";
+            for (int i = 0; i < laneWorldPositions.Length; i++)
+            {
+                positions += $"Lane {i}: {laneWorldPositions[i].x:F2} | ";
+            }
+            Debug.Log($"[IM-STEP-1] Initialized World Positions: {positions}");
+        }
+        else
+        {
+            Debug.LogError("[IM-STEP-1] laneWorldPositions could not be initialized!");
+        }
+        // =========================================================
     }
 
     void InitializeInputSystem()
@@ -72,33 +95,65 @@ public class InputManager : MonoBehaviour
         }
     }
 
+    void OnDisable()
+    {
+        EnhancedTouchSupport.Disable();
+    }
+
     void Update()
     {
+        // Automatically find the main camera if it's missing.
+        // This is crucial for DontDestroyOnLoad objects that persist across scenes.
+        if (mainCamera == null)
+        {
+            mainCamera = Camera.main;
+            // If still null, exit early to prevent errors this frame.
+            if (mainCamera == null) return;
+        }
+
         HandleTouchInput();
         UpdateActiveTouches();
     }
 
     void HandleTouchInput()
     {
-        // Handle keyboard input for Q,W,E,R,T,Y keys mapped to lanes
+        // Handle keyboard input first
         HandleKeyboardInput();
 
-        // Handle new Input System touch input only on mobile
-#if UNITY_ANDROID || UNITY_IOS
-        if (UnityEngine.InputSystem.Touchscreen.current != null)
-        {
-            var touchscreen = UnityEngine.InputSystem.Touchscreen.current;
+        // Exit if there is no touchscreen device
+        if (UnityEngine.InputSystem.Touchscreen.current == null) return;
 
-            for (int i = 0; i < touchscreen.touches.Count && i < maxSimultaneousTouches; i++)
+        // Process all active touches each frame
+        foreach (var touch in UnityEngine.InputSystem.Touchscreen.current.touches)
+        {
+            int touchId = touch.touchId.ReadValue();
+            Vector2 position = touch.position.ReadValue();
+            int lane = ScreenPositionToLane(position);
+
+            // Use the phase to drive the state machine
+            switch (touch.phase.ReadValue())
             {
-                var touch = touchscreen.touches[i];
-                if (touch.isInProgress)
-                {
-                    ProcessNewTouch(touch);
-                }
+                case UnityEngine.InputSystem.TouchPhase.Began:
+                    HandleTouchBegan(touchId, position, lane);
+                    break;
+
+                case UnityEngine.InputSystem.TouchPhase.Moved:
+                    HandleTouchMoved(touchId, position, lane);
+                    break;
+
+                case UnityEngine.InputSystem.TouchPhase.Stationary:
+                    HandleTouchHeld(touchId);
+                    break;
+
+                case UnityEngine.InputSystem.TouchPhase.Ended:
+                    HandleTouchEnded(touchId, lane);
+                    break;
+
+                case UnityEngine.InputSystem.TouchPhase.Canceled:
+                    HandleTouchCanceled(touchId);
+                    break;
             }
         }
-#endif
     }
 
     void HandleTouchBegan(int touchId, Vector2 screenPosition, int lane)
@@ -207,42 +262,17 @@ public class InputManager : MonoBehaviour
 
     void HandleKeyboardInput()
     {
-        // Keyboard input for Q,W,E,R,T,Y keys mapped to lanes 0-5
-        if (UnityEngine.InputSystem.Keyboard.current != null)
-        {
-            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+        // Use the new Input System for keyboard checks
+        if (UnityEngine.InputSystem.Keyboard.current == null) return;
 
-            // Q = Lane 0
-            if (keyboard.qKey.wasPressedThisFrame)
-            {
-                HandleLaneKeyPress(0);
-            }
-            // W = Lane 1  
-            if (keyboard.wKey.wasPressedThisFrame)
-            {
-                HandleLaneKeyPress(1);
-            }
-            // E = Lane 2
-            if (keyboard.eKey.wasPressedThisFrame)
-            {
-                HandleLaneKeyPress(2);
-            }
-            // R = Lane 3
-            if (keyboard.rKey.wasPressedThisFrame)
-            {
-                HandleLaneKeyPress(3);
-            }
-            // T = Lane 4
-            if (keyboard.tKey.wasPressedThisFrame)
-            {
-                HandleLaneKeyPress(4);
-            }
-            // Y = Lane 5
-            if (keyboard.yKey.wasPressedThisFrame)
-            {
-                HandleLaneKeyPress(5);
-            }
-        }
+        var keyboard = UnityEngine.InputSystem.Keyboard.current;
+
+        if (keyboard.qKey.wasPressedThisFrame) HandleLaneKeyPress(0);
+        if (keyboard.wKey.wasPressedThisFrame) HandleLaneKeyPress(1);
+        if (keyboard.eKey.wasPressedThisFrame) HandleLaneKeyPress(2);
+        if (keyboard.rKey.wasPressedThisFrame) HandleLaneKeyPress(3);
+        if (keyboard.tKey.wasPressedThisFrame) HandleLaneKeyPress(4);
+        if (keyboard.yKey.wasPressedThisFrame) HandleLaneKeyPress(5);
     }
 
     void HandleLaneKeyPress(int lane)
@@ -271,46 +301,19 @@ public class InputManager : MonoBehaviour
         };
     }
 
-    void ProcessNewTouch(UnityEngine.InputSystem.Controls.TouchControl touch)
-    {
-        int touchId = touch.touchId.ReadValue();
-        Vector2 screenPosition = touch.position.ReadValue();
-        int lane = ScreenPositionToLane(screenPosition);
-
-        var phase = touch.phase.ReadValue();
-
-        switch (phase)
-        {
-            case UnityEngine.InputSystem.TouchPhase.Began:
-                HandleTouchBegan(touchId, screenPosition, lane);
-                break;
-
-            case UnityEngine.InputSystem.TouchPhase.Moved:
-                HandleTouchMoved(touchId, screenPosition, lane);
-                break;
-
-            case UnityEngine.InputSystem.TouchPhase.Stationary:
-                HandleTouchHeld(touchId);
-                break;
-
-            case UnityEngine.InputSystem.TouchPhase.Ended:
-                HandleTouchEnded(touchId, lane);
-                break;
-
-            case UnityEngine.InputSystem.TouchPhase.Canceled:
-                HandleTouchCanceled(touchId);
-                break;
-        }
-    }
-
     int ScreenPositionToLane(Vector2 screenPosition)
     {
-        if (mainCamera == null || laneWorldPositions == null) return 0;
+        if (mainCamera == null || laneWorldPositions == null || laneWorldPositions.Length == 0)
+        {
+            Debug.LogError($"[IM-STEP-2] ScreenPositionToLane failed. Cam Null: {mainCamera == null}, Positions Null/Empty: {laneWorldPositions == null || laneWorldPositions.Length == 0}");
+            return 0;
+        }
 
         // NEW: Use camera raycast to convert screen position to world coordinates
         Ray ray = mainCamera.ScreenPointToRay(screenPosition);
 
         // Calculate intersection with the game plane (Y = 0)
+        if (ray.direction.y == 0) return 0; // Prevent division by zero
         float distanceToPlane = -ray.origin.y / ray.direction.y;
         Vector3 worldPosition = ray.origin + ray.direction * distanceToPlane;
 
@@ -327,6 +330,10 @@ public class InputManager : MonoBehaviour
                 closestLane = i;
             }
         }
+
+        // ================== ADIM 2: KONTROL LOGU (KALDIRILDI) ==================
+        // Debug.Log($"[IM-STEP-2] Touch screenPos: ({screenPosition.x:F2}, {screenPosition.y:F2}) -> worldPos: {worldPosition.x:F2} -> Detected Lane: {closestLane}");
+        // =====================================================================
 
         return closestLane;
     }
