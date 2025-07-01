@@ -216,6 +216,7 @@ GameObject:
   - component: {fileID: 107483982}
   - component: {fileID: 107483984}
   - component: {fileID: 107483983}
+  - component: {fileID: 107483985}
   m_Layer: 0
   m_Name: Lane1HitZone
   m_TagString: Untagged
@@ -273,6 +274,33 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &107483985
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 107483981}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 3
 --- !u!1 &239414949
 GameObject:
   m_ObjectHideFlags: 0
@@ -673,10 +701,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c75339cca913d32428293b6628925de5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  perfectWindowZ: 0.3
-  goodWindowZ: 0.6
+  perfectWindowMs: 50
+  goodWindowMs: 100
+  okayWindowMs: 150
   hitLineZ: 0
   audioManager: {fileID: 0}
+  noteRenderer: {fileID: 0}
 --- !u!1 &452870428
 GameObject:
   m_ObjectHideFlags: 0
@@ -688,6 +718,7 @@ GameObject:
   - component: {fileID: 452870429}
   - component: {fileID: 452870431}
   - component: {fileID: 452870430}
+  - component: {fileID: 452870432}
   m_Layer: 0
   m_Name: Lane3HitZone
   m_TagString: Untagged
@@ -745,6 +776,33 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &452870432
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 452870428}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 3
 --- !u!1 &486749169
 GameObject:
   m_ObjectHideFlags: 0
@@ -1258,7 +1316,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51c302f8f03cfd64090061880c861b93, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  timingMultiplier: 4
   laneCount: 6
   maxDirectionInterval: 10
   showDebugLogs: 0
@@ -1654,6 +1711,7 @@ GameObject:
   - component: {fileID: 970619768}
   - component: {fileID: 970619770}
   - component: {fileID: 970619769}
+  - component: {fileID: 970619771}
   m_Layer: 0
   m_Name: Lane2HitZone
   m_TagString: Untagged
@@ -1711,6 +1769,33 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &970619771
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 970619767}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 3
 --- !u!1 &1025536578
 GameObject:
   m_ObjectHideFlags: 0
@@ -2795,6 +2880,7 @@ GameObject:
   - component: {fileID: 1367120389}
   - component: {fileID: 1367120391}
   - component: {fileID: 1367120390}
+  - component: {fileID: 1367120392}
   m_Layer: 0
   m_Name: Lane0HitZone
   m_TagString: Untagged
@@ -2852,6 +2938,33 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &1367120392
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1367120388}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 3
 --- !u!21 &1462829331
 Material:
   serializedVersion: 8
@@ -3004,7 +3117,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   currentInstrument: 0
-  showDebugInfo: 1
+  showDebugInfo: 0
   notesPlayedThisSession: 0
   chordsPlayedThisSession: 0
 --- !u!4 &1554464277
@@ -3354,6 +3467,7 @@ GameObject:
   - component: {fileID: 1750792932}
   - component: {fileID: 1750792934}
   - component: {fileID: 1750792933}
+  - component: {fileID: 1750792935}
   m_Layer: 0
   m_Name: Lane5HitZone
   m_TagString: Untagged
@@ -3411,6 +3525,33 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &1750792935
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1750792931}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 3
 --- !u!1 &1870890061
 GameObject:
   m_ObjectHideFlags: 0
@@ -3772,6 +3913,7 @@ GameObject:
   - component: {fileID: 2115320527}
   - component: {fileID: 2115320529}
   - component: {fileID: 2115320528}
+  - component: {fileID: 2115320530}
   m_Layer: 0
   m_Name: Lane4HitZone
   m_TagString: Untagged
@@ -3829,6 +3971,33 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &2115320530
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2115320526}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 3
 --- !u!1 &2135945634
 GameObject:
   m_ObjectHideFlags: 0

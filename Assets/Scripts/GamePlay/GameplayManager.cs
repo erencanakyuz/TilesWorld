@@ -46,7 +46,6 @@ public class GameplayManager : MonoBehaviour
     // Game state management
     private bool isGameActive = false;
     private bool isGamePaused = false;
-    private bool isSongLoaded = false;
     private bool _isCountingDown = false;
 
     // Public property for countdown state

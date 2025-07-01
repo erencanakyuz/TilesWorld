@@ -1,9 +1,9 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.InputSystem;
+
 
 public class GameManager : MonoBehaviour
 {
@@ -127,41 +127,54 @@ public class GameManager : MonoBehaviour
     #region Game State Management
     public void ChangeGameState(GameState newState)
     {
-        if (CurrentGameState != newState)
+        if (CurrentGameState == newState) return;
+
+        GameState previousState = CurrentGameState;
+        CurrentGameState = newState;
+
+        // Dynamically adjust frame rate based on the game state for power saving.
+        switch (newState)
         {
-            GameState previousState = CurrentGameState;
-            CurrentGameState = newState;
+            case GameState.Playing:
+                Application.targetFrameRate = 60;
+                break;
 
-            // Debug.Log($"🎮 Game State: {previousState} → {newState}");
+            case GameState.MainMenu:
+            case GameState.SongSelection:
+            case GameState.Paused:
+            case GameState.GameOver:
+            case GameState.Settings:
+                Application.targetFrameRate = 30;
+                break;
 
-            // Debug.Log($"🔔 Firing OnGameStateChanged event with {newState}");
-            OnGameStateChanged?.Invoke(newState);
-            // Debug.Log($"🔔 Event fired. Subscribers: {OnGameStateChanged?.GetInvocationList()?.Length ?? 0}");
+            default:
+                Application.targetFrameRate = 60; // Default for any other states
+                break;
+        }
 
-            // Handle state-specific logic
-            switch (newState)
-            {
-                case GameState.MainMenu:
-                    Application.targetFrameRate = 30;
-                    HandleMainMenuState();
-                    break;
-                case GameState.SongSelection:
-                    Application.targetFrameRate = 30;
-                    HandleSongSelectionState();
-                    break;
-                case GameState.Playing:
-                    Application.targetFrameRate = targetFrameRate;
-                    HandlePlayingState();
-                    break;
-                case GameState.Paused:
-                    Application.targetFrameRate = 30;
-                    HandlePausedState();
-                    break;
-                case GameState.GameOver:
-                    Application.targetFrameRate = 30;
-                    HandleGameOverState();
-                    break;
-            }
+        OnGameStateChanged?.Invoke(newState);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"Game state changed to: {newState}. Target FPS set to {Application.targetFrameRate}.");
+#endif
+
+        // Handle state-specific logic
+        switch (newState)
+        {
+            case GameState.MainMenu:
+                HandleMainMenuState();
+                break;
+            case GameState.SongSelection:
+                HandleSongSelectionState();
+                break;
+            case GameState.Playing:
+                HandlePlayingState();
+                break;
+            case GameState.Paused:
+                HandlePausedState();
+                break;
+            case GameState.GameOver:
+                HandleGameOverState();
+                break;
         }
     }
 
