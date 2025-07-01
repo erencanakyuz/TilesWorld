@@ -3,6 +3,8 @@ using UnityEngine.InputSystem;
 using System.Collections;
 using System.Linq;
 
+#pragma warning disable 0414 // Field is assigned but its value is never used (editor-only test tweaks)
+
 /// <summary>
 /// 'L' tuşuna basıldığında Turkish Delight şarkısını çalarak ses sistemini test eder.
 /// Bu scripti sahnedeki bir GameObject'e ekleyip public alanları Inspector'dan atamalısın.
@@ -38,6 +40,8 @@ public class SongPlaybackTester : MonoBehaviour
     private int pitchOffset = 0;
     private float pitchFactor = 1f;
 #endif
+
+#pragma warning restore 0414
 
     [Header("Gerekli Komponentler")]
     [SerializeField] private AudioManager audioManager;

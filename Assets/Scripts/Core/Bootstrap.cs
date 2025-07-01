@@ -154,7 +154,13 @@ public class Bootstrap : MonoBehaviour
         {
             GameObject eventSystemObject = new GameObject("EventSystem");
             eventSystemObject.AddComponent<EventSystem>();
+#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+            // New Input System – required for mobile UI interaction
+            eventSystemObject.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+#else
+            // Legacy Input Module (mouse/keyboard)
             eventSystemObject.AddComponent<StandaloneInputModule>();
+#endif
 
             Debug.Log("🎮 EventSystem singleton created during bootstrap");
         }

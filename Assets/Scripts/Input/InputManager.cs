@@ -120,14 +120,6 @@ public class InputManager : MonoBehaviour
             if (!currentlyActiveLanes.Contains(lane))
             {
                 currentlyActiveLanes.Add(lane);
-            }
-
-            // Prevent duplicate tap events when multiple touches start in the
-            // same lane almost simultaneously (common on multi-touch screens).
-            // Only fire the tap if this lane wasn't already considered active.
-            if (!currentlyActiveLanes.Contains(lane))
-            {
-                currentlyActiveLanes.Add(lane);
                 OnLaneTapped?.Invoke(lane, screenPosition);
             }
         }

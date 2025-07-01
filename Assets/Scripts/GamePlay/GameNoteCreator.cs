@@ -5,6 +5,8 @@ using System;
 using System.IO;
 using System.Text;
 
+#pragma warning disable 0414 // showDebugLogs may be set via Inspector for debugging only
+
 /// <summary>
 /// GameNoteCreator - Oyunun Kalbi (Refaktör Edilmiş)
 /// Orijinal Java oyununun dikey zaman dilimlemesi ve dinamik nota oluşturma mantığını uygular.
@@ -502,4 +504,6 @@ public class GameNoteCreator : MonoBehaviour
 
 // --- Veri Yapıları ---
 // Bu sınıflar artık DataStructures.cs'te tanımlanıyor.
+
+#pragma warning restore 0414
 

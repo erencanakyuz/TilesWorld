@@ -171,16 +171,19 @@ public class AudioManager : MonoBehaviour
 
         AudioClip clip = GetNoteClip(instrument, finalPitch);
 
-        // --- DETAILED DEBUG LOG (Simplified) ---
-        var log = new System.Text.StringBuilder();
-        log.AppendLine("--- 🎵 AudioManager PlayNote Details ---");
-        log.AppendLine($"  - Instrument: {instrument}");
-        log.AppendLine($"  - Volume: {volume:F2}");
-        log.AppendLine($"  - Java Mapping: {useJavaMapping} (Line: {line}, Pitch: {pitch})");
-        log.AppendLine($"  - FINAL PITCH INDEX: {finalPitch}");
-        log.AppendLine($"  - Audio Clip: {(clip != null ? clip.name : "!!! NOT FOUND !!!")}");
-        log.AppendLine("------------------------------------");
-        Debug.Log(log.ToString());
+        // --- DETAILED DEBUG LOG (Editor / Debug Builds) ---
+        if (showDebugLogs)
+        {
+            var log = new System.Text.StringBuilder();
+            log.AppendLine("--- 🎵 AudioManager PlayNote Details ---");
+            log.AppendLine($"  - Instrument: {instrument}");
+            log.AppendLine($"  - Volume: {volume:F2}");
+            log.AppendLine($"  - Java Mapping: {useJavaMapping} (Line: {line}, Pitch: {pitch})");
+            log.AppendLine($"  - FINAL PITCH INDEX: {finalPitch}");
+            log.AppendLine($"  - Audio Clip: {(clip != null ? clip.name : "!!! NOT FOUND !!!")}");
+            log.AppendLine("------------------------------------");
+            Debug.Log(log.ToString());
+        }
         // --- END DEBUG LOG ---
 
         if (clip == null)
