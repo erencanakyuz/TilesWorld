@@ -33,12 +33,16 @@ public class NoteRenderer : MonoBehaviour
     [Tooltip("The Z-coordinate where notes are spawned.")]
     [SerializeField] private float spawnZ = 25f;
 
+    [Header("💥 Effects")]
+    [SerializeField] private GameObject particlePrefab;
+
     [Header("📊 Performance & Debug")]
     [SerializeField] private bool enableObjectPooling = true;
     [SerializeField] private int poolSize = 50;
 
     // Object pooling system (from MD analysis)
     private Queue<GameObject> notePool;
+    private Queue<GameObject> particlePool;
     // DEĞİŞİKLİK: activeNotes listesi artık animasyonları yönetmek için kullanılmıyor. Sadece debug için tutulabilir.
     private List<GameObject> activeNotesForDebug;
     private int totalNotesRendered = 0;
@@ -73,11 +77,48 @@ public class NoteRenderer : MonoBehaviour
 
     void InitializeRenderer()
     {
+        // Auto-find notePrefab if not assigned
+        if (notePrefab == null)
+        {
+            notePrefab = Resources.Load<GameObject>("Prefabs/Notes/NotePrefab");
+            if (notePrefab == null)
+            {
+                notePrefab = Resources.Load<GameObject>("NotePrefab");
+            }
+            if (notePrefab != null)
+            {
+                Debug.Log("✅ NoteRenderer: Auto-found NotePrefab");
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ NoteRenderer: NotePrefab not found! Please assign it in the inspector or ensure it exists in Resources/Prefabs/Notes/");
+            }
+        }
+
         notePool = new Queue<GameObject>();
+        particlePool = new Queue<GameObject>();
         activeNotesForDebug = new List<GameObject>(); // Sadece debug için
 
         if (enableObjectPooling)
+        {
             CreateNotePool();
+            if (particlePrefab != null)
+            {
+                CreateParticlePool();
+            }
+        }
+    }
+
+    void CreateParticlePool()
+    {
+        if (particlePrefab == null || noteParent == null) return;
+
+        for (int i = 0; i < poolSize; i++) // Nota havuzuyla aynı boyutta
+        {
+            GameObject p = Instantiate(particlePrefab, noteParent);
+            p.SetActive(false);
+            particlePool.Enqueue(p);
+        }
     }
 
     void CreateNotePool()
@@ -250,6 +291,30 @@ public class NoteRenderer : MonoBehaviour
     #endregion
 
     #region Public Interface
+
+    public GameObject GetPooledParticle()
+    {
+        if (particlePool.Count > 0)
+        {
+            var p = particlePool.Dequeue();
+            p.SetActive(true);
+            return p;
+        }
+        if (particlePrefab != null)
+        {
+            if (showDebugLogs) Debug.LogWarning("Particle pool exhausted, creating new instance.");
+            return Instantiate(particlePrefab, noteParent);
+        }
+        return null;
+    }
+
+    public void ReturnParticleToPool(GameObject particle)
+    {
+        if (particle == null) return;
+        particle.transform.DOKill(); // Animasyonları durdur
+        particle.SetActive(false);
+        particlePool.Enqueue(particle);
+    }
 
     public int GetActiveNoteCount() => activeNoteCount = activeNotesForDebug.Count;
 

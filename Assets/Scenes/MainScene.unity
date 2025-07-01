@@ -705,6 +705,11 @@ MonoBehaviour:
   goodWindowMs: 100
   okayWindowMs: 150
   hitLineZ: 0
+  hitZoneVisualPrefab: {fileID: 7307913071508707633, guid: da0911bdf265b95468b205b91bdcf04d, type: 3}
+  perfectHitEffectPrefab: {fileID: 7980075456805444894, guid: c6a05dccfcea9fb4a93b60cd6011f9d3, type: 3}
+  goodHitEffectPrefab: {fileID: 5801645551642291797, guid: b67a591a03e01684983a26cfc3466c77, type: 3}
+  missEffectPrefab: {fileID: 2699943676106352735, guid: 2ee5b4190176ec446ac2fa92f7a64606, type: 3}
+  autoFindPrefabs: 1
   audioManager: {fileID: 0}
 --- !u!1 &452870428
 GameObject:
@@ -832,7 +837,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   showDebugLogs: 0
-  notePrefab: {fileID: 6626783956275190528, guid: 8913b5b518dedbe4889eee660de1001e, type: 3}
+  notePrefab: {fileID: 3447467927579684531, guid: 8913b5b518dedbe4889eee660de1001e, type: 3}
   noteParent: {fileID: 1870890062}
   laneColors: []
   noteLengthMultiplier: 1
@@ -842,6 +847,7 @@ MonoBehaviour:
   hitZoneZ: 0
   speedMultiplier: 8
   spawnZ: 25
+  particlePrefab: {fileID: 8586554819376958653, guid: 2f26b3efff991154798aa5e1e8394e9e, type: 3}
   enableObjectPooling: 1
   poolSize: 50
 --- !u!4 &486749171
@@ -1664,6 +1670,64 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 851186126}
   m_Mesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &946726221
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 946726223}
+  - component: {fileID: 946726222}
+  m_Layer: 0
+  m_Name: 'DOTweenEnhancementManager '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &946726222
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 946726221}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: abe8b7cc4a69ef145ad0e16cc7447584, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  autoInitializeDOTween: 1
+  maxSimultaneousTweens: 200
+  maxSequences: 50
+  logBehaviour: 0
+  enhancedNoteMaterial: {fileID: 0}
+  enhancedHitzoneMaterial: {fileID: 0}
+  enhancedParticleBaseMaterial: {fileID: 0}
+  perfectHitParticleMaterial: {fileID: 0}
+  goodHitParticleMaterial: {fileID: 0}
+  missParticleMaterial: {fileID: 0}
+  sparkParticleMaterial: {fileID: 0}
+  enableMaterialAutoLoad: 1
+  enablePerformanceOptimizations: 1
+  enableDebugLogs: 0
+--- !u!4 &946726223
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 946726221}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.34535, y: 3.11722, z: -5.51129}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &947093146
 GameObject:
   m_ObjectHideFlags: 0
@@ -2882,6 +2946,7 @@ GameObject:
   - component: {fileID: 1367120391}
   - component: {fileID: 1367120390}
   - component: {fileID: 1367120392}
+  - component: {fileID: 1367120393}
   m_Layer: 0
   m_Name: Lane0HitZone
   m_TagString: Untagged
@@ -2889,21 +2954,25 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1367120389
-Transform:
+--- !u!224 &1367120389
+RectTransform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1367120388}
-  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.5, y: 0.45, z: -2.15}
+  m_LocalPosition: {x: 0, y: 0, z: -2.15}
   m_LocalScale: {x: 1.8, y: 0.5, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 947093147}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -4.5, y: 0.45}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1367120390
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2966,6 +3035,14 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 3
+--- !u!222 &1367120393
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1367120388}
+  m_CullTransparentMesh: 0
 --- !u!21 &1462829331
 Material:
   serializedVersion: 8
@@ -4154,3 +4231,4 @@ SceneRoots:
   - {fileID: 1272230543}
   - {fileID: 1641296000}
   - {fileID: 947093147}
+  - {fileID: 946726223}
