@@ -553,7 +553,7 @@ public class SongData : ScriptableObject
 {
     public string songName;
     public string artist;
-    public float bpm;
+    public int bpm;
     public float duration;
     public string audioFilePath;
     public string noteChartPath;

@@ -323,6 +323,13 @@ public class GameplayManager : MonoBehaviour
         // Wire up the note travel time to the note creator for perfect sync.
         if (noteRenderer != null && noteCreator != null)
         {
+            // 🎵 TEMPO SYNCHRONIZATION: Set tempo to NoteRenderer for visual-audio sync
+            if (currentSong != null)
+            {
+                noteRenderer.SetTempo(currentSong.bpm);
+                if (showDebugLogs) Debug.Log($"🎵 [TEMPO SYNC] NoteRenderer tempo set to {currentSong.bpm} BPM");
+            }
+
             float travelTimeMs = noteRenderer.GetNoteTravelTime() * 1000f;
             noteCreator.SetFirstDelay(travelTimeMs);
             if (showDebugLogs) Debug.Log($"🎵 [TIMING CHECK] Note travel time set for perfect sync: {travelTimeMs:F0}ms");

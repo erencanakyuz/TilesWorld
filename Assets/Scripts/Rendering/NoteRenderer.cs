@@ -29,7 +29,10 @@ public class NoteRenderer : MonoBehaviour
 
     [Header("🚀 Note Movement")]
     [Tooltip("The constant speed at which notes travel towards the player.")]
-    [SerializeField] private float speedMultiplier = 12.0f;    // Increased default speed
+    [SerializeField] private float speedMultiplier = 12.0f;    // This will be auto-calculated based on tempo
+    [SerializeField] private float baseSpeedMultiplier = 12.0f; // Base speed for reference tempo
+    [SerializeField] private int referenceTempo = 120; // Reference BPM for speed calculation
+    [SerializeField] private bool useTempoBasedSpeed = true; // Toggle for tempo synchronization
     [Tooltip("The Z-coordinate where notes are spawned.")]
     [SerializeField] private float spawnZ = 25f;
 
@@ -50,6 +53,10 @@ public class NoteRenderer : MonoBehaviour
     private Camera mainCamera;
     private Vector3[] lanePositions;
     private int activeNoteCount = 0;
+
+    // Tempo synchronization
+    private int currentTempo = 120;
+    private float originalSpeedMultiplier;
 
     void Awake()
     {
@@ -77,6 +84,9 @@ public class NoteRenderer : MonoBehaviour
 
     void InitializeRenderer()
     {
+        // Store original speed for tempo calculations
+        originalSpeedMultiplier = speedMultiplier;
+
         // Auto-find notePrefab if not assigned
         if (notePrefab == null)
         {
@@ -337,6 +347,119 @@ public class NoteRenderer : MonoBehaviour
     public void SetSpeedMultiplier(float multiplier)
     {
         speedMultiplier = Mathf.Max(0.1f, multiplier);
+    }
+
+    /// <summary>
+    /// 🎵 TEMPO SYNCHRONIZATION: Updates note speed based on song tempo
+    /// This ensures visual note movement matches the musical timing
+    /// </summary>
+    public void SetTempo(int tempo)
+    {
+        if (!useTempoBasedSpeed) return;
+
+        currentTempo = tempo;
+        RecalculateSpeedFromTempo();
+
+        if (showDebugLogs)
+        {
+            Debug.Log($"🎵 Tempo updated: {tempo} BPM → Speed: {speedMultiplier:F2} → Travel time: {GetNoteTravelTime():F2}s");
+        }
+    }
+
+    /// <summary>
+    /// Recalculates speedMultiplier based on current tempo to maintain visual-audio sync
+    /// Formula: newSpeed = baseSpeed * (tempo / referenceTempo)
+    /// ENHANCED: Special handling for extreme tempos
+    /// </summary>
+    private void RecalculateSpeedFromTempo()
+    {
+        if (currentTempo <= 0 || referenceTempo <= 0) return;
+
+        float tempoRatio = (float)currentTempo / referenceTempo;
+
+        // Enhanced formula with extreme tempo compensation
+        if (currentTempo <= 50) // Very slow songs (Cathedral, Moon Light)
+        {
+            // Boost slow songs slightly so they don't feel too sluggish
+            speedMultiplier = baseSpeedMultiplier * (tempoRatio * 1.2f);
+        }
+        else if (currentTempo >= 200) // Very fast songs (Sinfonia 40)
+        {
+            // Cap extreme speeds to maintain playability
+            speedMultiplier = baseSpeedMultiplier * Mathf.Min(tempoRatio, 2.0f);
+        }
+        else
+        {
+            // Normal tempo range - direct scaling
+            speedMultiplier = baseSpeedMultiplier * tempoRatio;
+        }
+
+        // Clamp to reasonable bounds
+        speedMultiplier = Mathf.Clamp(speedMultiplier, 3f, 30f);
+
+        if (showDebugLogs)
+        {
+            string category = "";
+            if (currentTempo <= 50) category = "VERY SLOW (boosted)";
+            else if (currentTempo >= 200) category = "VERY FAST (capped)";
+            else category = "NORMAL";
+
+            Debug.Log($"🎵 Speed calculation: {currentTempo} BPM [{category}] → Speed: {speedMultiplier:F2}");
+        }
+    }
+
+    /// <summary>
+    /// 🔧 DEBUG: Manual tempo testing - call this to test different tempos
+    /// UPDATED: Now tests real database tempos
+    /// </summary>
+    [ContextMenu("Test Tempo Sync")]
+    public void TestTempoSync()
+    {
+        Debug.Log("🎵 TEMPO SYNC TEST (Database Tempos):");
+
+        // Real tempos from songs_database.json
+        var databaseTempos = new[]
+        {
+            new { tempo = 45, song = "Cathedral" },
+            new { tempo = 50, song = "Moon Light" },
+            new { tempo = 62, song = "Fur Elise" },
+            new { tempo = 77, song = "Cannon" },
+            new { tempo = 120, song = "Vidalita (Reference)" },
+            new { tempo = 140, song = "Turkish Delight" },
+            new { tempo = 176, song = "Moonlight Sonata" },
+            new { tempo = 250, song = "Sinfonia 40" }
+        };
+
+        foreach (var test in databaseTempos)
+        {
+            // Simulate the enhanced calculation
+            float tempoRatio = (float)test.tempo / referenceTempo;
+            float testSpeed;
+            string handling = "";
+
+            if (test.tempo <= 50)
+            {
+                testSpeed = baseSpeedMultiplier * (tempoRatio * 1.2f);
+                handling = " [BOOSTED]";
+            }
+            else if (test.tempo >= 200)
+            {
+                testSpeed = baseSpeedMultiplier * Mathf.Min(tempoRatio, 2.0f);
+                handling = " [CAPPED]";
+            }
+            else
+            {
+                testSpeed = baseSpeedMultiplier * tempoRatio;
+            }
+
+            testSpeed = Mathf.Clamp(testSpeed, 3f, 30f);
+            float testTravelTime = Mathf.Abs(spawnZ - hitZoneZ) / testSpeed;
+
+            Debug.Log($"  {test.tempo} BPM ({test.song}): Speed={testSpeed:F2}, Travel={testTravelTime:F2}s{handling}");
+        }
+
+        Debug.Log($"  Current: {currentTempo} BPM, Speed={speedMultiplier:F2}, Travel={GetNoteTravelTime():F2}s");
+        Debug.Log("🎯 Ideal travel time: 1.0-3.0 seconds for good gameplay");
     }
     #endregion
 }
