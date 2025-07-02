@@ -313,6 +313,16 @@ public class GameplayManager : MonoBehaviour
     /// </summary>
     void PrepareGameplaySystems()
     {
+        if (showDebugLogs) Debug.Log("🎮 Preparing gameplay systems...");
+
+        // 🎼 MUSICAL INTEGRITY SYSTEM KURULUMU
+        if (MusicalIntegritySystem.Instance == null)
+        {
+            var musicalIntegrityGO = new GameObject("MusicalIntegritySystem");
+            musicalIntegrityGO.AddComponent<MusicalIntegritySystem>();
+            if (showDebugLogs) Debug.Log("🎼 Musical Integrity System created and initialized");
+        }
+
         ResetGameplayStats();
 
         if (noteRenderer != null)
@@ -323,11 +333,29 @@ public class GameplayManager : MonoBehaviour
         // Wire up the note travel time to the note creator for perfect sync.
         if (noteRenderer != null && noteCreator != null)
         {
-            // 🎵 TEMPO SYNCHRONIZATION: Set tempo to NoteRenderer for visual-audio sync
+            // 🎼 MUSICAL INTEGRITY SYSTEM ENTEGRASYONU
             if (currentSong != null)
             {
-                noteRenderer.SetTempo(currentSong.bpm);
-                if (showDebugLogs) Debug.Log($"🎵 [TEMPO SYNC] NoteRenderer tempo set to {currentSong.bpm} BPM");
+                string songKey = currentSong.songName.Replace(" ", "_").ToLower(); // Song key oluştur
+
+                // NoteCreator'a song key'i set et
+                noteCreator.SetCurrentSong(songKey);
+
+                // NoteRenderer'a tempo ve song key'i set et
+                noteRenderer.SetTempo(currentSong.bpm, songKey);
+
+                if (showDebugLogs)
+                {
+                    Debug.Log($"🎼 [MUSICAL INTEGRITY] Systems synchronized:");
+                    Debug.Log($"   🎵 Song: {songKey} ({currentSong.bpm} BPM)");
+                    Debug.Log($"   🎯 NoteCreator & NoteRenderer updated with Musical Integrity System");
+                }
+            }
+            else
+            {
+                // Fallback - sadece tempo set et
+                noteRenderer.SetTempo(120); // Default tempo
+                if (showDebugLogs) Debug.Log($"⚠️ No song data available, using default tempo (120 BPM)");
             }
 
             float travelTimeMs = noteRenderer.GetNoteTravelTime() * 1000f;

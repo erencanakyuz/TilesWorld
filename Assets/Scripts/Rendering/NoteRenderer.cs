@@ -349,15 +349,47 @@ public class NoteRenderer : MonoBehaviour
         speedMultiplier = Mathf.Max(0.1f, multiplier);
     }
 
+    // New: Getter for speedMultiplier to allow external debug access (e.g., SongPlaybackTester)
+    public float GetSpeedMultiplier()
+    {
+        return speedMultiplier;
+    }
+
     /// <summary>
     /// 🎵 TEMPO SYNCHRONIZATION: Updates note speed based on song tempo
     /// This ensures visual note movement matches the musical timing
+    /// YENİ: Musical Integrity System ile entegre edildi!
     /// </summary>
-    public void SetTempo(int tempo)
+    public void SetTempo(int tempo, string songKey = "")
     {
         if (!useTempoBasedSpeed) return;
 
         currentTempo = tempo;
+
+        // 🎼 MUSICAL INTEGRITY SYSTEM ENTEGRASYONU
+        if (!string.IsNullOrEmpty(songKey) && MusicalIntegritySystem.Instance != null)
+        {
+            var musicalSync = MusicalIntegritySystem.Instance.CalculateOptimalSync(songKey, tempo);
+
+            if (musicalSync != null)
+            {
+                // Musical visual speed kullan
+                speedMultiplier = musicalSync.visualSpeedMultiplier;
+
+                if (showDebugLogs)
+                {
+                    Debug.Log($"🎼 MUSICAL VISUAL SYNC APPLIED:");
+                    Debug.Log($"   🎵 Song: {songKey}, Tempo: {tempo} BPM");
+                    Debug.Log($"   📊 Emotional Tempo: {musicalSync.emotionalTempo:F1} BPM");
+                    Debug.Log($"   🚀 Musical Speed: {speedMultiplier:F2} (was: {originalSpeedMultiplier * (tempo / referenceTempo):F2})");
+                    Debug.Log($"   ⏱️ Travel Time: {GetNoteTravelTime():F2}s");
+                    Debug.Log($"   🎼 Musical Realism: {musicalSync.musicalRealismScore:F2}/1.0");
+                }
+                return;
+            }
+        }
+
+        // Fallback: Original calculation
         RecalculateSpeedFromTempo();
 
         if (showDebugLogs)

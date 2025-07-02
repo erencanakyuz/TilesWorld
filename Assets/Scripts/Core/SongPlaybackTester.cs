@@ -402,13 +402,26 @@ public class SongPlaybackTester : MonoBehaviour
         {
             // 🎵 TEMPO SYNC DEBUG: Check if timing is properly synchronized
             var noteRenderer = FindFirstObjectByType<NoteRenderer>();
-            if (noteRenderer != null)
+            var gameplayManager = FindFirstObjectByType<GameplayManager>();
+            if (noteRenderer != null && gameplayManager != null)
             {
-                float travelTime = noteRenderer.GetNoteTravelTime();
-                Debug.Log($"🎵 [AUTO-PLAY TEMPO CHECK] Travel time: {travelTime:F2}s");
+                Debug.Log($"🎼 MUSICAL INTEGRITY AUTO-PLAY DEBUG:");
+                Debug.Log($"   🚀 Current Speed Multiplier: {noteRenderer.GetSpeedMultiplier():F2}");
+                Debug.Log($"   ⏱️ Note Travel Time: {noteRenderer.GetNoteTravelTime():F2}s");
 
-                // Test tempo sync manually
-                noteRenderer.TestTempoSync();
+                // Musical Integrity System durumunu kontrol et
+                if (MusicalIntegritySystem.Instance != null)
+                {
+                    var realmScore = MusicalIntegritySystem.Instance.GetCurrentMusicalRealismScore();
+                    Debug.Log($"   🎼 Musical Realism Score: {realmScore:F2}/1.0");
+
+                    // Test mode'u aç
+                    MusicalIntegritySystem.Instance.TestCurrentSong();
+                }
+                else
+                {
+                    Debug.LogWarning("⚠️ Musical Integrity System not available during auto-play!");
+                }
             }
 
             StartCoroutine(PerfectAutoPlayLoop());

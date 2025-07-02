@@ -22,6 +22,7 @@ public class GameNoteCreator : MonoBehaviour
 
     [Header("🔧 Debugging")]
     [SerializeField] private bool showDebugLogs = false;
+    [SerializeField] private bool enablePerformanceLogging = false;
 
     [Header("🕒 Spawn Control (Testing)")]
     [Tooltip("If false, GameNoteCreator will NOT dequeue packages automatically. Use external scripts to pull them.")]
@@ -51,6 +52,12 @@ public class GameNoteCreator : MonoBehaviour
     // --- Olaylar ---
     public static event Action<List<GameNoteInfo>, double> OnNotesGenerated;
     public static event Action OnGenerationComplete;
+
+    // State
+    private string currentSongKey = ""; // Şarkı anahtarı Musical Integrity System için
+
+    // Callbacks
+    private System.Action<TemporalNoteInfo> onNoteAdded;
 
     /// <summary>
     /// Sets the initial delay before the first note package is spawned.
@@ -201,21 +208,46 @@ public class GameNoteCreator : MonoBehaviour
     /// <summary>
     /// RefactorParse.md'ye göre: Ham chart verisini, dikey dilimleme (vertical slicing) yöntemiyle işler.
     /// Orijinal Java oyununun PlayData.getTabList mantığını uygular.
+    /// YENİ: Musical Integrity System ile entegre edildi!
     /// </summary>
     private List<TemporalNoteInfo> ProcessChartWithVerticalSlicing(List<NoteChartSequence> chart, int tempo)
     {
-        // DYNAMIC TIMING MULTIPLIER (from performance.md)
-        // This value is calculated to maintain the "feel" of the original hardcoded value of 4.0 at 100 BPM.
-        // The magic number 400f can be adjusted later to change the overall note density.
-        // Formula: 4.0 (original multiplier) * 100 (reference BPM) = 400.
-        this.timingMultiplier = 400f / tempo;
+        // 🎼 MUSICAL INTEGRITY SYSTEM ENTEGRASYONU
+        var musicalSync = MusicalIntegritySystem.Instance?.CalculateOptimalSync(currentSongKey, tempo);
+
+        // Calculate base timing once (32nd note duration in ms)
+        float baseTimingMs = (60000f / tempo) / 8f; // 32'lik nota süresi (ms)
+
+        if (musicalSync != null)
+        {
+            // Müzikal nota spacing'i kullan
+            float musicalSpacingMs = musicalSync.noteSpawnTimingMs;
+            // Musical timing multiplier hesapla
+            this.timingMultiplier = musicalSpacingMs / baseTimingMs;
+
+            if (showDebugLogs)
+            {
+                Debug.Log($"🎼 MUSICAL SYNC APPLIED:");
+                Debug.Log($"   🎵 Song: {currentSongKey}, Tempo: {tempo} BPM");
+                Debug.Log($"   📊 Emotional Tempo: {musicalSync.emotionalTempo:F1} BPM");
+                Debug.Log($"   ⏱️ Musical Spacing: {musicalSpacingMs:F1}ms vs Base: {baseTimingMs:F1}ms");
+                Debug.Log($"   🎯 Musical Timing Multiplier: {this.timingMultiplier:F2} (was: {400f / tempo:F2})");
+                Debug.Log($"   🎼 Musical Realism Score: {musicalSync.musicalRealismScore:F2}/1.0");
+            }
+        }
+        else
+        {
+            // Fallback to original calculation
+            this.timingMultiplier = 400f / tempo;
+            if (showDebugLogs) Debug.Log($"⚠️ Musical Integrity System not available, using fallback timing multiplier: {this.timingMultiplier:F2}");
+        }
 
 #if UNITY_EDITOR
         if (showDebugLogs) Debug.Log($"🎵 Dikey zaman dilimlemesi başlıyor: {chart.Count} sekans, tempo: {tempo}, Dinamik Çarpan: {this.timingMultiplier:F2}");
 #endif
 
         // A. Temel Zaman Biriminin Hesaplanması (RefactorParse.md - Adım 2.2.A)
-        float baseTimingMs = (60000f / tempo) / 8f; // 32'lik nota süresi (ms)
+        // baseTimingMs zaten üstte hesaplandı
 #if UNITY_EDITOR
         if (showDebugLogs) Debug.Log($"🎵 Temel zaman birimi: {baseTimingMs:F2} ms (32'lik nota)");
 #endif
@@ -499,6 +531,15 @@ public class GameNoteCreator : MonoBehaviour
             return notePackageQueue.Dequeue();
         }
         return null;
+    }
+
+    /// <summary>
+    /// Sets the current song key for the GameNoteCreator.
+    /// </summary>
+    /// <param name="songKey">The key of the current song.</param>
+    public void SetCurrentSong(string songKey)
+    {
+        currentSongKey = songKey;
     }
 }
 
