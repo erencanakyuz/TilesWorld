@@ -295,6 +295,10 @@ public class HitZoneManager : MonoBehaviour
             _ => 50 // Okay hit
         };
         GameManager.Instance?.UpdateScore(points);
+        
+        // Update stats only when hit occurs (performance optimization)
+        var gameplayManager = FindFirstObjectByType<GameplayManager>();
+        gameplayManager?.UpdateStatsOnHit();
     }
 
     private void SpawnParticleEffect(Vector3 position, HitAccuracy accuracy)

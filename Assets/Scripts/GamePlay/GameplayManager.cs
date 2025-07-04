@@ -191,8 +191,7 @@ public class GameplayManager : MonoBehaviour
             EndGameplay();
         }
 
-        // Update game stats
-        UpdateGameStats();
+        // Stats are now updated only when hits/misses occur, not every frame
     }
 
     /// <summary>
@@ -624,6 +623,12 @@ public class GameplayManager : MonoBehaviour
         // Fire events
         OnComboUpdated?.Invoke(currentCombo);
         OnAccuracyUpdated?.Invoke(accuracy);
+    }
+
+    // Call this when hits/misses occur instead of every frame
+    public void UpdateStatsOnHit()
+    {
+        UpdateGameStats();
     }
 
     void UpdateGameplayUI()

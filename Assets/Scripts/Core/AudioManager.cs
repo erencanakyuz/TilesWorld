@@ -9,7 +9,7 @@ public class AudioManager : MonoBehaviour
 
     [Header("🎵 Audio Configuration")]
     [SerializeField] private AudioMixer mainMixer;
-    [SerializeField] private int audioSourcePoolSize = 200;
+    [SerializeField] private int audioSourcePoolSize = 30;
 
     [Header("🎼 Instrument Audio Clips")]
     [SerializeField] private InstrumentAudioData[] instruments;
@@ -314,8 +314,12 @@ public class AudioManager : MonoBehaviour
 
     void Update()
     {
-        RecycleFinishedAudioSources();
-        ProcessFadeOuts();
+        // Optimize: Only run cleanup every 5 frames instead of every frame
+        if (Time.frameCount % 5 == 0)
+        {
+            RecycleFinishedAudioSources();
+            ProcessFadeOuts();
+        }
 
         if (enableLatencyMonitoring && Time.frameCount % 60 == 0)
         {

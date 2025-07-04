@@ -9,7 +9,7 @@
 - **Performans:** `Update()` döngüsü içindeki sürekli transform güncellemelerinden kaçınarak, DOTween'in optimize yapısını kullanmak.
 - **Assetsiz Estetik:** Yeni bir görsel asset (sprite, model, texture) kullanmadan, sadece kod, animasyon prensipleri ve DOTween'in gücüyle modern ve tatmin edici bir görsel dünya yaratmak.
 - **Net Geri Bildirim:** Animasyonları, oyuncuya başarılı vuruş, zamanlama kalitesi ve kaçırma durumları hakkında anlık ve net bilgiler verecek şekilde tasarlamak.
-
++ff
 ---
 
 ## 2. Mevcut Sistem Analizi ve Strateji

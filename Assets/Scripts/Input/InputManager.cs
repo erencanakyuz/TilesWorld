@@ -102,14 +102,16 @@ public class InputManager : MonoBehaviour
 
     void Update()
     {
-        // Automatically find the main camera if it's missing.
-        // This is crucial for DontDestroyOnLoad objects that persist across scenes.
-        if (mainCamera == null)
+        // Optimize: Only search for camera every 30 frames instead of every frame
+        if (mainCamera == null && Time.frameCount % 30 == 0)
         {
             mainCamera = Camera.main;
             // If still null, exit early to prevent errors this frame.
             if (mainCamera == null) return;
         }
+        
+        // Skip input processing if no camera available
+        if (mainCamera == null) return;
 
         HandleTouchInput();
         UpdateActiveTouches();
