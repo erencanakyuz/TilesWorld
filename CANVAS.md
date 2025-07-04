@@ -5,7 +5,7 @@
 **🏗️ Mimari:** Bootstrap + Auto-Finding + Event-Driven
 
 ---
-
+//test
 ## 🎉 Tamamlanan Sistem Özeti
 
 ### 1. 🚀 Bootstrap Sahnesi Mimarisi

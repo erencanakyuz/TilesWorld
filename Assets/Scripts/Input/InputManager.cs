@@ -64,11 +64,11 @@ public class InputManager : MonoBehaviour
             {
                 positions += $"Lane {i}: {laneWorldPositions[i].x:F2} | ";
             }
-            Debug.Log($"[IM-STEP-1] Initialized World Positions: {positions}");
+            // Debug.Log($"[IM-STEP-1] Initialized World Positions: {positions}");
         }
         else
         {
-            Debug.LogError("[IM-STEP-1] laneWorldPositions could not be initialized!");
+            // Debug.LogError("[IM-STEP-1] laneWorldPositions could not be initialized!");
         }
         // =========================================================
     }
@@ -305,7 +305,7 @@ public class InputManager : MonoBehaviour
     {
         if (mainCamera == null || laneWorldPositions == null || laneWorldPositions.Length == 0)
         {
-            Debug.LogError($"[IM-STEP-2] ScreenPositionToLane failed. Cam Null: {mainCamera == null}, Positions Null/Empty: {laneWorldPositions == null || laneWorldPositions.Length == 0}");
+            // Debug.LogError($"[IM-STEP-2] ScreenPositionToLane failed. Cam Null: {mainCamera == null}, Positions Null/Empty: {laneWorldPositions == null || laneWorldPositions.Length == 0}");
             return 0;
         }
 

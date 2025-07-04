@@ -81,7 +81,7 @@ public class GameNoteCreator : MonoBehaviour
 
             if (jsonFile == null)
             {
-                Debug.LogError($"🎵 JSON nota dosyası bulunamadı: {jsonPath}");
+                // Debug.LogError($"🎵 JSON nota dosyası bulunamadı: {jsonPath}");
                 return new List<NoteChartSequence>();
             }
 
@@ -89,7 +89,7 @@ public class GameNoteCreator : MonoBehaviour
 
             if (jsonData?.sequences == null)
             {
-                Debug.LogError($"🎵 JSON formatı geçersiz: {jsonPath}");
+                // Debug.LogError($"🎵 JSON formatı geçersiz: {jsonPath}");
                 return new List<NoteChartSequence>();
             }
 
@@ -115,9 +115,9 @@ public class GameNoteCreator : MonoBehaviour
 #endif
             return chartSequences;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            Debug.LogError($"🎵 JSON yükleme hatası: {e.Message}");
+            // JSON loading failed - return empty list
             return new List<NoteChartSequence>();
         }
     }
@@ -227,12 +227,12 @@ public class GameNoteCreator : MonoBehaviour
 
             if (showDebugLogs)
             {
-                Debug.Log($"🎼 MUSICAL SYNC APPLIED:");
-                Debug.Log($"   🎵 Song: {currentSongKey}, Tempo: {tempo} BPM");
-                Debug.Log($"   📊 Emotional Tempo: {musicalSync.emotionalTempo:F1} BPM");
-                Debug.Log($"   ⏱️ Musical Spacing: {musicalSpacingMs:F1}ms vs Base: {baseTimingMs:F1}ms");
-                Debug.Log($"   🎯 Musical Timing Multiplier: {this.timingMultiplier:F2} (was: {400f / tempo:F2})");
-                Debug.Log($"   🎼 Musical Realism Score: {musicalSync.musicalRealismScore:F2}/1.0");
+                // Debug.Log($"🎼 MUSICAL SYNC APPLIED:");
+                // Debug.Log($"   🎵 Song: {currentSongKey}, Tempo: {tempo} BPM");
+                // Debug.Log($"   📊 Emotional Tempo: {musicalSync.emotionalTempo:F1} BPM");
+                // Debug.Log($"   ⏱️ Musical Spacing: {musicalSpacingMs:F1}ms vs Base: {baseTimingMs:F1}ms");
+                // Debug.Log($"   🎯 Musical Timing Multiplier: {this.timingMultiplier:F2} (was: {400f / tempo:F2})");
+                // Debug.Log($"   🎼 Musical Realism Score: {musicalSync.musicalRealismScore:F2}/1.0");
             }
         }
         else

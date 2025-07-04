@@ -78,7 +78,7 @@ public class NoteRenderer : MonoBehaviour
         Light[] lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
         if (lights.Length == 0)
         {
-            Debug.LogWarning("🎨 No lights found in scene! Notes may not be visible.");
+            // Debug.LogWarning("🎨 No lights found in scene! Notes may not be visible.");
         }
     }
 
@@ -97,11 +97,11 @@ public class NoteRenderer : MonoBehaviour
             }
             if (notePrefab != null)
             {
-                Debug.Log("✅ NoteRenderer: Auto-found NotePrefab");
+                // Debug.Log("✅ NoteRenderer: Auto-found NotePrefab");
             }
             else
             {
-                Debug.LogWarning("⚠️ NoteRenderer: NotePrefab not found! Please assign it in the inspector or ensure it exists in Resources/Prefabs/Notes/");
+                // Debug.LogWarning("⚠️ NoteRenderer: NotePrefab not found! Please assign it in the inspector or ensure it exists in Resources/Prefabs/Notes/");
             }
         }
 
@@ -282,7 +282,7 @@ public class NoteRenderer : MonoBehaviour
         }
         if (showDebugLogs)
         {
-            Debug.Log($"NOTE MISSED: Lane {noteInfo.line}, Pitch {noteInfo.pitch}");
+            // Debug.Log($"NOTE MISSED: Lane {noteInfo.line}, Pitch {noteInfo.pitch}");
         }
     }
 
@@ -294,7 +294,7 @@ public class NoteRenderer : MonoBehaviour
         // Bu metod artık kullanılmamalıdır.
         if (showDebugLogs)
         {
-            Debug.LogWarning("NoteRenderer.ProcessHitNote() çağrıldı, ancak bu metod artık geçerli değil. Çağrıyı HitZoneManager'dan kontrol edin.");
+            // Debug.LogWarning("NoteRenderer.ProcessHitNote() çağrıldı, ancak bu metod artık geçerli değil. Çağrıyı HitZoneManager'dan kontrol edin.");
         }
     }
 
@@ -378,12 +378,12 @@ public class NoteRenderer : MonoBehaviour
 
                 if (showDebugLogs)
                 {
-                    Debug.Log($"🎼 MUSICAL VISUAL SYNC APPLIED:");
-                    Debug.Log($"   🎵 Song: {songKey}, Tempo: {tempo} BPM");
-                    Debug.Log($"   📊 Emotional Tempo: {musicalSync.emotionalTempo:F1} BPM");
-                    Debug.Log($"   🚀 Musical Speed: {speedMultiplier:F2} (was: {originalSpeedMultiplier * (tempo / referenceTempo):F2})");
-                    Debug.Log($"   ⏱️ Travel Time: {GetNoteTravelTime():F2}s");
-                    Debug.Log($"   🎼 Musical Realism: {musicalSync.musicalRealismScore:F2}/1.0");
+                    // Debug.Log($"🎼 MUSICAL VISUAL SYNC APPLIED:");
+                    // Debug.Log($"   🎵 Song: {songKey}, Tempo: {tempo} BPM");
+                    // Debug.Log($"   📊 Emotional Tempo: {musicalSync.emotionalTempo:F1} BPM");
+                    // Debug.Log($"   🚀 Musical Speed: {speedMultiplier:F2} (was: {originalSpeedMultiplier * (tempo / referenceTempo):F2})");
+                    // Debug.Log($"   ⏱️ Travel Time: {GetNoteTravelTime():F2}s");
+                    // Debug.Log($"   🎼 Musical Realism: {musicalSync.musicalRealismScore:F2}/1.0");
                 }
                 return;
             }
@@ -394,7 +394,7 @@ public class NoteRenderer : MonoBehaviour
 
         if (showDebugLogs)
         {
-            Debug.Log($"🎵 Tempo updated: {tempo} BPM → Speed: {speedMultiplier:F2} → Travel time: {GetNoteTravelTime():F2}s");
+            // Debug.Log($"🎵 Tempo updated: {tempo} BPM → Speed: {speedMultiplier:F2} → Travel time: {GetNoteTravelTime():F2}s");
         }
     }
 
@@ -429,69 +429,9 @@ public class NoteRenderer : MonoBehaviour
         // Clamp to reasonable bounds
         speedMultiplier = Mathf.Clamp(speedMultiplier, 3f, 30f);
 
-        if (showDebugLogs)
-        {
-            string category = "";
-            if (currentTempo <= 50) category = "VERY SLOW (boosted)";
-            else if (currentTempo >= 200) category = "VERY FAST (capped)";
-            else category = "NORMAL";
-
-            Debug.Log($"🎵 Speed calculation: {currentTempo} BPM [{category}] → Speed: {speedMultiplier:F2}");
-        }
+        // Debug logging removed - was only for development
     }
 
-    /// <summary>
-    /// 🔧 DEBUG: Manual tempo testing - call this to test different tempos
-    /// UPDATED: Now tests real database tempos
-    /// </summary>
-    [ContextMenu("Test Tempo Sync")]
-    public void TestTempoSync()
-    {
-        Debug.Log("🎵 TEMPO SYNC TEST (Database Tempos):");
-
-        // Real tempos from songs_database.json
-        var databaseTempos = new[]
-        {
-            new { tempo = 45, song = "Cathedral" },
-            new { tempo = 50, song = "Moon Light" },
-            new { tempo = 62, song = "Fur Elise" },
-            new { tempo = 77, song = "Cannon" },
-            new { tempo = 120, song = "Vidalita (Reference)" },
-            new { tempo = 140, song = "Turkish Delight" },
-            new { tempo = 176, song = "Moonlight Sonata" },
-            new { tempo = 250, song = "Sinfonia 40" }
-        };
-
-        foreach (var test in databaseTempos)
-        {
-            // Simulate the enhanced calculation
-            float tempoRatio = (float)test.tempo / referenceTempo;
-            float testSpeed;
-            string handling = "";
-
-            if (test.tempo <= 50)
-            {
-                testSpeed = baseSpeedMultiplier * (tempoRatio * 1.2f);
-                handling = " [BOOSTED]";
-            }
-            else if (test.tempo >= 200)
-            {
-                testSpeed = baseSpeedMultiplier * Mathf.Min(tempoRatio, 2.0f);
-                handling = " [CAPPED]";
-            }
-            else
-            {
-                testSpeed = baseSpeedMultiplier * tempoRatio;
-            }
-
-            testSpeed = Mathf.Clamp(testSpeed, 3f, 30f);
-            float testTravelTime = Mathf.Abs(spawnZ - hitZoneZ) / testSpeed;
-
-            Debug.Log($"  {test.tempo} BPM ({test.song}): Speed={testSpeed:F2}, Travel={testTravelTime:F2}s{handling}");
-        }
-
-        Debug.Log($"  Current: {currentTempo} BPM, Speed={speedMultiplier:F2}, Travel={GetNoteTravelTime():F2}s");
-        Debug.Log("🎯 Ideal travel time: 1.0-3.0 seconds for good gameplay");
-    }
+    // Debug method removed - was only for development testing
     #endregion
 }

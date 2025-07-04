@@ -135,9 +135,9 @@ public class AudioManager : MonoBehaviour
             if (showDebugLogs) Debug.Log($"📱 Mobile audio optimized: {config.dspBufferSize} samples, {config.sampleRate}Hz");
 #endif
         }
-        catch (System.Exception e)
+        catch (System.Exception)
         {
-            Debug.LogWarning($"📱 Could not apply mobile audio optimizations: {e.Message}");
+            // Mobile audio optimization failed - silently continue
         }
     }
 
@@ -376,7 +376,7 @@ public class AudioManager : MonoBehaviour
             return source;
         }
 
-        Debug.LogWarning("🎵 Audio source pool exhausted! Consider increasing pool size.");
+        // Debug.LogWarning("🎵 Audio source pool exhausted! Consider increasing pool size.");
         return null;
     }
 
@@ -401,7 +401,7 @@ public class AudioManager : MonoBehaviour
             return audioClip;
         }
 
-        Debug.LogError($"🎵 [PRODUCTION] Missing audio file for {instrument} pitch {pitch} - no fallback available!");
+        // Debug.LogError($"🎵 [PRODUCTION] Missing audio file for {instrument} pitch {pitch} - no fallback available!");
         return null;
     }
 
@@ -453,7 +453,7 @@ public class AudioManager : MonoBehaviour
             }
         }
 
-        Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch}. Make sure files are in a Resources folder!");
+        // Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch}. Make sure files are in a Resources folder!");
         return null;
     }
 
@@ -498,7 +498,7 @@ public class AudioManager : MonoBehaviour
 
         if (instruments.Length == 0)
         {
-            Debug.LogError("❌ FATAL: No instruments could be loaded at all! Check Resources/Audio folder structure. Notes will be silent.");
+            // Debug.LogError("❌ FATAL: No instruments could be loaded at all! Check Resources/Audio folder structure. Notes will be silent.");
         }
     }
 

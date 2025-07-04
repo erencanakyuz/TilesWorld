@@ -117,14 +117,14 @@ public class HitZoneManager : MonoBehaviour
         if (goodHitEffectPrefab != null) foundCount++;
         if (missEffectPrefab != null) foundCount++;
 
-        Debug.Log($"✅ HitZoneManager: Auto-found {foundCount}/4 prefabs - HitZone={hitZoneVisualPrefab != null}, Perfect={perfectHitEffectPrefab != null}, Good={goodHitEffectPrefab != null}, Miss={missEffectPrefab != null}");
+        // Debug.Log($"✅ HitZoneManager: Auto-found {foundCount}/4 prefabs - HitZone={hitZoneVisualPrefab != null}, Perfect={perfectHitEffectPrefab != null}, Good={goodHitEffectPrefab != null}, Miss={missEffectPrefab != null}");
     }
 
     private void CreateHitZoneVisuals()
     {
         if (hitZoneVisualPrefab == null)
         {
-            Debug.LogWarning("⚠️ HitZoneVisual prefab not found! Please assign it in the inspector or run the HitZone fixer tool.");
+            // Debug.LogWarning("⚠️ HitZoneVisual prefab not found! Please assign it in the inspector or run the HitZone fixer tool.");
             return;
         }
 
@@ -190,7 +190,7 @@ public class HitZoneManager : MonoBehaviour
                 renderer.sortingOrder = 20;
             }
 
-            Debug.Log($"✅ Created hit zone visual for Lane {zone.laneIndex} matching collider size: {collider.size}");
+            // Debug.Log($"✅ Created hit zone visual for Lane {zone.laneIndex} matching collider size: {collider.size}");
         }
     }
 
@@ -312,11 +312,11 @@ public class HitZoneManager : MonoBehaviour
             GameObject effect = Instantiate(prefabToSpawn, position, Quaternion.identity);
 
             // The ParticleAutoDestroy component will handle cleanup
-            Debug.Log($"✨ Spawned {accuracy} particle effect at {position}");
+            // Debug.Log($"✨ Spawned {accuracy} particle effect at {position}");
         }
         else
         {
-            Debug.LogWarning($"⚠️ No particle effect prefab assigned for {accuracy} hit!");
+            // Debug.LogWarning($"⚠️ No particle effect prefab assigned for {accuracy} hit!");
         }
     }
 

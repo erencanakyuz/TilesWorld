@@ -12,7 +12,6 @@ public class MusicalIntegritySystem : MonoBehaviour
     public static MusicalIntegritySystem Instance { get; private set; }
 
     [Header("🎵 Musical Reality Configuration")]
-    [SerializeField] private bool enableMusicalIntegrity = true;
     [SerializeField] private bool enableRealTimeValidation = true;
     [SerializeField] private bool enableAutoTesting = false;
 

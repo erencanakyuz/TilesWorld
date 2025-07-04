@@ -38,7 +38,7 @@ public class HitZoneTrigger : MonoBehaviour
             if (insideNotes[i] == null || !insideNotes[i].activeInHierarchy)
             {
                 insideNotes.RemoveAt(i);
-                if (showDebug) Debug.Log($"[HitZoneTrigger] Lane {laneIndex} cleaned up destroyed or inactive note. insideNotes={insideNotes.Count}");
+                // if (showDebug) Debug.Log($"[HitZoneTrigger] Lane {laneIndex} cleaned up destroyed or inactive note. insideNotes={insideNotes.Count}");
             }
         }
     }
@@ -52,7 +52,7 @@ public class HitZoneTrigger : MonoBehaviour
 
             if (showDebug && debugCount < maxDebugLogs)
             {
-                Debug.Log($"[HitZoneTrigger] Lane {laneIndex} ENTER note '{other.gameObject.name}' at Z={other.transform.position.z:F2}. insideNotes={insideNotes.Count}");
+                // Debug.Log($"[HitZoneTrigger] Lane {laneIndex} ENTER note '{other.gameObject.name}' at Z={other.transform.position.z:F2}. insideNotes={insideNotes.Count}");
                 debugCount++;
             }
         }
@@ -64,7 +64,7 @@ public class HitZoneTrigger : MonoBehaviour
         insideNotes.Remove(other.gameObject);
         if (showDebug && debugCount < maxDebugLogs)
         {
-            Debug.Log($"[HitZoneTrigger] Lane {laneIndex} EXIT note '{other.gameObject.name}' at Z={other.transform.position.z:F2}. insideNotes={insideNotes.Count}");
+            // Debug.Log($"[HitZoneTrigger] Lane {laneIndex} EXIT note '{other.gameObject.name}' at Z={other.transform.position.z:F2}. insideNotes={insideNotes.Count}");
             debugCount++;
         }
     }

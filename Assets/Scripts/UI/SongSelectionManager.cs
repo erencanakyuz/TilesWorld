@@ -105,7 +105,7 @@ public class SongSelectionManager : MonoBehaviour
         }
 
         availableSongs = songList.ToArray();
-        Debug.Log($"✅ Successfully loaded {availableSongs.Length} songs from SongDatabase!");
+        // Debug.Log($"✅ Successfully loaded {availableSongs.Length} songs from SongDatabase!");
     }
 
     /// <summary>

@@ -12,7 +12,7 @@ Bu maddeler, oyunun temel yapısını ve hissini en çok etkileyecek olan, daha 
     - **Sorun:** `GameplayManager` gibi sınıflar, diğer sistemlere olan referansları oyun başında arayarak buluyor. Bu hem yavaş hem de kırılgandır.
     - **Görev:** Bu referansları `[SerializeField]` olarak bırakıp, `Awake`/`Start` içindeki atamaları kaldırarak Unity Inspector üzerinden manuel olarak atamak.
 
-3.  **Merkezi Loglama Sistemi**
+3.  **Merkezi Loglama Sistemi**//test 1
     - **Sorun:** `Debug.Log` çağrıları projenin çeşitli yerlerine dağılmış durumda ve release build'lerde bile performans maliyeti oluşturuyor.
     - **Görev:** Tüm loglama işlemlerini, release build'lerde otomatik olarak devre dışı kalacak merkezi bir `Logger` sınıfı üzerinden yapmak.
 

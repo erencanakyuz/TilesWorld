@@ -18,7 +18,7 @@ public class GameManager : MonoBehaviour
             var bootstrapScene = SceneManager.GetSceneByName("Bootstrap");
             if (!bootstrapScene.isLoaded)
             {
-                Debug.Log("Editor'de oyun başlatıldı, Bootstrap sahnesi yükleniyor...");
+                // Debug.Log("Editor'de oyun başlatıldı, Bootstrap sahnesi yükleniyor...");
                 SceneManager.LoadScene("Bootstrap", LoadSceneMode.Additive);
             }
         }
@@ -98,21 +98,21 @@ public class GameManager : MonoBehaviour
         // Subscribe to UI events
         if (UIManager.Instance != null)
         {
-            Debug.Log("🔗 Subscribing to UIManager events...");
+            // Debug.Log("🔗 Subscribing to UIManager events...");
             UIManager.Instance.OnPausePressed += HandlePauseButtonPressed;
             UIManager.Instance.OnSettingsPressed += HandleSettingsButtonPressed;
             UIManager.Instance.OnResumePressed += HandleResumeButtonPressed;
             UIManager.Instance.OnRestartPressed += HandleRestartButtonPressed;
             UIManager.Instance.OnMainMenuPressed += HandleMainMenuButtonPressed;
-            Debug.Log("✅ UIManager event subscriptions complete!");
+            // Debug.Log("✅ UIManager event subscriptions complete!");
 
             // Test if events are properly connected
             int restartListenerCount = UIManager.Instance.OnRestartPressed?.GetInvocationList()?.Length ?? 0;
-            Debug.Log($"🔢 OnRestartPressed has {restartListenerCount} listeners");
+            // Debug.Log($"🔢 OnRestartPressed has {restartListenerCount} listeners");
         }
         else
         {
-            Debug.LogError("❌ UIManager.Instance is NULL during GameManager initialization!");
+            // Debug.LogError("❌ UIManager.Instance is NULL during GameManager initialization!");
         }
 
         // This just verifies they're working
@@ -120,7 +120,7 @@ public class GameManager : MonoBehaviour
             UIManager.Instance != null &&
             InputManager.Instance != null)
         {
-            Debug.Log("🎮 All core systems initialized successfully");
+            // Debug.Log("🎮 All core systems initialized successfully");
         }
     }
 
@@ -154,7 +154,7 @@ public class GameManager : MonoBehaviour
 
         OnGameStateChanged?.Invoke(newState);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"Game state changed to: {newState}. Target FPS set to {Application.targetFrameRate}.");
+        // Debug.Log($"Game state changed to: {newState}. Target FPS set to {Application.targetFrameRate}.");
 #endif
 
         // Handle state-specific logic
@@ -314,7 +314,7 @@ public class GameManager : MonoBehaviour
             UpdatePlayerDataInMemory();
             ChangeGameState(GameState.GameOver);
 
-            Debug.Log($"🏁 Session ended - Score: {currentSession.currentScore}, Combo: {currentSession.currentCombo}");
+            // Debug.Log($"🏁 Session ended - Score: {currentSession.currentScore}, Combo: {currentSession.currentCombo}");
         }
     }
 
@@ -386,14 +386,14 @@ public class GameManager : MonoBehaviour
 
     void HandleRestartButtonPressed()
     {
-        Debug.Log("🔄 Restart button pressed. Reloading current scene...");
+        // Debug.Log("🔄 Restart button pressed. Reloading current scene...");
         Time.timeScale = 1f; // Ensure time is running
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     void HandleMainMenuButtonPressed()
     {
-        Debug.Log("🏠 Main Menu button pressed. Loading MainScene...");
+        // Debug.Log("🏠 Main Menu button pressed. Loading MainScene...");
         Time.timeScale = 1f; // Ensure time is running
         SceneManager.LoadScene("MainScene"); // Assuming your main menu scene is named "MainScene"
     }
@@ -445,7 +445,7 @@ public class GameManager : MonoBehaviour
         {
             GameObject songDbObject = new GameObject("SongDatabase");
             songDbObject.AddComponent<SongDatabase>();
-            Debug.Log("🎵 SongDatabase created by GameManager (Bootstrap fallback)");
+            // Debug.Log("🎵 SongDatabase created by GameManager (Bootstrap fallback)");
         }
     }
 

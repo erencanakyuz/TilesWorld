@@ -83,11 +83,11 @@ public class GameplayManager : MonoBehaviour
             uiManager = UIManager.Instance;
 
         // Log errors if critical components are missing after attempting to find them
-        if (noteCreator == null) Debug.LogError("GameplayManager Error: GameNoteCreator reference not set and could not be found in scene!");
-        if (noteRenderer == null) Debug.LogError("GameplayManager Error: NoteRenderer reference not set and could not be found in scene!");
-        if (musicSystem == null) Debug.LogError("GameplayManager Error: InteractiveMusicSystem reference not set and could not be found in scene!");
-        if (audioManager == null) Debug.LogError("GameplayManager Error: AudioManager instance not available!");
-        if (uiManager == null) Debug.LogError("GameplayManager Error: UIManager instance not available!");
+        // if (noteCreator == null) Debug.LogError("GameplayManager Error: GameNoteCreator reference not set and could not be found in scene!");
+        // if (noteRenderer == null) Debug.LogError("GameplayManager Error: NoteRenderer reference not set and could not be found in scene!");
+        // if (musicSystem == null) Debug.LogError("GameplayManager Error: InteractiveMusicSystem reference not set and could not be found in scene!");
+        // if (audioManager == null) Debug.LogError("GameplayManager Error: AudioManager instance not available!");
+        // if (uiManager == null) Debug.LogError("GameplayManager Error: UIManager instance not available!");
 
         SetupGameplaySystems();
     }
@@ -238,7 +238,7 @@ public class GameplayManager : MonoBehaviour
         currentSong.noteChartPath = $"Song_Note_Jsons/Individual/{songInfo.songKey}";
         currentSong.songKey = songInfo.songKey;
 
-        Debug.Log($"🎮 Starting gameplay via SongDatabase: {currentSong.songName} by {currentSong.artist} (Tempo: {songInfo.tempo})");
+        // Debug.Log($"🎮 Starting gameplay via SongDatabase: {currentSong.songName} by {currentSong.artist} (Tempo: {songInfo.tempo})");
         StartCoroutine(StartGameplaySequence());
     }
 
