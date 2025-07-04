@@ -13,7 +13,8 @@ public class NoteAnimator : MonoBehaviour
     private Transform noteTransform;
     private NoteRenderer spawner;
     private GameNoteInfo noteInfo;
-    private Material originalMaterial;
+    private MaterialPropertyBlock propertyBlock;
+    private Color originalColor;
     private bool isAnimatingHit = false;
 
     [Header("Hit Animation Settings")]
@@ -31,7 +32,10 @@ public class NoteAnimator : MonoBehaviour
     {
         noteRenderer = GetComponent<Renderer>();
         noteTransform = transform;
-        originalMaterial = noteRenderer.material;
+        propertyBlock = new MaterialPropertyBlock();
+        
+        // Get original color from shared material (no instance creation)
+        originalColor = noteRenderer.sharedMaterial.color;
     }
 
     /// <summary>
@@ -53,15 +57,22 @@ public class NoteAnimator : MonoBehaviour
         // Reset state
         isAnimatingHit = false;
         noteTransform.localScale = Vector3.one * 0.5f;
-        Color c = originalMaterial.color;
-        noteRenderer.material.color = new Color(c.r, c.g, c.b, 0f);
+        
+        // Set transparent using PropertyBlock (no material instance creation)
+        Color transparentColor = new Color(originalColor.r, originalColor.g, originalColor.b, 0f);
+        propertyBlock.SetColor("_BaseColor", transparentColor);
+        noteRenderer.SetPropertyBlock(propertyBlock);
 
         // Create animation sequence
         Sequence spawnSequence = DOTween.Sequence();
 
         // Fade in and scale up with bounce
         spawnSequence.Join(noteTransform.DOScale(1f, 0.4f).SetEase(Ease.OutBack));
-        spawnSequence.Join(noteRenderer.material.DOFade(1f, 0.3f));
+        spawnSequence.Join(DOTween.To(() => transparentColor.a, x => {
+            transparentColor.a = x;
+            propertyBlock.SetColor("_BaseColor", transparentColor);
+            noteRenderer.SetPropertyBlock(propertyBlock);
+        }, 1f, 0.3f));
 
         // Flow to target position (linear, constant speed)
         noteTransform.DOMove(targetPosition, duration)
@@ -79,7 +90,7 @@ public class NoteAnimator : MonoBehaviour
 
         // Kill any ongoing animations
         noteTransform.DOKill();
-        noteRenderer.material.DOKill();
+        // No need to kill material animations since we use PropertyBlock
 
         // Create hit animation sequence
         Sequence hitSequence = DOTween.Sequence();
@@ -89,36 +100,61 @@ public class NoteAnimator : MonoBehaviour
             case HitAccuracy.Perfect:
                 // Explosive perfect hit animation
                 Color perfectColor = new Color(0f, 1f, 1f, 1f); // Cyan
-                noteRenderer.material.DOColor(perfectColor, "_BaseColor", 0.1f);
+                
+                // Set colors using PropertyBlock
+                propertyBlock.SetColor("_BaseColor", perfectColor);
+                if (noteRenderer.sharedMaterial.HasProperty("_EmissionColor"))
+                {
+                    propertyBlock.SetColor("_EmissionColor", perfectColor * 2f);
+                }
+                noteRenderer.SetPropertyBlock(propertyBlock);
 
                 hitSequence.Append(noteTransform.DOPunchScale(Vector3.one * hitScalePunchAmount, hitScalePunchDuration, 2, 0.5f));
                 hitSequence.Join(noteTransform.DORotate(new Vector3(0, 0, hitRotationAmount), hitScalePunchDuration, RotateMode.FastBeyond360));
-                hitSequence.Join(noteRenderer.material.DOFade(0f, hitFadeOutDuration).SetDelay(0.1f));
-
-                // Add emission flash
-                if (noteRenderer.material.HasProperty("_EmissionColor"))
-                {
-                    hitSequence.Join(noteRenderer.material.DOColor(perfectColor * 2f, "_EmissionColor", 0.1f));
-                }
+                
+                // Fade out using PropertyBlock
+                hitSequence.Join(DOTween.To(() => perfectColor.a, x => {
+                    perfectColor.a = x;
+                    propertyBlock.SetColor("_BaseColor", perfectColor);
+                    noteRenderer.SetPropertyBlock(propertyBlock);
+                }, 0f, hitFadeOutDuration).SetDelay(0.1f));
                 break;
 
             case HitAccuracy.Good:
                 // Good hit animation - simpler but still satisfying
                 Color goodColor = new Color(0f, 1f, 0f, 1f); // Green
-                noteRenderer.material.DOColor(goodColor, "_BaseColor", 0.1f);
+                
+                // Set color using PropertyBlock
+                propertyBlock.SetColor("_BaseColor", goodColor);
+                noteRenderer.SetPropertyBlock(propertyBlock);
 
                 hitSequence.Append(noteTransform.DOPunchScale(Vector3.one * (hitScalePunchAmount * 0.7f), hitScalePunchDuration, 1, 0.5f));
                 hitSequence.Join(noteTransform.DORotate(new Vector3(0, 0, hitRotationAmount * 0.5f), hitScalePunchDuration, RotateMode.FastBeyond360));
-                hitSequence.Join(noteRenderer.material.DOFade(0f, hitFadeOutDuration).SetDelay(0.1f));
+                
+                // Fade out using PropertyBlock
+                hitSequence.Join(DOTween.To(() => goodColor.a, x => {
+                    goodColor.a = x;
+                    propertyBlock.SetColor("_BaseColor", goodColor);
+                    noteRenderer.SetPropertyBlock(propertyBlock);
+                }, 0f, hitFadeOutDuration).SetDelay(0.1f));
                 break;
 
             default: // Okay hit
                 // Simple hit animation
                 Color okayColor = new Color(1f, 1f, 0f, 1f); // Yellow
-                noteRenderer.material.DOColor(okayColor, "_BaseColor", 0.1f);
+                
+                // Set color using PropertyBlock
+                propertyBlock.SetColor("_BaseColor", okayColor);
+                noteRenderer.SetPropertyBlock(propertyBlock);
 
                 hitSequence.Append(noteTransform.DOScale(1.2f, 0.2f).SetEase(Ease.OutCubic));
-                hitSequence.Join(noteRenderer.material.DOFade(0f, hitFadeOutDuration));
+                
+                // Fade out using PropertyBlock
+                hitSequence.Join(DOTween.To(() => okayColor.a, x => {
+                    okayColor.a = x;
+                    propertyBlock.SetColor("_BaseColor", okayColor);
+                    noteRenderer.SetPropertyBlock(propertyBlock);
+                }, 0f, hitFadeOutDuration));
                 break;
         }
 
@@ -136,13 +172,17 @@ public class NoteAnimator : MonoBehaviour
 
         // Kill any ongoing animations
         noteTransform.DOKill();
-        noteRenderer.material.DOKill();
+        // No need to kill material animations since we use PropertyBlock
 
         // Create miss animation sequence
         Sequence missSequence = DOTween.Sequence();
-
-        // Grey out, shrink, and drop down
-        missSequence.Join(noteRenderer.material.DOColor(Color.gray, "_BaseColor", missDropDuration * 0.5f));
+        
+        // Grey out using PropertyBlock
+        Color grayColor = Color.gray;
+        propertyBlock.SetColor("_BaseColor", grayColor);
+        noteRenderer.SetPropertyBlock(propertyBlock);
+        
+        // Shrink and drop down
         missSequence.Join(noteTransform.DOScale(missScaleEndValue, missDropDuration).SetEase(Ease.InBack));
         missSequence.Join(noteTransform.DOMoveY(transform.position.y - missDropDistance, missDropDuration).SetEase(Ease.InCubic));
 
@@ -165,12 +205,14 @@ public class NoteAnimator : MonoBehaviour
         // Reset state before returning to pool
         isAnimatingHit = false;
         noteTransform.localScale = Vector3.one;
-        noteRenderer.material.color = originalMaterial.color;
-
-        if (noteRenderer.material.HasProperty("_EmissionColor"))
+        
+        // Reset colors using PropertyBlock (no material instance creation)
+        propertyBlock.SetColor("_BaseColor", originalColor);
+        if (noteRenderer.sharedMaterial.HasProperty("_EmissionColor"))
         {
-            noteRenderer.material.SetColor("_EmissionColor", Color.black);
+            propertyBlock.SetColor("_EmissionColor", Color.black);
         }
+        noteRenderer.SetPropertyBlock(propertyBlock);
 
         if (spawner != null)
         {
