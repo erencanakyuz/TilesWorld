@@ -172,6 +172,7 @@ public class AudioManager : MonoBehaviour
         AudioClip clip = GetNoteClip(instrument, finalPitch);
 
         // --- DETAILED DEBUG LOG (Editor / Debug Builds) ---
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         if (showDebugLogs)
         {
             var log = new System.Text.StringBuilder();
@@ -184,6 +185,7 @@ public class AudioManager : MonoBehaviour
             log.AppendLine("------------------------------------");
             Debug.Log(log.ToString());
         }
+#endif
         // --- END DEBUG LOG ---
 
         if (clip == null)
@@ -380,8 +382,20 @@ public class AudioManager : MonoBehaviour
             return source;
         }
 
-        // Debug.LogWarning("🎵 Audio source pool exhausted! Consider increasing pool size.");
-        return null;
+        // FIXED: Create new AudioSource instead of returning null
+        if (showDebugLogs) Debug.LogWarning($"🎵 Audio pool exhausted! Expanding from {audioSourcePoolSize} sources.");
+        
+        GameObject audioObject = new GameObject($"PooledAudioSource_{audioSourcePoolSize}");
+        audioObject.transform.SetParent(transform);
+        
+        AudioSource newSource = audioObject.AddComponent<AudioSource>();
+        newSource.playOnAwake = false;
+        newSource.volume = 1.0f;
+        
+        audioSourcePoolSize++; // Track pool growth
+        activeAudioSources.Add(newSource);
+        
+        return newSource;
     }
 
     public AudioClip GetNoteClip(InstrumentType instrument, int pitch)
@@ -435,10 +449,17 @@ public class AudioManager : MonoBehaviour
 
         foreach (string path in possiblePaths)
         {
-            AudioClip clip = Resources.Load<AudioClip>(path);
-            if (clip != null)
+            try
             {
-                return clip;
+                AudioClip clip = Resources.Load<AudioClip>(path);
+                if (clip != null)
+                {
+                    return clip;
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"⚠️ AudioManager: Failed to load audio at path '{path}': {e.Message}");
             }
         }
 

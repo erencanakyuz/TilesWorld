@@ -47,13 +47,21 @@ public class UIManager : MonoBehaviour
     [Header("⚙️ UI Configuration")]
     [SerializeField] private float effectDuration = 1.0f;
     [SerializeField] private AnimationCurve fadeAnimation;
-    // Removed unused field adaptiveUISize
+    [SerializeField] private bool enableDebugLogging = false;
+    [SerializeField] private bool enableFallbackUI = true;
 
     // UI State Management
     private Dictionary<GameState, GameObject> statePanelPrefabs;
     private GameObject currentPanelInstance;
     private Queue<GameObject> hitEffectPool;
     private List<ActiveHitEffect> activeEffects;
+    
+    // PERFORMANCE: Cache UI elements to avoid repeated searches
+    private readonly Dictionary<string, Component> cachedUIElements = new Dictionary<string, Component>();
+    
+    // PERFORMANCE: Cache string formatting to reduce GC allocations
+    private readonly System.Text.StringBuilder stringBuilder = new System.Text.StringBuilder(32);
+    private int lastDisplayedScore = -1;
 
     // UI Data
     private int currentScore = 0;
@@ -140,27 +148,28 @@ public class UIManager : MonoBehaviour
 
     bool AutoFindUIElements()
     {
-        // Debug.Log("🔍 AutoFindUIElements başlatılıyor...");
-        bool success = true;
-
-        // Canvas'ları akıllı şekilde bul
-        success &= FindCanvases();
-        // Debug.Log($"   FindCanvases result: {success}");
-
-        // HUD elemanlarını HUDCanvas içinde ara
-        success &= FindHUDElements();
-        // Debug.Log($"   FindHUDElements result: {success}");
-
-        // Efekt parent'ını overlay canvas'ta ara
-        success &= FindEffectElements();
-        // Debug.Log($"   FindEffectElements result: {success}");
-
-        // Mobil kontrolleri ara
-        success &= FindMobileControls();
-        // Debug.Log($"   FindMobileControls result: {success}");
-
-        // Debug.Log($"🎯 AutoFindUIElements tamamlandı: {success}");
-        return success;
+        if (enableDebugLogging) Debug.Log("🔍 UI System: Starting element discovery...");
+        
+        bool canvasSuccess = FindCanvases();
+        bool hudSuccess = FindHUDElements();
+        bool effectSuccess = FindEffectElements();
+        bool mobileSuccess = FindMobileControls();
+        
+        // STABILITY: Create fallback UI if critical elements missing
+        if (!canvasSuccess || !hudSuccess)
+        {
+            Debug.LogWarning("⚠️ UI System: Critical elements missing, creating fallbacks...");
+            CreateFallbackUI();
+        }
+        
+        bool overallSuccess = canvasSuccess && hudSuccess && effectSuccess;
+        
+        if (enableDebugLogging) 
+        {
+            Debug.Log($"🎯 UI Discovery Complete - Canvas: {canvasSuccess}, HUD: {hudSuccess}, Effects: {effectSuccess}, Mobile: {mobileSuccess}");
+        }
+        
+        return overallSuccess;
     }
 
     bool FindCanvases()
@@ -238,23 +247,119 @@ public class UIManager : MonoBehaviour
 
     bool FindMobileControls()
     {
-        // Butonları tüm canvas'larda ara
-        var allButtons = FindObjectsByType<Button>(FindObjectsSortMode.None);
+        // PERFORMANCE: Cache button search results
+        if (cachedUIElements.ContainsKey("buttons_searched"))
+        {
+            // Use cached results
+            cachedUIElements.TryGetValue("pause_button", out var cachedPause);
+            cachedUIElements.TryGetValue("settings_button", out var cachedSettings);
+            pauseButton = cachedPause as Button;
+            settingsButton = cachedSettings as Button;
+        }
+        else
+        {
+            // First time search - find buttons more efficiently in canvas hierarchy
+            var allButtons = new List<Button>();
+            Canvas[] searchCanvases = { mainCanvas, hudCanvas, overlayCanvas };
+            
+            foreach (Canvas canvas in searchCanvases)
+            {
+                if (canvas != null)
+                {
+                    allButtons.AddRange(canvas.GetComponentsInChildren<Button>());
+                }
+            }
 
-        pauseButton = System.Array.Find(allButtons, b =>
-            b.name.ToLower().Contains("pause"));
+            pauseButton = allButtons.Find(b => b.name.ToLower().Contains("pause"));
+            settingsButton = allButtons.Find(b => 
+                b.name.ToLower().Contains("settings") || 
+                b.name.ToLower().Contains("setting"));
 
-        settingsButton = System.Array.Find(allButtons, b =>
-            b.name.ToLower().Contains("settings") ||
-            b.name.ToLower().Contains("setting"));
+            // Cache results for next time
+            cachedUIElements["buttons_searched"] = pauseButton; // Just a marker
+            if (pauseButton != null) cachedUIElements["pause_button"] = pauseButton;
+            if (settingsButton != null) cachedUIElements["settings_button"] = settingsButton;
+        }
 
-        // Mobile controls container'ını ara
-        var allGameObjects = FindObjectsByType<GameObject>(FindObjectsSortMode.None);
-        mobileControls = System.Array.Find(allGameObjects, go =>
-            go.name.ToLower().Contains("mobile") &&
-            go.name.ToLower().Contains("control"));
+        // PERFORMANCE: Search mobile controls more efficiently - avoid scanning ALL GameObjects
+        mobileControls = null;
+        
+        // First try to find it in known canvases (much faster)
+        Canvas[] mobileSearchCanvases = { mainCanvas, hudCanvas, overlayCanvas };
+        foreach (Canvas canvas in mobileSearchCanvases)
+        {
+            if (canvas != null)
+            {
+                Transform found = canvas.transform.Find("MobileControls") ?? 
+                                canvas.transform.Find("Mobile Controls") ??
+                                canvas.transform.Find("MobileControl");
+                if (found != null)
+                {
+                    mobileControls = found.gameObject;
+                    break;
+                }
+            }
+        }
+        
+        // Fallback: Search only in UI hierarchy if not found (still much faster than all GameObjects)
+        if (mobileControls == null && mainCanvas != null)
+        {
+            Transform[] canvasChildren = mainCanvas.GetComponentsInChildren<Transform>();
+            mobileControls = System.Array.Find(canvasChildren, t =>
+                t.name.ToLower().Contains("mobile") &&
+                t.name.ToLower().Contains("control"))?.gameObject;
+        }
 
         return true; // Mobil kontroller opsiyonel
+    }
+
+    /// <summary>
+    /// STABILITY: Creates fallback UI elements if main ones are missing
+    /// </summary>
+    private void CreateFallbackUI()
+    {
+        if (!enableFallbackUI) return;
+
+        // Create main canvas if missing
+        if (mainCanvas == null)
+        {
+            GameObject canvasGO = new GameObject("FallbackMainCanvas");
+            mainCanvas = canvasGO.AddComponent<Canvas>();
+            mainCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvasGO.AddComponent<CanvasScaler>();
+            canvasGO.AddComponent<GraphicRaycaster>();
+            
+            Debug.Log("✅ UI System: Created fallback main canvas");
+        }
+
+        // Create HUD canvas if missing
+        if (hudCanvas == null)
+        {
+            GameObject hudGO = new GameObject("FallbackHUDCanvas");
+            hudCanvas = hudGO.AddComponent<Canvas>();
+            hudCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            hudCanvas.sortingOrder = 10;
+            hudGO.AddComponent<CanvasScaler>();
+            hudGO.AddComponent<GraphicRaycaster>();
+            
+            Debug.Log("✅ UI System: Created fallback HUD canvas");
+        }
+
+        // Create overlay canvas if missing
+        if (overlayCanvas == null)
+        {
+            GameObject overlayGO = new GameObject("FallbackOverlayCanvas");
+            overlayCanvas = overlayGO.AddComponent<Canvas>();
+            overlayCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            overlayCanvas.sortingOrder = 100;
+            overlayGO.AddComponent<CanvasScaler>();
+            overlayGO.AddComponent<GraphicRaycaster>();
+            
+            Debug.Log("✅ UI System: Created fallback overlay canvas");
+        }
+
+        // Configure all canvases for consistent scaling
+        ConfigureCanvasScalers();
     }
 
 
@@ -643,7 +748,7 @@ public class UIManager : MonoBehaviour
         {
             // Debug.Log($"✅ Found restart button: {restartButton.name}");
             restartButton.onClick.RemoveAllListeners();
-            restartButton.onClick.AddListener(() => GameManager.Instance.RestartGame());
+            restartButton.onClick.AddListener(() => GameManager.Instance?.RestartGame());
 
             // Also update the text to be more descriptive, including the shortcut
             var restartText = restartButton.GetComponentInChildren<TextMeshProUGUI>();
@@ -701,10 +806,19 @@ public class UIManager : MonoBehaviour
 
         if (scoreText != null)
         {
-            scoreText.text = currentScore.ToString("N0");
+            // PERFORMANCE: Only update UI text if score actually changed
+            if (currentScore != lastDisplayedScore)
+            {
+                lastDisplayedScore = currentScore;
+                
+                // PERFORMANCE: Use StringBuilder to avoid GC allocations
+                stringBuilder.Clear();
+                stringBuilder.Append(currentScore.ToString("N0"));
+                scoreText.text = stringBuilder.ToString();
 
-            // Add score change animation
-            StartCoroutine(ScaleTextEffect(scoreText.transform));
+                // Add score change animation
+                StartCoroutine(ScaleTextEffect(scoreText.transform));
+            }
         }
     }
 
@@ -1067,10 +1181,35 @@ public class UIManager : MonoBehaviour
 
     void OnDestroy()
     {
-        // Unsubscribe from events
-        GameManager.OnGameStateChanged -= HandleGameStateChange;
-        GameManager.OnScoreChanged -= UpdateScore;
-        GameManager.OnComboChanged -= UpdateCombo;
+        // STABILITY: Safe event unsubscription with try-catch
+        try
+        {
+            GameManager.OnGameStateChanged -= HandleGameStateChange;
+            GameManager.OnScoreChanged -= UpdateScore;
+            GameManager.OnComboChanged -= UpdateCombo;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"⚠️ UI System: Error during event cleanup: {e.Message}");
+        }
+
+        // Clean up cached elements
+        cachedUIElements?.Clear();
+        
+        // Clear active effects to prevent memory leaks
+        if (activeEffects != null)
+        {
+            foreach (var effect in activeEffects)
+            {
+                if (effect?.effectObject != null)
+                {
+                    Destroy(effect.effectObject);
+                }
+            }
+            activeEffects.Clear();
+        }
+
+        if (enableDebugLogging) Debug.Log("🧹 UI System: Cleanup completed");
     }
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -1087,6 +1226,9 @@ public class UIManager : MonoBehaviour
 
     void Update()
     {
+        // PERFORMANCE: Skip processing when no effects are active
+        if (activeEffects.Count == 0) return;
+        
         // Animate all active hit effects in a single loop to avoid coroutine overhead
         for (int i = activeEffects.Count - 1; i >= 0; i--)
         {

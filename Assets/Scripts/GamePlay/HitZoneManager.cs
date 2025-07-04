@@ -24,6 +24,14 @@ public class HitZoneManager : MonoBehaviour
     [Tooltip("The ideal Z-position for a note to be hit. Must match NoteRenderer's hitZoneZ.")]
     public float hitLineZ = 0.0f;
 
+    [Header("🎯 Scoring Configuration")]
+    [Tooltip("Points awarded for perfect hits")]
+    [SerializeField] private int perfectHitPoints = 300;
+    [Tooltip("Points awarded for good hits")]
+    [SerializeField] private int goodHitPoints = 100;
+    [Tooltip("Points awarded for okay hits")]
+    [SerializeField] private int okayHitPoints = 50;
+
     [Header("✨ Visuals")]
     [Tooltip("Drag the Enhanced_HitZoneVisual prefab here.")]
     [SerializeField] private GameObject hitZoneVisualPrefab;
@@ -206,7 +214,15 @@ public class HitZoneManager : MonoBehaviour
 
     void HandleLaneTap(int lane, Vector2 screenPos)
     {
-        EvaluateHit(lane, screenPos);
+        // STABILITY: Add error handling for hit evaluation
+        try
+        {
+            EvaluateHit(lane, screenPos);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"⚠️ HitZoneManager: Error processing lane tap for lane {lane}: {e.Message}");
+        }
     }
 
     void EvaluateHit(int lane, Vector2 screenPos)
@@ -287,12 +303,12 @@ public class HitZoneManager : MonoBehaviour
         // 5. Flash hit zone with appropriate color
         FlashHitZone(acc);
 
-        // 6. Update score (UNCHANGED)
+        // 6. Update score using configurable point values
         int points = acc switch
         {
-            HitAccuracy.Perfect => 300,
-            HitAccuracy.Good => 100,
-            _ => 50 // Okay hit
+            HitAccuracy.Perfect => perfectHitPoints,
+            HitAccuracy.Good => goodHitPoints,
+            _ => okayHitPoints // Okay hit
         };
         GameManager.Instance?.UpdateScore(points);
         
