@@ -458,8 +458,8 @@ public class MusicalIntegritySystem : MonoBehaviour
                 float variability = recentNoteIntervals.Select(x => Mathf.Abs(x - averageInterval)).Average();
                 float flowSmoothness = 1f - Mathf.Clamp01(variability / averageInterval);
 
-                // Warning for choppy flow
-                if (flowSmoothness < 0.7f && enableMusicalWarnings)
+                // Warning for choppy flow - made less sensitive
+                if (flowSmoothness < 0.5f && enableMusicalWarnings)
                 {
                     Debug.LogWarning($"🎵 MUSICAL FLOW WARNING: Choppy audio detected! " +
                                    $"Flow smoothness: {flowSmoothness:F2}, Song: {currentSongKey}");

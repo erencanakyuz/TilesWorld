@@ -314,13 +314,8 @@ public class GameplayManager : MonoBehaviour
     {
         if (showDebugLogs) Debug.Log("🎮 Preparing gameplay systems...");
 
-        // 🎼 MUSICAL INTEGRITY SYSTEM KURULUMU
-        if (MusicalIntegritySystem.Instance == null)
-        {
-            var musicalIntegrityGO = new GameObject("MusicalIntegritySystem");
-            musicalIntegrityGO.AddComponent<MusicalIntegritySystem>();
-            if (showDebugLogs) Debug.Log("🎼 Musical Integrity System created and initialized");
-        }
+        // 🎼 MUSICAL INTEGRITY SYSTEM - Bootstrap tarafından oluşturuldu, sadece referansı al
+        // Bootstrap.cs artık bu sistemi garanti ediyor, manuel oluşturmaya gerek yok
 
         ResetGameplayStats();
 

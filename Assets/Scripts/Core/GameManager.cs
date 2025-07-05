@@ -18,7 +18,6 @@ public class GameManager : MonoBehaviour
             var bootstrapScene = SceneManager.GetSceneByName("Bootstrap");
             if (!bootstrapScene.isLoaded)
             {
-                // Debug.Log("Editor'de oyun başlatıldı, Bootstrap sahnesi yükleniyor...");
                 SceneManager.LoadScene("Bootstrap", LoadSceneMode.Additive);
             }
         }
@@ -98,13 +97,11 @@ public class GameManager : MonoBehaviour
         // Subscribe to UI events
         if (UIManager.Instance != null)
         {
-            // Debug.Log("🔗 Subscribing to UIManager events...");
             UIManager.Instance.OnPausePressed += HandlePauseButtonPressed;
             UIManager.Instance.OnSettingsPressed += HandleSettingsButtonPressed;
             UIManager.Instance.OnResumePressed += HandleResumeButtonPressed;
             UIManager.Instance.OnRestartPressed += HandleRestartButtonPressed;
             UIManager.Instance.OnMainMenuPressed += HandleMainMenuButtonPressed;
-            // Debug.Log("✅ UIManager event subscriptions complete!");
 
             // Test if events are properly connected
             int restartListenerCount = UIManager.Instance.OnRestartPressed?.GetInvocationList()?.Length ?? 0;
@@ -112,7 +109,6 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            // Debug.LogError("❌ UIManager.Instance is NULL during GameManager initialization!");
         }
 
         // This just verifies they're working
@@ -120,7 +116,6 @@ public class GameManager : MonoBehaviour
             UIManager.Instance != null &&
             InputManager.Instance != null)
         {
-            // Debug.Log("🎮 All core systems initialized successfully");
         }
     }
 
@@ -154,7 +149,6 @@ public class GameManager : MonoBehaviour
 
         OnGameStateChanged?.Invoke(newState);
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        // Debug.Log($"Game state changed to: {newState}. Target FPS set to {Application.targetFrameRate}.");
 #endif
 
         // Handle state-specific logic
@@ -202,13 +196,11 @@ public class GameManager : MonoBehaviour
     #region Scene Management
     public void LoadScene(string sceneName)
     {
-        // Debug.Log($"🎭 Loading scene: {sceneName}");
         SceneManager.LoadScene(sceneName);
     }
 
     public async void LoadSceneAsync(string sceneName)
     {
-        // Debug.Log($"🎭 Loading scene async: {sceneName}");
 
         var operation = SceneManager.LoadSceneAsync(sceneName);
 
@@ -217,7 +209,6 @@ public class GameManager : MonoBehaviour
             await System.Threading.Tasks.Task.Yield();
         }
 
-        // Debug.Log($"✅ Scene loaded: {sceneName}");
     }
     #endregion
 
@@ -259,7 +250,6 @@ public class GameManager : MonoBehaviour
     public void SavePlayerDataToDisk()
     {
         PlayerPrefs.Save();
-        // Debug.Log("💾 Player data saved to disk");
     }
 
     [System.Obsolete("Use UpdatePlayerDataInMemory and SavePlayerDataToDisk instead for better performance control.")]
@@ -273,7 +263,6 @@ public class GameManager : MonoBehaviour
             PlayerPrefs.SetInt("PreferredInstrument", (int)currentPlayer.preferredInstrument);
             PlayerPrefs.Save();
 
-            // Debug.Log("💾 Player data saved");
         }
     }
     #endregion
@@ -294,7 +283,6 @@ public class GameManager : MonoBehaviour
         };
 
         ChangeGameState(GameState.Playing);
-        // Debug.Log($"🎵 Started new session: {song.songName} with {selectedInstrument}");
     }
 
     public void EndGameSession()
@@ -314,7 +302,6 @@ public class GameManager : MonoBehaviour
             UpdatePlayerDataInMemory();
             ChangeGameState(GameState.GameOver);
 
-            // Debug.Log($"🏁 Session ended - Score: {currentSession.currentScore}, Combo: {currentSession.currentCombo}");
         }
     }
 
@@ -367,33 +354,28 @@ public class GameManager : MonoBehaviour
     #region UI Event Handlers
     void HandlePauseButtonPressed()
     {
-        // Debug.Log("🎮 Pause button pressed");
         PauseGame();
     }
 
     void HandleSettingsButtonPressed()
     {
-        // Debug.Log("⚙️ Settings button pressed");
         // TODO: Settings panel functionality will be added later
         // For now, just open a simple settings overlay
     }
 
     void HandleResumeButtonPressed()
     {
-        // Debug.Log("▶️ Resume button pressed");
         ResumeGame();
     }
 
     void HandleRestartButtonPressed()
     {
-        // Debug.Log("🔄 Restart button pressed. Reloading current scene...");
         Time.timeScale = 1f; // Ensure time is running
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     void HandleMainMenuButtonPressed()
     {
-        // Debug.Log("🏠 Main Menu button pressed. Loading MainScene...");
         Time.timeScale = 1f; // Ensure time is running
         SceneManager.LoadScene("MainScene"); // Assuming your main menu scene is named "MainScene"
     }
@@ -445,7 +427,6 @@ public class GameManager : MonoBehaviour
         {
             GameObject songDbObject = new GameObject("SongDatabase");
             songDbObject.AddComponent<SongDatabase>();
-            // Debug.Log("🎵 SongDatabase created by GameManager (Bootstrap fallback)");
         }
     }
 
@@ -476,7 +457,6 @@ public class GameManager : MonoBehaviour
         // Debug: S tuşuna basınca Song Selection'a geç
         if (Keyboard.current.sKey.wasPressedThisFrame)
         {
-            // Debug.Log("🎵 Switching to Song Selection state...");
             ChangeGameState(GameState.SongSelection);
         }
 #endif

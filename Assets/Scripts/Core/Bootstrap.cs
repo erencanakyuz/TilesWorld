@@ -47,25 +47,30 @@ public class Bootstrap : MonoBehaviour
     /// </summary>
     void InitializeCoreSystemsFirst()
     {
-        // SongDatabase singleton'u oluştur
+        // 1. Görsel ve Animasyon Altyapısı (En başta olmalı)
+        InitializeDOTweenManager();
+
+        // 2. Veri ve Ayarlar
         InitializeSongDatabase();
 
-        // InputManager singleton'u oluştur
+        // 3. Çekirdek Servisler (Veri'den sonra)
+        InitializeAudioManager();
         InitializeInputManager();
 
-        // AudioManager singleton'u oluştur
-        InitializeAudioManager();
+        // 4. Müzik ve Oynanış Mantığı Sistemleri (Çekirdek servislerden sonra)
+        InitializeMusicalIntegritySystem();
+        InitializeInteractiveMusicSystem();
 
-        // UIManager singleton'u oluştur (GameManager'dan önce!)
+        // 5. UI Yöneticisi (Genellikle diğer yöneticilere bağlıdır)
         InitializeUIManager();
 
-        // EventSystem oluştur (UI tıklamaları için CRITICAL!)
+        // 6. UI Etkileşimi için EventSystem (UI'dan sonra, GameManager'dan önce)
         InitializeEventSystem();
 
-        // GameManager'ı en son oluştur (tüm dependency'lerden sonra!)
+        // 7. Ana Oyun Yöneticisi (TÜM diğer sistemlerden sonra!)
         InitializeGameManager();
 
-        Debug.Log("🚀 Core systems initialized during bootstrap");
+        Debug.Log("🚀 Core systems initialized during bootstrap in a controlled order.");
     }
 
     /// <summary>
@@ -167,6 +172,57 @@ public class Bootstrap : MonoBehaviour
         else
         {
             Debug.Log("🎮 EventSystem already exists, skipping initialization");
+        }
+    }
+
+    /// <summary>
+    /// DOTweenEnhancementManager singleton'unu başlatır (EN BAŞTA OLMALI!)
+    /// </summary>
+    void InitializeDOTweenManager()
+    {
+        if (DOTweenEnhancementManager.Instance == null)
+        {
+            GameObject dotweenMgrObject = new GameObject("DOTweenEnhancementManager");
+            dotweenMgrObject.AddComponent<DOTweenEnhancementManager>();
+            Debug.Log("🎨 DOTweenEnhancementManager singleton created during bootstrap");
+        }
+        else
+        {
+            Debug.Log("🎨 DOTweenEnhancementManager already exists, skipping initialization");
+        }
+    }
+
+    /// <summary>
+    /// MusicalIntegritySystem singleton'unu başlatır
+    /// </summary>
+    void InitializeMusicalIntegritySystem()
+    {
+        if (MusicalIntegritySystem.Instance == null)
+        {
+            GameObject musicalMgrObject = new GameObject("MusicalIntegritySystem");
+            musicalMgrObject.AddComponent<MusicalIntegritySystem>();
+            Debug.Log("🎼 MusicalIntegritySystem singleton created during bootstrap");
+        }
+        else
+        {
+            Debug.Log("🎼 MusicalIntegritySystem already exists, skipping initialization");
+        }
+    }
+
+    /// <summary>
+    /// InteractiveMusicSystem singleton'unu başlatır
+    /// </summary>
+    void InitializeInteractiveMusicSystem()
+    {
+        if (InteractiveMusicSystem.Instance == null)
+        {
+            GameObject interactiveMusicObject = new GameObject("InteractiveMusicSystem");
+            interactiveMusicObject.AddComponent<InteractiveMusicSystem>();
+            Debug.Log("🎵 InteractiveMusicSystem singleton created during bootstrap");
+        }
+        else
+        {
+            Debug.Log("🎵 InteractiveMusicSystem already exists, skipping initialization");
         }
     }
 

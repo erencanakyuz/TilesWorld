@@ -64,11 +64,9 @@ public class InputManager : MonoBehaviour
             {
                 positions += $"Lane {i}: {laneWorldPositions[i].x:F2} | ";
             }
-            // Debug.Log($"[IM-STEP-1] Initialized World Positions: {positions}");
         }
         else
         {
-            // Debug.LogError("[IM-STEP-1] laneWorldPositions could not be initialized!");
         }
         // =========================================================
     }
@@ -289,25 +287,11 @@ public class InputManager : MonoBehaviour
         }
     }
 
-    string GetKeyForLane(int lane)
-    {
-        return lane switch
-        {
-            0 => "Q",
-            1 => "W",
-            2 => "E",
-            3 => "R",
-            4 => "T",
-            5 => "Y",
-            _ => "Unknown"
-        };
-    }
 
     int ScreenPositionToLane(Vector2 screenPosition)
     {
         if (mainCamera == null || laneWorldPositions == null || laneWorldPositions.Length == 0)
         {
-            // Debug.LogError($"[IM-STEP-2] ScreenPositionToLane failed. Cam Null: {mainCamera == null}, Positions Null/Empty: {laneWorldPositions == null || laneWorldPositions.Length == 0}");
             return 0;
         }
 
@@ -333,9 +317,6 @@ public class InputManager : MonoBehaviour
             }
         }
 
-        // ================== ADIM 2: KONTROL LOGU (KALDIRILDI) ==================
-        // Debug.Log($"[IM-STEP-2] Touch screenPos: ({screenPosition.x:F2}, {screenPosition.y:F2}) -> worldPos: {worldPosition.x:F2} -> Detected Lane: {closestLane}");
-        // =====================================================================
 
         return closestLane;
     }

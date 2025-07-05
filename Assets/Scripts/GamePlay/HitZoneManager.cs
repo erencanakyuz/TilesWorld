@@ -374,6 +374,22 @@ public class HitZoneManager : MonoBehaviour
         SpawnParticleEffect(transform.position, HitAccuracy.Good);
         FlashHitZone(HitAccuracy.Good);
     }
+
+    /// <summary>
+    /// Public metot - Test scriptleri için particle prefab'ını döndürür
+    /// Reflection kullanımını önlemek için eklendi
+    /// </summary>
+    public GameObject GetParticlePrefabForAccuracy(HitAccuracy accuracy)
+    {
+        return accuracy switch
+        {
+            HitAccuracy.Perfect => perfectHitEffectPrefab,
+            HitAccuracy.Good => goodHitEffectPrefab,
+            HitAccuracy.Okay => goodHitEffectPrefab, // Okay için de Good efekti kullanılıyor
+            HitAccuracy.Miss => missEffectPrefab,
+            _ => null
+        };
+    }
 }
 
 /// <summary>
