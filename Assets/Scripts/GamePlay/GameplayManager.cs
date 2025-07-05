@@ -45,7 +45,6 @@ public class GameplayManager : MonoBehaviour
 
     // Game state management
     private bool isGameActive = false;
-    private bool isGamePaused = false;
     private bool _isCountingDown = false;
 
     // Public property for countdown state
@@ -158,7 +157,7 @@ public class GameplayManager : MonoBehaviour
     /// </summary>
     void Update()
     {
-        if (!isGameActive || isGamePaused) return;
+        if (!isGameActive || GameManager.Instance?.CurrentGameState == GameState.Paused) return;
 
         double dspTime = AudioSettings.dspTime;
         float deltaTime = Time.deltaTime;
@@ -364,6 +363,23 @@ public class GameplayManager : MonoBehaviour
                 // NEW: Pass tempo information to GameNoteCreator as planned
                 noteCreator.LoadSong(currentSong); // This will use compatibility layer
 
+                // NEW: Set dynamic hit timing windows based on MusicalIntegritySystem
+                var syncData = MusicalIntegritySystem.Instance?.CalculateOptimalSync(currentSong.songKey, currentSong.bpm);
+                if (syncData != null)
+                {
+                    var hitZoneManager = FindFirstObjectByType<HitZoneManager>();
+                    if (hitZoneManager != null)
+                    {
+                        hitZoneManager.perfectWindowMs = syncData.hitTimingWindows.perfectMs;
+                        hitZoneManager.goodWindowMs = syncData.hitTimingWindows.goodMs;
+                        hitZoneManager.okayWindowMs = syncData.hitTimingWindows.okayMs;
+                        if (showDebugLogs)
+                        {
+                            Debug.Log($"🎯 Hit windows set by MusicalIntegritySystem: P={syncData.hitTimingWindows.perfectMs:F0}ms, G={syncData.hitTimingWindows.goodMs:F0}ms, O={syncData.hitTimingWindows.okayMs:F0}ms");
+                        }
+                    }
+                }
+
                 // TODO: When GameNoteCreator is refactored per RefactorParse.md,
                 // this should become: noteCreator.LoadAndPrepareSong(chartData, currentSong.bpm);
 
@@ -473,16 +489,13 @@ public class GameplayManager : MonoBehaviour
     void BeginActiveGameplay()
     {
         isGameActive = true;
-        isGamePaused = false;
         gameStartTime = Time.time;
         OnGameplayStarted?.Invoke();
     }
 
     public void PauseGameplay()
     {
-        if (!isGameActive || isGamePaused) return;
-
-        isGamePaused = true;
+        if (!isGameActive || GameManager.Instance?.CurrentGameState == GameState.Paused) return;
         Time.timeScale = 0f;
 
         if (audioManager != null)
@@ -500,13 +513,10 @@ public class GameplayManager : MonoBehaviour
 
     public void ResumeGameplay()
     {
-        if (!isGameActive || !isGamePaused)
+        if (!isGameActive || GameManager.Instance?.CurrentGameState != GameState.Paused)
         {
-            //Debug.Log($"🎮 Resume blocked: isGameActive={isGameActive}, isGamePaused={isGamePaused}");
             return;
         }
-
-        isGamePaused = false;
         Time.timeScale = 1f;
 
         if (audioManager != null)
@@ -527,7 +537,6 @@ public class GameplayManager : MonoBehaviour
         if (!isGameActive) return;
 
         isGameActive = false;
-        isGamePaused = false;
         Time.timeScale = 1f;
 
         // Stop audio
@@ -587,11 +596,11 @@ public class GameplayManager : MonoBehaviour
         switch (newState)
         {
             case GameState.Paused:
-                if (isGameActive && !isGamePaused)
+                if (isGameActive && GameManager.Instance?.CurrentGameState != GameState.Paused)
                     PauseGameplay();
                 break;
             case GameState.Playing:
-                if (isGameActive && isGamePaused)
+                if (isGameActive && GameManager.Instance?.CurrentGameState == GameState.Paused)
                     ResumeGameplay();
                 break;
         }
@@ -666,7 +675,7 @@ public class GameplayManager : MonoBehaviour
     #region Public Interface
 
     public bool IsGameActive() => isGameActive;
-    public bool IsGamePaused() => isGamePaused;
+    public bool IsGamePaused() => GameManager.Instance != null && GameManager.Instance.CurrentGameState == GameState.Paused;
     public float GetCurrentGameTime() => currentGameTime;
     public int GetCurrentCombo() => currentCombo;
     public float GetAccuracy() => accuracy;
@@ -701,7 +710,7 @@ public class GameplayManager : MonoBehaviour
 
     void OnApplicationPause(bool pauseStatus)
     {
-        if (enablePauseOnFocusLoss && pauseStatus && isGameActive && !isGamePaused)
+        if (enablePauseOnFocusLoss && pauseStatus && isGameActive && GameManager.Instance?.CurrentGameState != GameState.Paused)
         {
             PauseGameplay();
         }
@@ -710,7 +719,7 @@ public class GameplayManager : MonoBehaviour
     void OnApplicationFocus(bool hasFocus)
     {
 #if !UNITY_EDITOR
-        if (enablePauseOnFocusLoss && !hasFocus && isGameActive && !isGamePaused)
+        if (enablePauseOnFocusLoss && !hasFocus && isGameActive && GameManager.Instance?.CurrentGameState != GameState.Paused)
         {
             PauseGameplay();
         }

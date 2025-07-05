@@ -375,7 +375,7 @@ public class InteractiveMusicSystem : MonoBehaviour
     /// <summary>
     /// Calculate note volume based on JSON duration value
     /// </summary>
-    float CalculateNoteVolume(float duration)
+    public float CalculateNoteVolume(float duration)
     {
         // Duration from JSON (1-9) maps to volume (0.3-1.0)
         return Mathf.Lerp(0.3f, 1.0f, (duration - 1) / 8f);
@@ -486,6 +486,15 @@ public class InteractiveMusicSystem : MonoBehaviour
     void LogSessionSummary()
     {
         // Session logging removed for performance
+    }
+
+    // NEW METHOD: Handle chart note hit for analysis only (no audio)
+    public void ProcessChartNoteHit(GameNoteInfo noteInfo)
+    {
+        if (noteInfo == null) return;
+
+        float noteVolume = CalculateNoteVolume(noteInfo.duration);
+        ProcessMusicalEvent(noteInfo, noteVolume);
     }
     #endregion
 

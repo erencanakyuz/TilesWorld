@@ -291,10 +291,16 @@ public class HitZoneManager : MonoBehaviour
             Destroy(noteObj);
         }
 
-        // 3. Trigger sound and music systems (UNCHANGED)
+        // 3. Trigger sound and music systems (UPDATED)
         if (noteInfo != null)
         {
-            InteractiveMusicSystem.Instance?.PlayNoteFromChart(noteInfo);
+            // Play audio directly
+            var instrument = GameManager.Instance != null ? GameManager.Instance.GetSelectedInstrument() : InstrumentType.Piano;
+            float volume = InteractiveMusicSystem.Instance != null ? InteractiveMusicSystem.Instance.CalculateNoteVolume(noteInfo.duration) : 1.0f;
+            AudioManager.Instance?.PlayNote(instrument, noteInfo.pitch, volume, useJavaMapping: true, line: noteInfo.line);
+
+            // Notify IMS for musical analysis only
+            InteractiveMusicSystem.Instance?.ProcessChartNoteHit(noteInfo);
         }
 
         // 4. Spawn proper particle effect
