@@ -433,5 +433,12 @@ public class NoteRenderer : MonoBehaviour
     }
 
     // Debug method removed - was only for development testing
+
+    /// <summary>
+    /// PERFORMANCE OPTIMIZATION: Public accessors for TimingAnalyzer (eliminates reflection usage)
+    /// </summary>
+    public float GetHitZoneZ() => hitZoneZ;
+    public float GetSpawnZ() => spawnZ;
+    
     #endregion
 }

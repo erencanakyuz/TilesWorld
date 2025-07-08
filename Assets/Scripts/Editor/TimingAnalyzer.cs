@@ -92,39 +92,32 @@ public class TimingAnalyzer : EditorWindow
             }
         }
 
-        // Analyze NoteRenderer speed using reflection since fields are private
+        // Analyze NoteRenderer speed using public accessor methods (no reflection needed)
         NoteRenderer noteRenderer = FindFirstObjectByType<NoteRenderer>();
         if (noteRenderer != null)
         {
             Debug.Log($"📊 NOTE RENDERER:");
 
-            // Use reflection to access private serialized fields
-            var speedField = typeof(NoteRenderer).GetField("speedMultiplier", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var hitZoneField = typeof(NoteRenderer).GetField("hitZoneZ", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var spawnZField = typeof(NoteRenderer).GetField("spawnZ", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            // OPTIMIZED: Use public accessor methods instead of reflection for better performance
+            float speedMultiplier = noteRenderer.GetSpeedMultiplier();
+            float hitZoneZ = noteRenderer.GetHitZoneZ();
+            float spawnZ = noteRenderer.GetSpawnZ();
 
-            if (speedField != null && hitZoneField != null && spawnZField != null)
-            {
-                float speedMultiplier = (float)speedField.GetValue(noteRenderer);
-                float hitZoneZ = (float)hitZoneField.GetValue(noteRenderer);
-                float spawnZ = (float)spawnZField.GetValue(noteRenderer);
+            Debug.Log($"  Speed Multiplier: {speedMultiplier}");
+            Debug.Log($"  Hit Zone Z: {hitZoneZ}");
+            Debug.Log($"  Spawn Z: {spawnZ}");
 
-                Debug.Log($"  Speed Multiplier: {speedMultiplier}");
-                Debug.Log($"  Hit Zone Z: {hitZoneZ}");
-                Debug.Log($"  Spawn Z: {spawnZ}");
+            // Calculate note travel time
+            float distance = spawnZ - hitZoneZ;
+            float travelTime = distance / speedMultiplier;
+            Debug.Log($"  Travel Time: {travelTime:F2} seconds");
 
-                // Calculate note travel time
-                float distance = spawnZ - hitZoneZ;
-                float travelTime = distance / speedMultiplier;
-                Debug.Log($"  Travel Time: {travelTime:F2} seconds");
-
-                if (speedMultiplier > 15)
-                    Debug.Log("⚠️ Notes are moving VERY FAST (speed > 15)");
-            }
-            else
-            {
-                Debug.Log("  Could not access NoteRenderer fields via reflection");
-            }
+            if (speedMultiplier > 15)
+                Debug.Log("⚠️ Notes are moving VERY FAST (speed > 15)");
+        }
+        else
+        {
+            Debug.Log("❌ NoteRenderer not found in scene!");
         }
 
         Debug.Log("🔍 === END ANALYSIS ===");
@@ -152,13 +145,10 @@ public class TimingAnalyzer : EditorWindow
         NoteRenderer noteRenderer = FindFirstObjectByType<NoteRenderer>();
         if (noteRenderer != null)
         {
-            var speedField = typeof(NoteRenderer).GetField("speedMultiplier", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (speedField != null)
-            {
-                speedField.SetValue(noteRenderer, 6f);
-                Debug.Log("✅ Note speed set to EASY (6.0)");
-                EditorUtility.SetDirty(noteRenderer);
-            }
+            // OPTIMIZED: Use public setter instead of reflection for better performance
+            noteRenderer.SetSpeedMultiplier(6f);
+            Debug.Log("✅ Note speed set to EASY (6.0)");
+            EditorUtility.SetDirty(noteRenderer);
         }
 
         Debug.Log("🎮 EASY mode applied! Perfect for learning and testing.");
@@ -183,13 +173,10 @@ public class TimingAnalyzer : EditorWindow
         NoteRenderer noteRenderer = FindFirstObjectByType<NoteRenderer>();
         if (noteRenderer != null)
         {
-            var speedField = typeof(NoteRenderer).GetField("speedMultiplier", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (speedField != null)
-            {
-                speedField.SetValue(noteRenderer, 8f);
-                Debug.Log("✅ Note speed set to MEDIUM (8.0)");
-                EditorUtility.SetDirty(noteRenderer);
-            }
+            // OPTIMIZED: Use public setter instead of reflection for better performance
+            noteRenderer.SetSpeedMultiplier(8f);
+            Debug.Log("✅ Note speed set to MEDIUM (8.0)");
+            EditorUtility.SetDirty(noteRenderer);
         }
 
         Debug.Log("🎮 MEDIUM mode applied! Good balance of challenge and playability.");
@@ -214,13 +201,10 @@ public class TimingAnalyzer : EditorWindow
         NoteRenderer noteRenderer = FindFirstObjectByType<NoteRenderer>();
         if (noteRenderer != null)
         {
-            var speedField = typeof(NoteRenderer).GetField("speedMultiplier", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (speedField != null)
-            {
-                speedField.SetValue(noteRenderer, 12f);
-                Debug.Log("✅ Note speed set to HARD (12.0)");
-                EditorUtility.SetDirty(noteRenderer);
-            }
+            // OPTIMIZED: Use public setter instead of reflection for better performance
+            noteRenderer.SetSpeedMultiplier(12f);
+            Debug.Log("✅ Note speed set to HARD (12.0)");
+            EditorUtility.SetDirty(noteRenderer);
         }
 
         Debug.Log("🎮 HARD mode applied! For experienced rhythm game players.");

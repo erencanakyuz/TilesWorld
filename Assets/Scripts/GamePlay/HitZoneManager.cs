@@ -291,13 +291,12 @@ public class HitZoneManager : MonoBehaviour
             Destroy(noteObj);
         }
 
-        // 3. Trigger sound and music systems (UPDATED)
+        // 3. Trigger sound and music systems (ENHANCED - Centralized Volume)
         if (noteInfo != null)
         {
-            // Play audio directly
+            // Play audio directly with centralized volume calculation
             var instrument = GameManager.Instance != null ? GameManager.Instance.GetSelectedInstrument() : InstrumentType.Piano;
-            float volume = InteractiveMusicSystem.Instance != null ? InteractiveMusicSystem.Instance.CalculateNoteVolume(noteInfo.duration) : 1.0f;
-            AudioManager.Instance?.PlayNote(instrument, noteInfo.pitch, volume, useJavaMapping: true, line: noteInfo.line);
+            AudioManager.Instance?.PlayNote(instrument, noteInfo.pitch, volume: 1.0f, useJavaMapping: true, line: noteInfo.line, noteDuration: noteInfo.duration);
 
             // Notify IMS for musical analysis only
             InteractiveMusicSystem.Instance?.ProcessChartNoteHit(noteInfo);

@@ -31,6 +31,20 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private bool enableLatencyMonitoring = true;
     [SerializeField] private float averageLatency = 0f;
 
+    [Header("🎯 Machine Gun Prevention & Note Collision")]
+    [SerializeField] private bool enableMachineGunPrevention = true;
+    [SerializeField] private float minNoteIntervalMs = 50f; // Minimum time between same pitch notes
+    [SerializeField] private float velocityPriorityThreshold = 0.7f; // Higher velocity can override interval
+    [SerializeField] private bool enableVolumeRamping = true;
+    [SerializeField] private bool enableNoteCollisionDetection = true; // Prevent same pitch overlapping
+    [SerializeField] private bool allowVelocityOverride = true; // Allow higher velocity to override collision
+
+    [Header("🎼 Advanced Polyphony Management")]
+    [SerializeField] private bool enableVoiceStealing = true;
+    [SerializeField] private int maxPolyphony = 128; // Professional polyphony limit
+    [SerializeField] private float voiceStealingVolumeThreshold = 0.3f; // Steal voices below this volume
+    [SerializeField] private bool prioritizeRecentNotes = true;
+
     // === ESKİ JAVA OYUNUNDAN: SOUND_RESOURCE_IDXS MAPPING SİSTEMİ ===
     // Bu sistem artık DataStructures.cs/AudioConstants'da merkezi olarak tanımlı
 
@@ -38,6 +52,20 @@ public class AudioManager : MonoBehaviour
     private Queue<AudioSource> audioSourcePool;
     private List<AudioSource> activeAudioSources;
     private List<FadingAudioSource> fadingAudioSources; // For managing fades in Update()
+
+    // Machine Gun Prevention System
+    private Dictionary<int, float> lastNotePlayTime; // pitch -> last play time
+    private Dictionary<int, float> lastNoteVolume;   // pitch -> last volume for ramping
+
+    // Note Collision Detection System
+    private Dictionary<int, AudioSource> currentlyPlayingNotes; // pitch -> currently playing AudioSource
+
+    // Advanced Polyphony Management
+    private List<VoiceInfo> activeVoices; // Track all active voices for stealing
+    private int currentPolyphonyCount = 0;
+
+    // Performance Optimization - Pre-built audio path cache
+    private Dictionary<string, string> audioPathCache;
 
     // Current playing music
     private AudioSource musicAudioSource;
@@ -84,6 +112,62 @@ public class AudioManager : MonoBehaviour
     {
         CreateAudioSourcePool();
         ApplyDefaultSettings();
+        InitializeMachineGunPrevention();
+    }
+
+    void InitializeMachineGunPrevention()
+    {
+        lastNotePlayTime = new Dictionary<int, float>();
+        lastNoteVolume = new Dictionary<int, float>();
+        currentlyPlayingNotes = new Dictionary<int, AudioSource>();
+        activeVoices = new List<VoiceInfo>();
+        InitializeAudioPathCache();
+    }
+
+    /// <summary>
+    /// Pre-build all possible audio paths to eliminate runtime string concatenation
+    /// PERFORMANCE OPTIMIZATION: Prevents GC allocation spikes during gameplay
+    /// </summary>
+    void InitializeAudioPathCache()
+    {
+        audioPathCache = new Dictionary<string, string>();
+
+        foreach (InstrumentType instrument in System.Enum.GetValues(typeof(InstrumentType)))
+        {
+            string instrumentFolder = instrument.ToString();
+            
+            // Pre-build paths for all possible pitch values (0-44)
+            for (int pitch = 0; pitch <= 44; pitch++)
+            {
+                string fileName = instrument switch
+                {
+                    InstrumentType.Piano => $"piano_snd{pitch:D3}",
+                    InstrumentType.Harp => $"harp_snd{pitch:D3}",
+                    InstrumentType.Guitar => $"acustic_guitar_snd{pitch:D3}",
+                    _ => $"unknown_snd{pitch:D3}"
+                };
+
+                string key = $"{instrument}_{pitch}";
+                
+                // Store primary path
+                audioPathCache[key] = $"Audio/{instrumentFolder}/{fileName}";
+                
+                // Store fallback paths
+                audioPathCache[$"{key}_fallback1"] = $"{instrumentFolder}/{fileName}";
+                audioPathCache[$"{key}_fallback2"] = fileName;
+                
+                // Guitar alternative naming
+                if (instrument == InstrumentType.Guitar)
+                {
+                    string altFileName = $"classic_guitar_snd{pitch:D3}";
+                    audioPathCache[$"{key}_alt"] = $"Audio/{instrumentFolder}/{altFileName}";
+                    audioPathCache[$"{key}_alt_fallback1"] = $"{instrumentFolder}/{altFileName}";
+                    audioPathCache[$"{key}_alt_fallback2"] = altFileName;
+                }
+            }
+        }
+
+        if (showDebugLogs) Debug.Log($"🚀 Audio path cache initialized with {audioPathCache.Count} pre-built paths");
     }
 
     void CreateAudioSourcePool()
@@ -142,7 +226,35 @@ public class AudioManager : MonoBehaviour
     }
 
     #region Note Playing (Simplified and Enhanced)
-    public void PlayNote(InstrumentType instrument, int pitch, float volume = 1.0f, bool useJavaMapping = false, int line = 0)
+    
+    /// <summary>
+    /// ENHANCED: Play note with automatic volume calculation from note duration
+    /// This centralizes volume calculation to eliminate duplicates across systems
+    /// </summary>
+    public void PlayNote(InstrumentType instrument, int pitch, float volume = 1.0f, bool useJavaMapping = false, int line = 0, float noteDuration = 1.0f)
+    {
+        // If note duration is provided and volume is default, calculate volume automatically
+        if (noteDuration > 1.0f && Mathf.Approximately(volume, 1.0f))
+        {
+            volume = CalculateNoteVolume(noteDuration);
+        }
+        
+        PlayNoteInternal(instrument, pitch, volume, useJavaMapping, line);
+    }
+    
+    /// <summary>
+    /// Calculate note volume based on JSON duration value (centralized from InteractiveMusicSystem)
+    /// </summary>
+    public float CalculateNoteVolume(float duration)
+    {
+        // Duration from JSON (1-9) maps to volume (0.3-1.0)
+        return Mathf.Lerp(0.3f, 1.0f, (duration - 1) / 8f);
+    }
+    
+    /// <summary>
+    /// Internal note playing implementation with machine gun prevention
+    /// </summary>
+    private void PlayNoteInternal(InstrumentType instrument, int pitch, float volume, bool useJavaMapping, int line)
     {
         int instrumentId = (int)instrument;
         if (instrumentId < 0 || instrumentId >= instruments.Length || instruments[instrumentId].noteClips == null || instruments[instrumentId].noteClips.Length == 0)
@@ -152,6 +264,74 @@ public class AudioManager : MonoBehaviour
         }
 
         int maxIndex = instruments[instrumentId].noteClips.Length - 1;
+
+        // === MACHINE GUN PREVENTION SYSTEM ===
+        if (enableMachineGunPrevention)
+        {
+            // Create unique key combining instrument and pitch
+            int noteKey = ((int)instrument * 1000) + pitch;
+            float currentTime = Time.time * 1000f; // Convert to milliseconds
+
+            if (lastNotePlayTime.ContainsKey(noteKey))
+            {
+                float timeSinceLastPlay = currentTime - lastNotePlayTime[noteKey];
+                
+                // Check if note is being played too quickly
+                if (timeSinceLastPlay < minNoteIntervalMs)
+                {
+                    // Allow override for significantly higher velocity
+                    if (volume < velocityPriorityThreshold)
+                    {
+                        if (showDebugLogs) Debug.Log($"🎯 Machine gun prevention: Blocked {instrument} pitch {pitch} (interval: {timeSinceLastPlay:F1}ms < {minNoteIntervalMs}ms)");
+                        return; // Block the note
+                    }
+                    
+                    if (showDebugLogs) Debug.Log($"🎯 Machine gun prevention: Allowed {instrument} pitch {pitch} due to high velocity ({volume:F2})");
+                }
+
+                // Implement volume ramping for natural feel
+                if (enableVolumeRamping && lastNoteVolume.ContainsKey(noteKey))
+                {
+                    float rampFactor = Mathf.Clamp01(timeSinceLastPlay / minNoteIntervalMs);
+                    volume = Mathf.Lerp(lastNoteVolume[noteKey] * 0.7f, volume, rampFactor);
+                }
+            }
+
+            // Update tracking
+            lastNotePlayTime[noteKey] = currentTime;
+            lastNoteVolume[noteKey] = volume;
+        }
+
+        // === NOTE COLLISION DETECTION SYSTEM ===
+        if (enableNoteCollisionDetection)
+        {
+            if (currentlyPlayingNotes.TryGetValue(pitch, out AudioSource existingSource))
+            {
+                // Same pitch is already playing
+                if (existingSource != null && existingSource.isPlaying)
+                {
+                    // Check if new note has significantly higher velocity to override
+                    if (allowVelocityOverride && volume > velocityPriorityThreshold)
+                    {
+                        // Stop the existing note gracefully and replace it
+                        existingSource.Stop();
+                        currentlyPlayingNotes.Remove(pitch);
+                        if (showDebugLogs) Debug.Log($"🎯 Note collision: Replaced {instrument} pitch {pitch} with higher velocity note ({volume:F2})");
+                    }
+                    else
+                    {
+                        // Block the new note to prevent doubling
+                        if (showDebugLogs) Debug.Log($"🎯 Note collision: Blocked duplicate {instrument} pitch {pitch} (existing note still playing)");
+                        return;
+                    }
+                }
+                else
+                {
+                    // Existing source is no longer playing, clean up
+                    currentlyPlayingNotes.Remove(pitch);
+                }
+            }
+        }
 
         // --- CENTRALIZED PITCH CALCULATION ---
         // All mapping logic (Java-style + instrument offset) is now in one place.
@@ -166,7 +346,7 @@ public class AudioManager : MonoBehaviour
             finalPitch = Mathf.Clamp(pitch, 0, maxIndex);
         }
 
-        AudioSource audioSource = GetAvailableAudioSource();
+        AudioSource audioSource = GetAvailableAudioSource(volume, finalPitch, instrument);
         if (audioSource == null) return;
 
         AudioClip clip = GetNoteClip(instrument, finalPitch);
@@ -200,6 +380,18 @@ public class AudioManager : MonoBehaviour
         audioSource.clip = clip;
         audioSource.volume = volume * sfxVolume * masterVolume;
         audioSource.Play();
+
+        // === VOICE TRACKING FOR POLYPHONY MANAGEMENT ===
+        if (enableVoiceStealing)
+        {
+            AddVoiceInfo(audioSource, volume, finalPitch, instrument);
+        }
+
+        // === NOTE COLLISION TRACKING ===
+        if (enableNoteCollisionDetection)
+        {
+            currentlyPlayingNotes[pitch] = audioSource;
+        }
 
         if (enableNoteFadeOut)
         {
@@ -341,6 +533,21 @@ public class AudioManager : MonoBehaviour
             {
                 activeAudioSources.RemoveAt(i);
                 audioSourcePool.Enqueue(source);
+                
+                // Update polyphony tracking
+                currentPolyphonyCount = Mathf.Max(0, currentPolyphonyCount - 1);
+                
+                // Remove from voice tracking
+                if (enableVoiceStealing)
+                {
+                    RemoveVoiceInfo(source);
+                }
+
+                // Remove from collision tracking
+                if (enableNoteCollisionDetection)
+                {
+                    RemoveFromCollisionTracking(source);
+                }
             }
         }
     }
@@ -359,6 +566,21 @@ public class AudioManager : MonoBehaviour
                 fadingSource.source.volume = fadingSource.initialVolume; // Reset volume
                 audioSourcePool.Enqueue(fadingSource.source);
                 fadingAudioSources.RemoveAt(i);
+                
+                // Update polyphony tracking
+                currentPolyphonyCount = Mathf.Max(0, currentPolyphonyCount - 1);
+                
+                // Remove from voice tracking
+                if (enableVoiceStealing)
+                {
+                    RemoveVoiceInfo(fadingSource.source);
+                }
+
+                // Remove from collision tracking
+                if (enableNoteCollisionDetection)
+                {
+                    RemoveFromCollisionTracking(fadingSource.source);
+                }
             }
             else
             {
@@ -373,29 +595,154 @@ public class AudioManager : MonoBehaviour
         PlayerPrefs.Save();
     }
 
-    AudioSource GetAvailableAudioSource()
+    AudioSource GetAvailableAudioSource(float noteVolume = 1.0f, int notePitch = 0, InstrumentType instrument = InstrumentType.Piano)
     {
+        // === ADVANCED POLYPHONY MANAGEMENT ===
+        if (enableVoiceStealing && currentPolyphonyCount >= maxPolyphony)
+        {
+            AudioSource stolenSource = FindVoiceToSteal(noteVolume);
+            if (stolenSource != null)
+            {
+                if (showDebugLogs) Debug.Log($"🎼 Voice stealing: Stole voice for {instrument} pitch {notePitch} (volume: {noteVolume:F2})");
+                return stolenSource;
+            }
+        }
+
         if (audioSourcePool.Count > 0)
         {
             AudioSource source = audioSourcePool.Dequeue();
             activeAudioSources.Add(source);
+            currentPolyphonyCount++;
             return source;
         }
 
-        // FIXED: Create new AudioSource instead of returning null
-        if (showDebugLogs) Debug.LogWarning($"🎵 Audio pool exhausted! Expanding from {audioSourcePoolSize} sources.");
-        
-        GameObject audioObject = new GameObject($"PooledAudioSource_{audioSourcePoolSize}");
-        audioObject.transform.SetParent(transform);
-        
-        AudioSource newSource = audioObject.AddComponent<AudioSource>();
-        newSource.playOnAwake = false;
-        newSource.volume = 1.0f;
-        
-        audioSourcePoolSize++; // Track pool growth
-        activeAudioSources.Add(newSource);
-        
-        return newSource;
+        // Expand pool if under polyphony limit
+        if (currentPolyphonyCount < maxPolyphony)
+        {
+            if (showDebugLogs) Debug.LogWarning($"🎵 Audio pool exhausted! Expanding from {audioSourcePoolSize} sources.");
+            
+            GameObject audioObject = new GameObject($"PooledAudioSource_{audioSourcePoolSize}");
+            audioObject.transform.SetParent(transform);
+            
+            AudioSource newSource = audioObject.AddComponent<AudioSource>();
+            newSource.playOnAwake = false;
+            newSource.volume = 1.0f;
+            
+            audioSourcePoolSize++; // Track pool growth
+            activeAudioSources.Add(newSource);
+            currentPolyphonyCount++;
+            
+            return newSource;
+        }
+
+        // Polyphony limit reached and no voice to steal
+        if (showDebugLogs) Debug.LogWarning($"🎼 Polyphony limit reached ({maxPolyphony}), note dropped!");
+        return null;
+    }
+
+    /// <summary>
+    /// Find the best voice to steal based on priority system
+    /// </summary>
+    AudioSource FindVoiceToSteal(float newNoteVolume)
+    {
+        AudioSource bestCandidate = null;
+        float lowestPriority = float.MaxValue;
+
+        foreach (var voice in activeVoices)
+        {
+            if (voice.audioSource == null || !voice.audioSource.isPlaying) continue;
+
+            float priority = CalculateVoicePriority(voice, newNoteVolume);
+            if (priority < lowestPriority)
+            {
+                lowestPriority = priority;
+                bestCandidate = voice.audioSource;
+            }
+        }
+
+        if (bestCandidate != null)
+        {
+            // Stop the stolen voice gracefully
+            bestCandidate.Stop();
+            RemoveVoiceInfo(bestCandidate);
+        }
+
+        return bestCandidate;
+    }
+
+    /// <summary>
+    /// Calculate voice priority for stealing algorithm
+    /// Lower values = higher chance of being stolen
+    /// </summary>
+    float CalculateVoicePriority(VoiceInfo voice, float newNoteVolume)
+    {
+        float priority = voice.volume * 100f; // Base priority from volume
+
+        // Prioritize keeping recent notes if enabled
+        if (prioritizeRecentNotes)
+        {
+            float age = Time.time - voice.startTime;
+            priority += age * 10f; // Older notes are more likely to be stolen
+        }
+
+        // Lower priority for very quiet notes
+        if (voice.volume < voiceStealingVolumeThreshold)
+        {
+            priority *= 0.5f; // Make quiet notes more likely to be stolen
+        }
+
+        // New note has much higher volume - steal lower volume notes
+        if (newNoteVolume > voice.volume + 0.3f)
+        {
+            priority *= 0.3f; // Much more likely to steal
+        }
+
+        return priority;
+    }
+
+    void AddVoiceInfo(AudioSource source, float volume, int pitch, InstrumentType instrument)
+    {
+        activeVoices.Add(new VoiceInfo
+        {
+            audioSource = source,
+            volume = volume,
+            pitch = pitch,
+            instrument = instrument,
+            startTime = Time.time
+        });
+    }
+
+    void RemoveVoiceInfo(AudioSource source)
+    {
+        for (int i = activeVoices.Count - 1; i >= 0; i--)
+        {
+            if (activeVoices[i].audioSource == source)
+            {
+                activeVoices.RemoveAt(i);
+                break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Remove audio source from collision tracking when note finishes
+    /// </summary>
+    void RemoveFromCollisionTracking(AudioSource source)
+    {
+        // Find and remove the source from collision tracking
+        var keysToRemove = new List<int>();
+        foreach (var kvp in currentlyPlayingNotes)
+        {
+            if (kvp.Value == source)
+            {
+                keysToRemove.Add(kvp.Key);
+            }
+        }
+
+        foreach (int key in keysToRemove)
+        {
+            currentlyPlayingNotes.Remove(key);
+        }
     }
 
     public AudioClip GetNoteClip(InstrumentType instrument, int pitch)
@@ -423,62 +770,56 @@ public class AudioManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// OPTIMIZED: Load audio using pre-built path cache (eliminates runtime string concatenation)
+    /// </summary>
     AudioClip LoadAudioFromAssets(InstrumentType instrument, int pitch)
     {
-        string instrumentFolder = instrument.ToString();
-        string fileName = "";
+        string key = $"{instrument}_{pitch}";
 
-        switch (instrument)
+        // Try primary path first
+        if (audioPathCache.TryGetValue(key, out string primaryPath))
         {
-            case InstrumentType.Piano:
-                fileName = $"piano_snd{pitch:D3}";
-                break;
-            case InstrumentType.Harp:
-                fileName = $"harp_snd{pitch:D3}";
-                break;
-            case InstrumentType.Guitar:
-                fileName = $"acustic_guitar_snd{pitch:D3}";
-                break;
+            AudioClip clip = Resources.Load<AudioClip>(primaryPath);
+            if (clip != null) return clip;
         }
 
-        string[] possiblePaths = {
-            $"Audio/{instrumentFolder}/{fileName}",
-            $"{instrumentFolder}/{fileName}",
-            fileName
-        };
-
-        foreach (string path in possiblePaths)
+        // Try fallback paths
+        if (audioPathCache.TryGetValue($"{key}_fallback1", out string fallback1))
         {
-            try
-            {
-                AudioClip clip = Resources.Load<AudioClip>(path);
-                if (clip != null)
-                {
-                    return clip;
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning($"⚠️ AudioManager: Failed to load audio at path '{path}': {e.Message}");
-            }
+            AudioClip clip = Resources.Load<AudioClip>(fallback1);
+            if (clip != null) return clip;
         }
 
+        if (audioPathCache.TryGetValue($"{key}_fallback2", out string fallback2))
+        {
+            AudioClip clip = Resources.Load<AudioClip>(fallback2);
+            if (clip != null) return clip;
+        }
+
+        // Guitar alternative naming
         if (instrument == InstrumentType.Guitar)
         {
-            fileName = $"classic_guitar_snd{pitch:D3}";
-            string[] guitarPaths = {
-                $"Audio/{instrumentFolder}/{fileName}",
-                $"{instrumentFolder}/{fileName}",
-                fileName
-            };
-            foreach (string path in guitarPaths)
+            if (audioPathCache.TryGetValue($"{key}_alt", out string altPath))
             {
-                AudioClip clip = Resources.Load<AudioClip>(path);
+                AudioClip clip = Resources.Load<AudioClip>(altPath);
+                if (clip != null) return clip;
+            }
+
+            if (audioPathCache.TryGetValue($"{key}_alt_fallback1", out string altFallback1))
+            {
+                AudioClip clip = Resources.Load<AudioClip>(altFallback1);
+                if (clip != null) return clip;
+            }
+
+            if (audioPathCache.TryGetValue($"{key}_alt_fallback2", out string altFallback2))
+            {
+                AudioClip clip = Resources.Load<AudioClip>(altFallback2);
                 if (clip != null) return clip;
             }
         }
 
-        // Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch}. Make sure files are in a Resources folder!");
+        if (showDebugLogs) Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch} using cached paths!");
         return null;
     }
 
@@ -547,6 +888,16 @@ public class AudioManager : MonoBehaviour
         public AudioSource source;
         public float fadeTimer;
         public float initialVolume;
+    }
+
+    // Helper class for advanced polyphony management and voice stealing
+    private class VoiceInfo
+    {
+        public AudioSource audioSource;
+        public float volume;
+        public int pitch;
+        public InstrumentType instrument;
+        public float startTime;
     }
 }
 

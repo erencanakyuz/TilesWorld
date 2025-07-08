@@ -3,7 +3,6 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using System.Collections;
 using System.Linq;
-using System.Reflection;
 
 #pragma warning disable 0414 // Field is assigned but its value is never used (editor-only test tweaks)
 
@@ -517,10 +516,13 @@ public class SongPlaybackTester : MonoBehaviour
             Destroy(noteObj);
         }
 
-        // Ses çal (InteractiveMusicSystem)
-        if (noteWrapper.gameNoteInfo != null)
+        // Ses çal (Updated to use AudioManager + ProcessChartNoteHit)
+        if (noteWrapper.gameNoteInfo != null && AudioManager.Instance != null)
         {
-            InteractiveMusicSystem.Instance?.PlayNoteFromChart(noteWrapper.gameNoteInfo);
+            var noteInfo = noteWrapper.gameNoteInfo;
+            float volume = AudioManager.Instance.CalculateNoteVolume(noteInfo.duration);
+            AudioManager.Instance.PlayNote(InstrumentType.Piano, noteInfo.pitch, volume, useJavaMapping: true, line: noteInfo.line);
+            InteractiveMusicSystem.Instance?.ProcessChartNoteHit(noteInfo);
         }
 
         // Particle effect (perfect hit)
@@ -534,19 +536,18 @@ public class SongPlaybackTester : MonoBehaviour
 
     void SpawnAutoPerfectEffect(Vector3 position)
     {
-        // HitZoneManager'dan perfect effect prefab'ını kullan
+        // OPTIMIZED: Use public method instead of reflection for better performance
         if (hitZoneManager != null)
         {
-            // Reflection ile private perfect effect prefab'ına eriş
-            var effectField = typeof(HitZoneManager).GetField("perfectHitEffectPrefab", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (effectField != null)
+            GameObject perfectEffectPrefab = hitZoneManager.GetParticlePrefabForAccuracy(HitAccuracy.Perfect);
+            if (perfectEffectPrefab != null)
             {
-                GameObject perfectEffectPrefab = effectField.GetValue(hitZoneManager) as GameObject;
-                if (perfectEffectPrefab != null)
-                {
-                    GameObject effect = Instantiate(perfectEffectPrefab, position, Quaternion.identity);
-                    Debug.Log($"✨ Auto-play perfect particle spawned at {position}");
-                }
+                GameObject effect = Instantiate(perfectEffectPrefab, position, Quaternion.identity);
+                Debug.Log($"✨ Auto-play perfect particle spawned at {position}");
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ Perfect hit effect prefab not found in HitZoneManager");
             }
         }
     }

@@ -297,14 +297,15 @@ public class InteractiveMusicSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Enhanced note playing with JSON pitch data (for NoteRenderer integration)
+    /// Enhanced note playing with JSON pitch data (DEPRECATED - Use AudioManager directly + ProcessChartNoteHit)
     /// </summary>
+    [System.Obsolete("Use AudioManager.Instance.PlayNote() + ProcessChartNoteHit() instead for better separation of concerns")]
     public void PlayNoteFromChart(GameNoteInfo noteInfo)
     {
         if (noteInfo == null) return;
 
         // Enhanced volume calculation based on note duration from JSON
-        float noteVolume = CalculateNoteVolume(noteInfo.duration);
+        float noteVolume = AudioManager.Instance != null ? AudioManager.Instance.CalculateNoteVolume(noteInfo.duration) : 1.0f;
 
 #if UNITY_EDITOR
         // Debug tracking to ensure only HitZoneManager calls this method
@@ -373,12 +374,13 @@ public class InteractiveMusicSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Calculate note volume based on JSON duration value
+    /// Calculate note volume based on JSON duration value (DEPRECATED - Use AudioManager.CalculateNoteVolume)
     /// </summary>
+    [System.Obsolete("Use AudioManager.Instance.CalculateNoteVolume() instead for centralized volume calculation")]
     public float CalculateNoteVolume(float duration)
     {
-        // Duration from JSON (1-9) maps to volume (0.3-1.0)
-        return Mathf.Lerp(0.3f, 1.0f, (duration - 1) / 8f);
+        // Redirect to centralized AudioManager implementation
+        return AudioManager.Instance != null ? AudioManager.Instance.CalculateNoteVolume(duration) : 1.0f;
     }
 
     /// <summary>
@@ -395,7 +397,13 @@ public class InteractiveMusicSystem : MonoBehaviour
 
         foreach (var note in chordNotes)
         {
-            PlayNoteFromChart(note);
+            // Updated to use AudioManager + ProcessChartNoteHit
+            if (AudioManager.Instance != null)
+            {
+                float volume = AudioManager.Instance.CalculateNoteVolume(note.duration);
+                AudioManager.Instance.PlayNote(currentInstrument, note.pitch, volume, useJavaMapping: true, line: note.line);
+                ProcessChartNoteHit(note);
+            }
         }
 
         // Detect and classify chord using JSON pitch data
@@ -493,7 +501,7 @@ public class InteractiveMusicSystem : MonoBehaviour
     {
         if (noteInfo == null) return;
 
-        float noteVolume = CalculateNoteVolume(noteInfo.duration);
+        float noteVolume = AudioManager.Instance != null ? AudioManager.Instance.CalculateNoteVolume(noteInfo.duration) : 1.0f;
         ProcessMusicalEvent(noteInfo, noteVolume);
     }
     #endregion
