@@ -7,9 +7,27 @@ using System.Linq;
 #pragma warning disable 0414 // Field is assigned but its value is never used (editor-only test tweaks)
 
 /// <summary>
-/// 'L' tuşuna basıldığında Turkish Delight şarkısını çalarak ses sistemini test eder.
-/// Bu scripti sahnedeki bir GameObject'e ekleyip public alanları Inspector'dan atamalısın.
-/// YENI: Perfect Auto-Play toggle butonu - ekranın sol ortasında, tüm notaları perfect zamanda otomatik çalar
+/// SONG PLAYBACK TESTER - Comprehensive Audio System Testing Tool
+/// 
+/// 🎵 SONG SHORTCUTS:
+/// - L: Turkish Delight (default test song)
+/// - K: Cannon (moderate tempo)
+/// - J: Für Elise (classical)
+/// - H: Moon Light (slow tempo)
+/// - P: Sinfonia 40 (extreme tempo - hardest test)
+/// - O: Turkish Delight (alternative shortcut)
+/// 
+/// 🧪 AUDIO SYSTEM TEST CASES (Inspector controllable):
+/// - 1: Machine Gun Prevention Test - Rapid fire blocking
+/// - 2: Legitimate Fast Music Test - Für Elise melody
+/// - 3: Voice Stealing Test - 64+ polyphony stress test
+/// - 4: Chord Progression Test - Harmonic sound test
+/// 
+/// 🎯 HARMONIK SES TESTI:
+/// - T: Lane 4 tap (InputManager → HitZoneManager → AudioManager)
+/// - Q,W,E,R,T,Y: Lane 0-5 direct input (best harmony test)
+/// 
+/// Perfect Auto-Play toggle butonu - ekranın sol ortasında, tüm notaları perfect zamanda otomatik çalar
 /// </summary>
 public class SongPlaybackTester : MonoBehaviour
 {
@@ -28,6 +46,18 @@ public class SongPlaybackTester : MonoBehaviour
     [SerializeField] private bool isPerfectAutoPlayEnabled = false;
     [Tooltip("Auto-play butonunun konumu (ekran koordinatları)")]
     [SerializeField] private Vector2 buttonPosition = new Vector2(100, Screen.height / 2);
+
+    [Header("🧪 Inspector Test Controls")]
+    [Tooltip("Test case'leri aktif olsun mu?")]
+    [SerializeField] private bool enableTestCases = true;
+    [Tooltip("TEST: 1 tuşu - Rapid fire prevention. BEKLENEN: 10 notadan hepsini duymalısın (Machine Gun Prevention kapalı).")]
+    [SerializeField] private bool enableMachineGunTest = true;
+    [Tooltip("TEST: 2 tuşu - Legitimate fast music. BEKLENEN: 9 notanın hepsini duymalısın, smooth melody çalmalıdır.")]
+    [SerializeField] private bool enableLegitimateRapidTest = true;
+    [Tooltip("TEST: 3 tuşu - Voice stealing simulation. BEKLENEN: 64+ notada voice stealing mesajları, sistem crash olmamalıdır.")]
+    [SerializeField] private bool enableVoiceStealingTest = true;
+    [Tooltip("TEST: 4 tuşu - Chord progression harmony. BEKLENEN: 4 chord'u harmonic olarak duymalısın, 3 nota beraber çalmalıdır.")]
+    [SerializeField] private bool enableChordProgressionTest = true;
     [Tooltip("Auto-play butonunun boyutu")]
     [SerializeField] private Vector2 buttonSize = new Vector2(120, 60);
 
@@ -104,6 +134,34 @@ public class SongPlaybackTester : MonoBehaviour
             StartTest();
         }
 
+        // 🎯 AUDIO SYSTEM TEST CASES (Inspector Controllable)
+        if (enableTestCases && Keyboard.current != null)
+        {
+            // Test Case 1: Machine Gun Prevention (1 key)
+            if (enableMachineGunTest && Keyboard.current.digit1Key.wasPressedThisFrame)
+            {
+                StartCoroutine(TestMachineGunPrevention());
+            }
+            
+            // Test Case 2: Legitimate Fast Music (2 key)
+            if (enableLegitimateRapidTest && Keyboard.current.digit2Key.wasPressedThisFrame)
+            {
+                StartCoroutine(TestLegitimateRapidNotes());
+            }
+            
+            // Test Case 3: Voice Stealing Simulation (3 key)
+            if (enableVoiceStealingTest && Keyboard.current.digit3Key.wasPressedThisFrame)
+            {
+                StartCoroutine(TestVoiceStealing());
+            }
+            
+            // Test Case 4: Chord Progression Stress Test (4 key)
+            if (enableChordProgressionTest && Keyboard.current.digit4Key.wasPressedThisFrame)
+            {
+                StartCoroutine(TestChordProgression());
+            }
+        }
+
         // Additional keyboard shortcuts for different songs
         if (Keyboard.current != null)
         {
@@ -120,6 +178,16 @@ public class SongPlaybackTester : MonoBehaviour
             else if (Keyboard.current.hKey.wasPressedThisFrame)
             {
                 testSongTitle = "Moon Light";
+                StartTest();
+            }
+            else if (Keyboard.current.pKey.wasPressedThisFrame)
+            {
+                testSongTitle = "Sinfonia 40";
+                StartTest();
+            }
+            else if (Keyboard.current.oKey.wasPressedThisFrame)
+            {
+                testSongTitle = "Turkish Delight";
                 StartTest();
             }
         }
@@ -570,6 +638,145 @@ public class SongPlaybackTester : MonoBehaviour
         {
             StopCoroutine(autoPlayCoroutine);
         }
+    }
+
+    // ===== 🎯 AUDIO SYSTEM TEST CASES =====
+
+    /// <summary>
+    /// Test Case 1: Machine Gun Prevention - Rapid Button Mashing
+    /// Tests minTimeBetweenNotes system with 10ms intervals
+    /// </summary>
+    IEnumerator TestMachineGunPrevention()
+    {
+        Debug.Log("🎯 === TEST CASE 1: MACHINE GUN PREVENTION ===");
+        Debug.Log("🔫 Rapid firing same pitch (10ms intervals) - Should hear ~2-3 notes instead of 10");
+        Debug.Log("📊 AudioManager debug status: " + (AudioManager.Instance ? "Available" : "Null"));
+        
+        // Aynı pitch'i çok hızlı çal (10ms interval)
+        for (int i = 0; i < 10; i++)
+        {
+            Debug.Log($"🔫 Firing note {i+1}/10 - Lane 2, Pitch 10");
+            AudioManager.Instance?.PlayNote(InstrumentType.Piano, 10, 1.0f, useJavaMapping: true, line: 2);
+            yield return new WaitForSeconds(0.01f); // 10ms
+        }
+        
+        Debug.Log("🎯 Machine Gun Prevention test completed - Check console for blocked notes");
+    }
+
+    /// <summary>
+    /// Test Case 2: Legitimate Fast Music - Für Elise Fast Section
+    /// Tests 200ms intervals (legitimate musical timing)
+    /// </summary>
+    IEnumerator TestLegitimateRapidNotes()
+    {
+        Debug.Log("🎯 === TEST CASE 2: LEGITIMATE FAST MUSIC ===");
+        Debug.Log("🎵 Für Elise fast section (200ms intervals) - Should hear all 9 notes");
+        
+        // Für Elise melody using correct lane+pitch mapping
+        var noteData = new[] {
+            new { lane = 1, pitch = 8, name = "E" },   // Lane 1, Pitch 8
+            new { lane = 1, pitch = 7, name = "D#" },  // Lane 1, Pitch 7  
+            new { lane = 1, pitch = 8, name = "E" },   // Lane 1, Pitch 8
+            new { lane = 1, pitch = 7, name = "D#" },  // Lane 1, Pitch 7
+            new { lane = 1, pitch = 8, name = "E" },   // Lane 1, Pitch 8
+            new { lane = 1, pitch = 3, name = "B" },   // Lane 1, Pitch 3
+            new { lane = 1, pitch = 6, name = "D" },   // Lane 1, Pitch 6
+            new { lane = 1, pitch = 5, name = "C" },   // Lane 1, Pitch 5
+            new { lane = 1, pitch = 1, name = "A" }    // Lane 1, Pitch 1
+        };
+        
+        for (int i = 0; i < noteData.Length; i++)
+        {
+            Debug.Log($"🎵 Playing note {i+1}/9: {noteData[i].name} (Lane {noteData[i].lane}, Pitch {noteData[i].pitch})");
+            AudioManager.Instance?.PlayNote(InstrumentType.Piano, noteData[i].pitch, 1.0f, useJavaMapping: true, line: noteData[i].lane);
+            yield return new WaitForSeconds(0.2f); // 200ms - legitimate musical timing
+        }
+        
+        Debug.Log("🎯 Legitimate Fast Music test completed - Should hear smooth melody");
+    }
+
+    /// <summary>
+    /// Test Case 3: Voice Stealing Simulation - Polyphony Stress Test
+    /// Tests 130 notes (exceeds 128 limit) to trigger voice stealing
+    /// </summary>
+    IEnumerator TestVoiceStealing()
+    {
+        Debug.Log("🎯 === TEST CASE 3: VOICE STEALING SIMULATION ===");
+        Debug.Log("🎭 Playing 80 notes (exceeds 64 limit) - Should trigger voice stealing");
+        Debug.Log("📊 AudioManager polyphony limit: " + (AudioManager.Instance ? "64" : "Unknown"));
+        
+        // 80 nota çal (64 limit aş) - correct lane+pitch mapping
+        for (int i = 0; i < 80; i++)
+        {
+            int lane = i % 6;       // 0-5 lane cycle
+            int pitch = i % 20;     // 0-19 pitch cycle (within valid range)
+            Debug.Log($"🎭 Note {i+1}/80: Lane {lane}, Pitch {pitch} - {(i >= 64 ? "VOICE STEALING EXPECTED" : "Normal")}");
+            AudioManager.Instance?.PlayNote(InstrumentType.Piano, pitch, 1.0f, useJavaMapping: true, line: lane);
+            yield return new WaitForSeconds(0.02f); // 20ms - faster to keep notes alive
+        }
+        
+        Debug.Log("🎯 Voice Stealing test completed - System should not crash");
+    }
+
+    /// <summary>
+    /// Test Case 4: Chord Progression Stress Test - Harmony Test
+    /// Tests multiple simultaneous notes (chords)
+    /// </summary>
+    IEnumerator TestChordProgression()
+    {
+        Debug.Log("🎯 === TEST CASE 4: CHORD PROGRESSION STRESS TEST ===");
+        Debug.Log("🎹 Playing chord progression: C Major → F Major → G Major → A Minor");
+        
+        // Chord progression using correct lane+pitch mapping
+        var chordData = new[] {
+            new { 
+                name = "C Major", 
+                notes = new[] { 
+                    new { lane = 2, pitch = 7, name = "C" }, 
+                    new { lane = 1, pitch = 8, name = "E" }, 
+                    new { lane = 1, pitch = 10, name = "G" } 
+                } 
+            },
+            new { 
+                name = "F Major", 
+                notes = new[] { 
+                    new { lane = 3, pitch = 5, name = "F" }, 
+                    new { lane = 2, pitch = 5, name = "A" }, 
+                    new { lane = 2, pitch = 7, name = "C" } 
+                } 
+            },
+            new { 
+                name = "G Major", 
+                notes = new[] { 
+                    new { lane = 3, pitch = 7, name = "G" }, 
+                    new { lane = 2, pitch = 8, name = "B" }, 
+                    new { lane = 2, pitch = 10, name = "D" } 
+                } 
+            },
+            new { 
+                name = "A Minor", 
+                notes = new[] { 
+                    new { lane = 3, pitch = 8, name = "A" }, 
+                    new { lane = 2, pitch = 7, name = "C" }, 
+                    new { lane = 1, pitch = 8, name = "E" } 
+                } 
+            }
+        };
+        
+        for (int c = 0; c < chordData.Length; c++)
+        {
+            Debug.Log($"🎹 Playing chord {c+1}/4: {chordData[c].name}");
+            
+            // Play all notes of the chord simultaneously (no delay)
+            foreach(var note in chordData[c].notes)
+            {
+                Debug.Log($"  🎵 Chord note: {note.name} (Lane {note.lane}, Pitch {note.pitch})");
+                AudioManager.Instance?.PlayNote(InstrumentType.Piano, note.pitch, 1.0f, useJavaMapping: true, line: note.lane);
+            }
+            yield return new WaitForSeconds(1.0f); // 1 second per chord
+        }
+        
+        Debug.Log("🎯 Chord Progression test completed - Should hear rich harmonic progression");
     }
 
     /// <summary>

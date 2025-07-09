@@ -414,7 +414,7 @@ Progress:
 
   Small problem to fix for auto play: 
 
-   Asıl Problem Bulundu!
+   Asıl Problem Bulundu! /dd
 
   Problem AudioManager'da değil, auto-play'in nota algılama sisteminde!
 

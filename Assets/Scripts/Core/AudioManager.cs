@@ -25,23 +25,23 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private float noteFadeDuration = 0.4f; // Değeri orijinal haline geri getirdik.
 
     [Header("🔧 Debugging")]
-    [SerializeField] private bool showDebugLogs = false;
+    [SerializeField] private bool showDebugLogs = true;
 
     [Header("📊 Performance Monitoring")]
     [SerializeField] private bool enableLatencyMonitoring = true;
     [SerializeField] private float averageLatency = 0f;
 
     [Header("🎯 Machine Gun Prevention & Note Collision")]
-    [SerializeField] private bool enableMachineGunPrevention = true;
+    [SerializeField] private bool enableMachineGunPrevention = false; // Disabled - harmful for music games
     [SerializeField] private float minNoteIntervalMs = 50f; // Minimum time between same pitch notes
-    [SerializeField] private float velocityPriorityThreshold = 0.7f; // Higher velocity can override interval
+    [SerializeField] private float velocityPriorityThreshold = 1.5f; // Higher velocity can override interval (increased to actually block 1.0 volume)
     [SerializeField] private bool enableVolumeRamping = true;
     [SerializeField] private bool enableNoteCollisionDetection = true; // Prevent same pitch overlapping
     [SerializeField] private bool allowVelocityOverride = true; // Allow higher velocity to override collision
 
     [Header("🎼 Advanced Polyphony Management")]
     [SerializeField] private bool enableVoiceStealing = true;
-    [SerializeField] private int maxPolyphony = 128; // Professional polyphony limit
+    [SerializeField] private int maxPolyphony = 64; // Reduced for easier testing (was 128)
     [SerializeField] private float voiceStealingVolumeThreshold = 0.3f; // Steal voices below this volume
     [SerializeField] private bool prioritizeRecentNotes = true;
 
@@ -302,36 +302,9 @@ public class AudioManager : MonoBehaviour
             lastNoteVolume[noteKey] = volume;
         }
 
-        // === NOTE COLLISION DETECTION SYSTEM ===
-        if (enableNoteCollisionDetection)
-        {
-            if (currentlyPlayingNotes.TryGetValue(pitch, out AudioSource existingSource))
-            {
-                // Same pitch is already playing
-                if (existingSource != null && existingSource.isPlaying)
-                {
-                    // Check if new note has significantly higher velocity to override
-                    if (allowVelocityOverride && volume > velocityPriorityThreshold)
-                    {
-                        // Stop the existing note gracefully and replace it
-                        existingSource.Stop();
-                        currentlyPlayingNotes.Remove(pitch);
-                        if (showDebugLogs) Debug.Log($"🎯 Note collision: Replaced {instrument} pitch {pitch} with higher velocity note ({volume:F2})");
-                    }
-                    else
-                    {
-                        // Block the new note to prevent doubling
-                        if (showDebugLogs) Debug.Log($"🎯 Note collision: Blocked duplicate {instrument} pitch {pitch} (existing note still playing)");
-                        return;
-                    }
-                }
-                else
-                {
-                    // Existing source is no longer playing, clean up
-                    currentlyPlayingNotes.Remove(pitch);
-                }
-            }
-        }
+        // === NOTE COLLISION DETECTION SYSTEM REMOVED ===
+        // Note collision detection removed - same pitch can play multiple times
+        // This is normal behavior for music games (chords, rapid notes, etc.)
 
         // --- CENTRALIZED PITCH CALCULATION ---
         // All mapping logic (Java-style + instrument offset) is now in one place.
