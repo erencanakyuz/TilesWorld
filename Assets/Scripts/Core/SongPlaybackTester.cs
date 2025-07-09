@@ -460,8 +460,7 @@ public class SongPlaybackTester : MonoBehaviour
                     var noteWrapper = noteObj.GetComponent<NoteWrapper>();
                     if (noteWrapper == null) continue;
 
-                    double currentTime = AudioSettings.dspTime;
-                    double timeDiff = System.Math.Abs(currentTime - noteWrapper.dspHitTime);
+                    double timeDiff = System.Math.Abs(AudioSettings.dspTime - noteWrapper.dspHitTime);
 
                     if (timeDiff < smallestTimeDiff)
                     {
@@ -471,19 +470,24 @@ public class SongPlaybackTester : MonoBehaviour
                     }
                 }
 
-                // Eğer perfect zamanda olan bir nota varsa onu çal
-                if (closestNote != null && closestWrapper != null)
+                // ENHANCED: Tüm perfect timing'deki notaları çal (sadece en yakını değil)
+                double currentTime = AudioSettings.dspTime;
+                float perfectWindow = hitZoneManager != null ? hitZoneManager.perfectWindowMs * 1.5f : 120f; // Biraz daha geniş window
+                
+                foreach (var noteObj in hitZone.insideNotes.ToList()) // ToList() to avoid modification during iteration
                 {
-                    double currentTime = AudioSettings.dspTime;
-                    double timeDiffMs = System.Math.Abs(currentTime - closestWrapper.dspHitTime) * 1000.0;
+                    if (noteObj == null) continue;
+                    var noteWrapper = noteObj.GetComponent<NoteWrapper>();
+                    if (noteWrapper == null) continue;
+
+                    double timeDiffMs = System.Math.Abs(currentTime - noteWrapper.dspHitTime) * 1000.0;
 
                     // Perfect timing window içindeyse otomatik çal
-                    float perfectWindow = hitZoneManager != null ? hitZoneManager.perfectWindowMs : 80f;
-
                     if (timeDiffMs <= perfectWindow)
                     {
                         // Perfect hit simülasyonu
-                        AutoHitNote(laneIndex, closestNote, closestWrapper);
+                        Debug.Log($"🎯 AUTO-PLAY: Found perfect note in lane {laneIndex}, pitch {noteWrapper.gameNoteInfo?.pitch}, timeDiff: {timeDiffMs:F1}ms");
+                        AutoHitNote(laneIndex, noteObj, noteWrapper);
                     }
                 }
             }
@@ -516,12 +520,13 @@ public class SongPlaybackTester : MonoBehaviour
             Destroy(noteObj);
         }
 
-        // Ses çal (Updated to use AudioManager + ProcessChartNoteHit)
+        // Ses çal (FIXED: Use same audio source as normal gameplay)
         if (noteWrapper.gameNoteInfo != null && AudioManager.Instance != null)
         {
             var noteInfo = noteWrapper.gameNoteInfo;
-            float volume = AudioManager.Instance.CalculateNoteVolume(noteInfo.duration);
-            AudioManager.Instance.PlayNote(InstrumentType.Piano, noteInfo.pitch, volume, useJavaMapping: true, line: noteInfo.line);
+            // Use same parameters as normal gameplay in HitZoneManager
+            var instrument = GameManager.Instance != null ? GameManager.Instance.GetSelectedInstrument() : InstrumentType.Piano;
+            AudioManager.Instance.PlayNote(instrument, noteInfo.pitch, volume: 1.0f, useJavaMapping: true, line: noteInfo.line, noteDuration: noteInfo.duration);
             InteractiveMusicSystem.Instance?.ProcessChartNoteHit(noteInfo);
         }
 

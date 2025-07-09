@@ -255,6 +255,8 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  enableDebugLogging: 0
+  enableFallbackUI: 1
 --- !u!4 &712101163
 Transform:
   m_ObjectHideFlags: 0
@@ -546,6 +548,16 @@ MonoBehaviour:
   showDebugLogs: 1
   enableLatencyMonitoring: 1
   averageLatency: 0
+  enableMachineGunPrevention: 1
+  minNoteIntervalMs: 50
+  velocityPriorityThreshold: 0.7
+  enableVolumeRamping: 1
+  enableNoteCollisionDetection: 1
+  allowVelocityOverride: 1
+  enableVoiceStealing: 1
+  maxPolyphony: 128
+  voiceStealingVolumeThreshold: 0.3
+  prioritizeRecentNotes: 1
 --- !u!4 &2079580564
 Transform:
   m_ObjectHideFlags: 0
