@@ -7,7 +7,7 @@ class UITester {
     constructor() {
         this.components = new Map();
         this.testedComponents = new Set();
-        this.totalComponents = 8;
+        this.totalComponents = 10;
         this.isInitialized = false;
         this.currentComponentIndex = 0;
         this.componentIds = [];
@@ -145,6 +145,20 @@ class UITester {
                 title: 'Leaderboard & Social Features',
                 icon: 'icon-leaderboard',
                 priority: 4,
+                status: 'pending'
+            },
+            {
+                id: 'achievement-gallery',
+                title: 'Achievement Gallery & Rewards',
+                icon: 'icon-achievement',
+                priority: 4,
+                status: 'pending'
+            },
+            {
+                id: 'music-selection',
+                title: 'Music Selection & Library',
+                icon: 'icon-music',
+                priority: 5,
                 status: 'pending'
             }
         ];
@@ -420,7 +434,9 @@ class UITester {
             'shop': 5,
             'settings': 6,
             'powerups': 7,
-            'leaderboard': 8
+            'leaderboard': 8,
+            'achievement-gallery': 9,
+            'music-selection': 10
         };
         return mapping[componentId] || 1;
     }

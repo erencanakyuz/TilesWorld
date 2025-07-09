@@ -47,6 +47,8 @@
     --icon-settings: linear-gradient(45deg, #95A5A6, #7F8C8D);
     --icon-powerup: linear-gradient(45deg, #E74C3C, #C0392B);
     --icon-leaderboard: linear-gradient(45deg, #F1C40F, #F39C12);
+    --icon-achievement: linear-gradient(45deg, #9C27B0, #E91E63);
+    --icon-music: linear-gradient(45deg, #8E44AD, #9B59B6);
     
     /* Spacing Scale */
     --space-xs: 4px;

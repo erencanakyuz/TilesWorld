@@ -581,6 +581,482 @@ window.MockupData = {
                     </div>
                 </div>
             </div>
+        `,
+        
+        'achievement-gallery': `
+            <div class="phone-mockup">
+                <div class="achievement-gallery-bg">
+                    <div class="achievement-header">
+                        <div class="achievement-header-nav">
+                            <div class="achievement-nav-btn">←</div>
+                            <div class="achievement-title">🏆 Achievements</div>
+                            <div class="achievement-nav-btn">🔍</div>
+                        </div>
+                        <div class="achievement-stats">
+                            <div class="achievement-stat-bubble">
+                                <div class="achievement-stat-icon">✓</div>
+                                <span>24/48</span>
+                            </div>
+                            <div class="achievement-stat-bubble">
+                                <div class="achievement-stat-icon">📊</div>
+                                <span>50%</span>
+                            </div>
+                            <div class="achievement-stat-bubble">
+                                <div class="achievement-stat-icon">⭐</div>
+                                <span>3 Rare</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="achievement-category-tabs">
+                        <div class="achievement-category-tab active" data-category="all">🏆</div>
+                        <div class="achievement-category-tab" data-category="gameplay">🎮</div>
+                        <div class="achievement-category-tab" data-category="progress">📈</div>
+                        <div class="achievement-category-tab" data-category="social">👥</div>
+                    </div>
+
+                    <div class="achievement-showcase">
+                        <div class="achievement-showcase-container">
+                            <div class="featured-achievement">
+                                <div class="featured-achievement-icon legendary">👑</div>
+                                <div class="featured-achievement-info">
+                                    <div class="featured-title">Legendary Maestro</div>
+                                    <div class="featured-description">Complete all World Tour locations</div>
+                                    <div class="featured-progress">
+                                        <div class="featured-progress-fill" style="width: 75%"></div>
+                                    </div>
+                                </div>
+                                <div class="achievement-sparkles">
+                                    <div class="sparkle"></div>
+                                    <div class="sparkle"></div>
+                                    <div class="sparkle"></div>
+                                </div>
+                            </div>
+                            <div class="achievement-navigation">
+                                <div class="achievement-nav-arrow">←</div>
+                                <div class="achievement-info">
+                                    <div class="achievement-name">Featured Achievement</div>
+                                    <div class="achievement-category">Progress Category</div>
+                                    <div class="achievement-rarity legendary">Legendary</div>
+                                </div>
+                                <div class="achievement-nav-arrow">→</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="achievements-grid">
+                        <!-- First Note -->
+                        <div class="achievement-card unlocked">
+                            <div class="achievement-card-badge unlocked">Done</div>
+                            <div class="achievement-icon">🎵</div>
+                            <div class="achievement-title-card">First Note</div>
+                            <div class="achievement-description">Play your first piano tile</div>
+                            <div class="achievement-progress">
+                                <div class="achievement-progress-bar">
+                                    <div class="achievement-progress-fill" style="width: 100%"></div>
+                                </div>
+                                <div class="achievement-progress-text">Completed</div>
+                            </div>
+                        </div>
+
+                        <!-- Piano Virtuoso -->
+                        <div class="achievement-card unlocked rare">
+                            <div class="achievement-card-badge rare">Rare</div>
+                            <div class="achievement-icon">🎹</div>
+                            <div class="achievement-title-card">Piano Virtuoso</div>
+                            <div class="achievement-description">Hit 1000 perfect notes</div>
+                            <div class="achievement-progress">
+                                <div class="achievement-progress-bar">
+                                    <div class="achievement-progress-fill" style="width: 100%"></div>
+                                </div>
+                                <div class="achievement-progress-text">1000/1000</div>
+                            </div>
+                        </div>
+
+                        <!-- Speed Demon -->
+                        <div class="achievement-card unlocked">
+                            <div class="achievement-card-badge unlocked">Done</div>
+                            <div class="achievement-icon">⚡</div>
+                            <div class="achievement-title-card">Speed Demon</div>
+                            <div class="achievement-description">Play a song at 200% speed</div>
+                            <div class="achievement-progress">
+                                <div class="achievement-progress-bar">
+                                    <div class="achievement-progress-fill" style="width: 100%"></div>
+                                </div>
+                                <div class="achievement-progress-text">Completed</div>
+                            </div>
+                        </div>
+
+                        <!-- Combo Master -->
+                        <div class="achievement-card unlocked">
+                            <div class="achievement-card-badge unlocked">Done</div>
+                            <div class="achievement-icon">🔥</div>
+                            <div class="achievement-title-card">Combo Master</div>
+                            <div class="achievement-description">Achieve 500 combo streak</div>
+                            <div class="achievement-progress">
+                                <div class="achievement-progress-bar">
+                                    <div class="achievement-progress-fill" style="width: 100%"></div>
+                                </div>
+                                <div class="achievement-progress-text">500/500</div>
+                            </div>
+                        </div>
+
+                        <!-- World Explorer -->
+                        <div class="achievement-card unlocked">
+                            <div class="achievement-card-badge unlocked">Done</div>
+                            <div class="achievement-icon">🌍</div>
+                            <div class="achievement-title-card">World Explorer</div>
+                            <div class="achievement-description">Visit 5 different countries</div>
+                            <div class="achievement-progress">
+                                <div class="achievement-progress-bar">
+                                    <div class="achievement-progress-fill" style="width: 100%"></div>
+                                </div>
+                                <div class="achievement-progress-text">5/5</div>
+                            </div>
+                        </div>
+
+                        <!-- Locked Achievements -->
+                        <div class="achievement-card locked">
+                            <div class="achievement-card-badge locked">Locked</div>
+                            <div class="achievement-icon">🎼</div>
+                            <div class="achievement-title-card">Composer's Choice</div>
+                            <div class="achievement-description">Complete 10 classical pieces</div>
+                            <div class="achievement-progress">
+                                <div class="achievement-progress-bar">
+                                    <div class="achievement-progress-fill" style="width: 60%"></div>
+                                </div>
+                                <div class="achievement-progress-text">6/10</div>
+                            </div>
+                            <div class="achievement-card-overlay">
+                                <div class="achievement-lock-icon">🔒</div>
+                                <div class="achievement-unlock-requirement">
+                                    <div class="achievement-req-text">Unlock by</div>
+                                    <div class="achievement-req-detail">Play 4 more classical pieces</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Perfect Harmony -->
+                        <div class="achievement-card locked">
+                            <div class="achievement-card-badge locked">Locked</div>
+                            <div class="achievement-icon">🏅</div>
+                            <div class="achievement-title-card">Perfect Harmony</div>
+                            <div class="achievement-description">Get 3 stars on 50 songs</div>
+                            <div class="achievement-progress">
+                                <div class="achievement-progress-bar">
+                                    <div class="achievement-progress-fill" style="width: 32%"></div>
+                                </div>
+                                <div class="achievement-progress-text">16/50</div>
+                            </div>
+                            <div class="achievement-card-overlay">
+                                <div class="achievement-lock-icon">🔒</div>
+                                <div class="achievement-unlock-requirement">
+                                    <div class="achievement-req-text">Unlock by</div>
+                                    <div class="achievement-req-detail">Get 34 more 3-star ratings</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Precision Player -->
+                        <div class="achievement-card locked">
+                            <div class="achievement-card-badge locked">Locked</div>
+                            <div class="achievement-icon">🎯</div>
+                            <div class="achievement-title-card">Precision Player</div>
+                            <div class="achievement-description">Hit 95% accuracy on Hard mode</div>
+                            <div class="achievement-progress">
+                                <div class="achievement-progress-bar">
+                                    <div class="achievement-progress-fill" style="width: 80%"></div>
+                                </div>
+                                <div class="achievement-progress-text">76/95</div>
+                            </div>
+                            <div class="achievement-card-overlay">
+                                <div class="achievement-lock-icon">🔒</div>
+                                <div class="achievement-unlock-requirement">
+                                    <div class="achievement-req-text">Unlock by</div>
+                                    <div class="achievement-req-detail">Reach 95% accuracy</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="achievement-action-panel">
+                        <div class="achievement-view-button">
+                            <span>👁️</span>
+                            <span>View All</span>
+                        </div>
+                        <div class="achievement-share-button">
+                            <span>📤</span>
+                            <span>Share</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `,
+        
+        'music-selection': `
+            <div class="phone-mockup">
+                <div class="music-selection-bg">
+                    <div class="music-header">
+                        <div class="music-header-nav">
+                            <div class="music-nav-btn">←</div>
+                            <div class="music-title">🎵 Music Library</div>
+                            <div class="music-nav-btn">🔍</div>
+                        </div>
+                        <div class="music-player-stats">
+                            <div class="music-stat-bubble">
+                                <div class="music-stat-icon">🎶</div>
+                                <span>247 Songs</span>
+                            </div>
+                            <div class="music-stat-bubble">
+                                <div class="music-stat-icon">⏱️</div>
+                                <span>12.5h</span>
+                            </div>
+                            <div class="music-stat-bubble">
+                                <div class="music-stat-icon">🎼</div>
+                                <span>8 Genres</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="music-filter-tabs">
+                        <div class="music-filter-tab active" data-genre="all">🎵</div>
+                        <div class="music-filter-tab" data-genre="classical">🎼</div>
+                        <div class="music-filter-tab" data-genre="jazz">🎷</div>
+                        <div class="music-filter-tab" data-genre="modern">🎸</div>
+                        <div class="music-filter-tab" data-genre="folk">🪕</div>
+                        <div class="music-filter-tab" data-genre="electronic">🎹</div>
+                    </div>
+
+                    <div class="now-playing-showcase">
+                        <div class="now-playing-container">
+                            <div class="music-visualizer">
+                                <div class="album-art">🎹</div>
+                                <div class="music-info">
+                                    <div class="track-title">Moonlight Sonata</div>
+                                    <div class="track-artist">Ludwig van Beethoven</div>
+                                    <div class="track-progress">
+                                        <div class="track-progress-fill" style="width: 65%"></div>
+                                    </div>
+                                    <div class="track-time">2:45 / 4:12</div>
+                                </div>
+                                <div class="audio-bars">
+                                    <div class="audio-bar"></div>
+                                    <div class="audio-bar"></div>
+                                    <div class="audio-bar"></div>
+                                    <div class="audio-bar"></div>
+                                    <div class="audio-bar"></div>
+                                </div>
+                            </div>
+                            <div class="music-controls">
+                                <div class="music-control-btn">⏮️</div>
+                                <div class="music-control-btn play">▶️</div>
+                                <div class="music-control-btn">⏭️</div>
+                                <div class="music-info-center">
+                                    <div class="current-song">Now Playing</div>
+                                    <div class="current-artist">Classical Collection</div>
+                                    <div class="difficulty-level medium">Medium</div>
+                                </div>
+                                <div class="music-control-btn">🔀</div>
+                                <div class="music-control-btn">🔁</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="music-library">
+                        <!-- Canon in D -->
+                        <div class="music-track playing">
+                            <div class="track-badge featured">Featured</div>
+                            <div class="track-art classical">🎼</div>
+                            <div class="track-info">
+                                <div class="track-name">Canon in D Major</div>
+                                <div class="track-composer">Johann Pachelbel</div>
+                                <div class="track-metadata">
+                                    <span class="track-duration">3:24</span>
+                                    <span class="track-bpm">64 BPM</span>
+                                    <span class="track-key">D Major</span>
+                                </div>
+                            </div>
+                            <div class="track-actions">
+                                <div class="track-play-btn">⏸️</div>
+                                <div class="track-stars">
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star empty">⭐</span>
+                                    <span class="track-star empty">⭐</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Für Elise -->
+                        <div class="music-track">
+                            <div class="track-badge new">New</div>
+                            <div class="track-art classical">🎹</div>
+                            <div class="track-info">
+                                <div class="track-name">Für Elise</div>
+                                <div class="track-composer">Ludwig van Beethoven</div>
+                                <div class="track-metadata">
+                                    <span class="track-duration">2:56</span>
+                                    <span class="track-bpm">120 BPM</span>
+                                    <span class="track-key">A Minor</span>
+                                </div>
+                            </div>
+                            <div class="track-actions">
+                                <div class="track-play-btn">▶️</div>
+                                <div class="track-stars">
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star empty">⭐</span>
+                                    <span class="track-star empty">⭐</span>
+                                    <span class="track-star empty">⭐</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Take Five -->
+                        <div class="music-track">
+                            <div class="track-art jazz">🎷</div>
+                            <div class="track-info">
+                                <div class="track-name">Take Five</div>
+                                <div class="track-composer">Dave Brubeck</div>
+                                <div class="track-metadata">
+                                    <span class="track-duration">5:24</span>
+                                    <span class="track-bpm">176 BPM</span>
+                                    <span class="track-key">Eb Minor</span>
+                                </div>
+                            </div>
+                            <div class="track-actions">
+                                <div class="track-play-btn">▶️</div>
+                                <div class="track-stars">
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star empty">⭐</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Clocks -->
+                        <div class="music-track">
+                            <div class="track-art modern">🎸</div>
+                            <div class="track-info">
+                                <div class="track-name">Clocks</div>
+                                <div class="track-composer">Coldplay</div>
+                                <div class="track-metadata">
+                                    <span class="track-duration">5:07</span>
+                                    <span class="track-bpm">130 BPM</span>
+                                    <span class="track-key">Eb Major</span>
+                                </div>
+                            </div>
+                            <div class="track-actions">
+                                <div class="track-play-btn">▶️</div>
+                                <div class="track-stars">
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Scarborough Fair -->
+                        <div class="music-track">
+                            <div class="track-art folk">🪕</div>
+                            <div class="track-info">
+                                <div class="track-name">Scarborough Fair</div>
+                                <div class="track-composer">Traditional</div>
+                                <div class="track-metadata">
+                                    <span class="track-duration">3:10</span>
+                                    <span class="track-bpm">90 BPM</span>
+                                    <span class="track-key">D Minor</span>
+                                </div>
+                            </div>
+                            <div class="track-actions">
+                                <div class="track-play-btn">▶️</div>
+                                <div class="track-stars">
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star empty">⭐</span>
+                                    <span class="track-star empty">⭐</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Locked Premium Track -->
+                        <div class="music-track premium">
+                            <div class="track-badge premium">Premium</div>
+                            <div class="track-art classical">🎻</div>
+                            <div class="track-info">
+                                <div class="track-name">The Four Seasons</div>
+                                <div class="track-composer">Antonio Vivaldi</div>
+                                <div class="track-metadata">
+                                    <span class="track-duration">43:06</span>
+                                    <span class="track-bpm">Various</span>
+                                    <span class="track-key">Various</span>
+                                </div>
+                            </div>
+                            <div class="track-actions">
+                                <div class="track-play-btn">💎</div>
+                                <div class="track-stars">
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Locked Track -->
+                        <div class="music-track locked">
+                            <div class="track-badge locked">Locked</div>
+                            <div class="track-art classical">🎼</div>
+                            <div class="track-info">
+                                <div class="track-name">Symphony No. 9</div>
+                                <div class="track-composer">Ludwig van Beethoven</div>
+                                <div class="track-metadata">
+                                    <span class="track-duration">65:00</span>
+                                    <span class="track-bpm">120 BPM</span>
+                                    <span class="track-key">D Minor</span>
+                                </div>
+                            </div>
+                            <div class="track-actions">
+                                <div class="track-play-btn">🔒</div>
+                                <div class="track-stars">
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                    <span class="track-star">⭐</span>
+                                </div>
+                            </div>
+                            <div class="track-lock-overlay">
+                                <div class="track-lock-icon">🔒</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="music-action-panel">
+                        <div class="shuffle-button">
+                            <span>🔀</span>
+                            <span>Shuffle All</span>
+                        </div>
+                        <div class="playlist-button">
+                            <span>📁</span>
+                            <span>Create Playlist</span>
+                        </div>
+                    </div>
+
+                    <div class="floating-music-notes">
+                        <div class="music-note">♪</div>
+                        <div class="music-note">♫</div>
+                        <div class="music-note">♬</div>
+                    </div>
+                </div>
+            </div>
         `
     }
 };

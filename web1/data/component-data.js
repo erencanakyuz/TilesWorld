@@ -20,7 +20,11 @@ window.ComponentData = {
         
         'powerups': "Create a comprehensive customization system for a piano rhythm game: featuring instrument selection (piano, guitar, violin, drums), artist collections (classical composers, modern artists), 3D tile designs with different shapes and materials, background environments, and visual effects. Use category tabs for navigation, interactive preview system with smooth transitions, equipment states (locked/unlocked/equipped), rarity systems, and smooth navigation arrows. Include try-before-buy functionality and achievement-based unlock progression.",
         
-        'leaderboard': "Design a premium leaderboard screen with parchment texture background and champions podium for top 3 players. Include tabbed navigation (Friends/Global/Weekly), player cards with avatars and rank changes, social features like challenge and share buttons. Use elegant color scheme with white cards, gold accents for winners, and smooth animations for rank updates. Add floating action buttons and real-time update notifications."
+        'leaderboard': "Design a premium leaderboard screen with parchment texture background and champions podium for top 3 players. Include tabbed navigation (Friends/Global/Weekly), player cards with avatars and rank changes, social features like challenge and share buttons. Use elegant color scheme with white cards, gold accents for winners, and smooth animations for rank updates. Add floating action buttons and real-time update notifications.",
+        
+        'achievement-gallery': "Create a fantasy-inspired Achievement Gallery for a piano rhythm game using the IdleVenture UI aesthetic. Design a rich, colorful interface with rounded corners, gradient backgrounds, and magical elements. Include achievement cards with different rarity levels (common, rare, legendary), unlock states, progress tracking, and category filtering. Features unlocked achievements with glowing effects, locked achievements with dimmed appearance, progress bars, detailed modal popups, and floating particle effects. Use a purple-dominant color palette with pink and blue accents, glassmorphism effects, and smooth hover animations.",
+        
+        'music-selection': "Design a modern, detailed music selection interface for a piano rhythm game using the parchment and glassmorphism aesthetic. Create a comprehensive music library with genre filtering, difficulty levels, and detailed track information. Include a now-playing showcase with rotating album art, audio visualizer bars, and intuitive playback controls. Features track cards with composer names, BPM, musical keys, star ratings, and unlock states. Add premium/locked track indicators, progress tracking, and smooth animations. Use the same purple header gradient and white card design as other components, with music-themed icons and a professional audio player interface."
     },
 
     // Component titles for display
@@ -32,13 +36,15 @@ window.ComponentData = {
         'shop': 'Piano Shop & Upgrade System',
         'settings': 'Settings Side Panel',
         'powerups': 'Instrument & Style Customization',
-        'leaderboard': 'Leaderboard & Social Features'
+        'leaderboard': 'Leaderboard & Social Features',
+        'achievement-gallery': 'Achievement Gallery & Rewards',
+        'music-selection': 'Music Selection & Library'
     },
 
     // Component categories for organization
     categories: {
-        'core': ['main-menu', 'hud', 'level-complete'],
-        'progression': ['world-tour', 'leaderboard'],
+        'core': ['main-menu', 'hud', 'level-complete', 'music-selection'],
+        'progression': ['world-tour', 'leaderboard', 'achievement-gallery'],
         'monetization': ['shop', 'powerups'],
         'utility': ['settings']
     },
@@ -52,7 +58,9 @@ window.ComponentData = {
         'hud': 5,           // Core gameplay
         'level-complete': 4, // Player retention
         'leaderboard': 4,    // Social engagement
-        'settings': 3        // User experience
+        'settings': 3,        // User experience
+        'achievement-gallery': 4,  // Player engagement & retention
+        'music-selection': 5       // Core gameplay experience
     },
 
     // Technical complexity assessment (1-5)
@@ -64,7 +72,9 @@ window.ComponentData = {
         'main-menu': 3,      // Animations and effects
         'level-complete': 3, // Modal system
         'hud': 3,           // Real-time updates
-        'settings': 2        // Simple UI elements
+        'settings': 2,        // Simple UI elements
+        'achievement-gallery': 3,  // Card grid system with filtering
+        'music-selection': 4       // Audio integration with complex UI
     },
 
     // Development time estimates (in days)
@@ -76,7 +86,9 @@ window.ComponentData = {
         'main-menu': 3,      // Premium animations
         'level-complete': 2, // Modal with animations
         'hud': 3,           // Real-time UI updates
-        'settings': 2        // Standard settings panel
+        'settings': 2,        // Standard settings panel
+        'achievement-gallery': 3,  // Card grid with filtering and modals
+        'music-selection': 4       // Audio player with library system
     },
 
     // Required Unity packages/assets
@@ -128,6 +140,23 @@ window.ComponentData = {
             'Audio Manager',
             'Save System',
             'Haptic Feedback'
+        ],
+        'achievement-gallery': [
+            'Achievement System',
+            'DOTween Pro',
+            'UI Blur',
+            'Particle System',
+            'Save System',
+            'TextMeshPro'
+        ],
+        'music-selection': [
+            'Audio Manager',
+            'Music System',
+            'DOTween Pro',
+            'UI Blur',
+            'TextMeshPro',
+            'Save System',
+            'Asset Bundle Manager'
         ]
     },
 
@@ -147,6 +176,16 @@ window.ComponentData = {
             'iOS': 'App Store IAP guidelines, receipt validation',
             'Android': 'Play Store billing, subscription handling',
             'Universal': 'GDPR compliance, parental controls'
+        },
+        'achievement-gallery': {
+            'iOS': 'Achievement notification integration, Game Center sync',
+            'Android': 'Google Play Games achievement integration',
+            'Universal': 'Achievement data persistence, cloud sync'
+        },
+        'music-selection': {
+            'iOS': 'Audio session management, background playback',
+            'Android': 'Audio focus handling, MediaSession integration',
+            'Universal': 'Music library caching, streaming optimization'
         }
     },
 
@@ -169,6 +208,23 @@ window.ComponentData = {
             'Clear purchase confirmation',
             'Error message accessibility',
             'Currency format localization'
+        ],
+        'achievement-gallery': [
+            'Achievement card screen reader support',
+            'Progress percentage announcements',
+            'Category filter keyboard navigation',
+            'Achievement unlock sound notifications',
+            'High contrast mode for rarity indicators',
+            'Reduced motion support for animations'
+        ],
+        'music-selection': [
+            'Track information screen reader support',
+            'Audio control keyboard navigation',
+            'Progress time announcements',
+            'Genre filter accessibility',
+            'Music playback state notifications',
+            'Volume control screen reader support',
+            'High contrast mode for music controls'
         ]
     }
 };
