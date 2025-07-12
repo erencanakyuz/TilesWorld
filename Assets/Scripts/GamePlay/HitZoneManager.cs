@@ -296,7 +296,9 @@ public class HitZoneManager : MonoBehaviour
         {
             // Play audio directly with centralized volume calculation
             var instrument = GameManager.Instance != null ? GameManager.Instance.GetSelectedInstrument() : InstrumentType.Piano;
-            AudioManager.Instance?.PlayNote(instrument, noteInfo.pitch, volume: 1.0f, useJavaMapping: true, line: noteInfo.line, noteDuration: noteInfo.duration);
+            // Use centralized volume calculation based on note duration
+            float calculatedVolume = AudioManager.Instance?.CalculateNoteVolume(noteInfo.duration) ?? 1.0f;
+            AudioManager.Instance?.PlayNote(instrument, noteInfo.pitch, volume: calculatedVolume, useJavaMapping: true, line: noteInfo.line, noteDuration: noteInfo.duration);
 
             // Notify IMS for musical analysis only
             InteractiveMusicSystem.Instance?.ProcessChartNoteHit(noteInfo);

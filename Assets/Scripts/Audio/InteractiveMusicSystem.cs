@@ -74,9 +74,9 @@ public class InteractiveMusicSystem : MonoBehaviour
 
     void SetupMusicSystem()
     {
-        // Get references to other systems
+        // Get references to other systems using singleton pattern
         if (audioManager == null)
-            audioManager = FindFirstObjectByType<AudioManager>();
+            audioManager = AudioManager.Instance;
 
         // Set initial instrument
         if (GameManager.Instance != null)
@@ -123,8 +123,17 @@ public class InteractiveMusicSystem : MonoBehaviour
             return noteInfo;
         }
 
-        // Use AudioConstants for centralized sound mapping
-        int soundIndex = AudioConstants.GetSoundIndex(lane, 0); // Use lane as base, pitch 0 for this context
+        // Use AudioConstants for centralized sound mapping with defensive programming
+        int soundIndex;
+        try
+        {
+            soundIndex = AudioConstants.GetSoundIndex(lane, 0); // Use lane as base, pitch 0 for this context
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"🎵 AudioConstants.GetSoundIndex failed for lane {lane}: {ex.Message}. Using fallback.");
+            soundIndex = lane * 5; // Simple fallback mapping
+        }
 
         // Simple direct mapping - no complex musical theory
         noteInfo.midiNote = soundIndex + 60; // Direct mapping
@@ -331,15 +340,6 @@ public class InteractiveMusicSystem : MonoBehaviour
         CleanupOldMusicalEvents();
     }
 
-    /// <summary>
-    /// Calculate note volume based on JSON duration value (DEPRECATED - Use AudioManager.CalculateNoteVolume)
-    /// </summary>
-    [System.Obsolete("Use AudioManager.Instance.CalculateNoteVolume() instead for centralized volume calculation")]
-    public float CalculateNoteVolume(float duration)
-    {
-        // Redirect to centralized AudioManager implementation
-        return AudioManager.Instance != null ? AudioManager.Instance.CalculateNoteVolume(duration) : 1.0f;
-    }
 
     /// <summary>
     /// Play multiple notes simultaneously (chord) - enhanced with JSON data

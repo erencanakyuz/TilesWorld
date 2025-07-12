@@ -321,8 +321,16 @@ public class SongPlaybackTester : MonoBehaviour
 
                 if (useJavaMapping)
                 {
-                    // Use the new, centralized function for consistent sound.
-                    finalPitch = AudioConstants.GetFinalSoundIndex(testInstrument, note.line, note.pitch, maxIndex);
+                    // Use the new, centralized function for consistent sound with defensive programming
+                    try
+                    {
+                        finalPitch = AudioConstants.GetFinalSoundIndex(testInstrument, note.line, note.pitch, maxIndex);
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogError($"🎵 SongPlaybackTester: AudioConstants.GetFinalSoundIndex failed: {ex.Message}. Using fallback.");
+                        finalPitch = UnityEngine.Mathf.Clamp(note.pitch, 0, maxIndex);
+                    }
                 }
                 else
                 {

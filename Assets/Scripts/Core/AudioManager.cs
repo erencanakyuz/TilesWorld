@@ -37,7 +37,6 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private float velocityPriorityThreshold = 1.5f; // Higher velocity can override interval (increased to actually block 1.0 volume)
     [SerializeField] private bool enableVolumeRamping = true;
     [SerializeField] private bool enableNoteCollisionDetection = true; // Prevent same pitch overlapping
-    [SerializeField] private bool allowVelocityOverride = true; // Allow higher velocity to override collision
 
     [Header("🎼 Advanced Polyphony Management")]
     [SerializeField] private bool enableVoiceStealing = true;
@@ -311,7 +310,15 @@ public class AudioManager : MonoBehaviour
         int finalPitch;
         if (useJavaMapping)
         {
-            finalPitch = AudioConstants.GetFinalSoundIndex(instrument, line, pitch, maxIndex);
+            try
+            {
+                finalPitch = AudioConstants.GetFinalSoundIndex(instrument, line, pitch, maxIndex);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"🎵 AudioConstants.GetFinalSoundIndex failed: {ex.Message}. Using fallback mapping.");
+                finalPitch = Mathf.Clamp(pitch, 0, maxIndex);
+            }
         }
         else
         {
@@ -734,7 +741,7 @@ public class AudioManager : MonoBehaviour
             return audioClip;
         }
 
-        // Debug.LogError($"🎵 [PRODUCTION] Missing audio file for {instrument} pitch {pitch} - no fallback available!");
+        Debug.LogError($"🎵 [PRODUCTION] Missing audio file for {instrument} pitch {pitch} - no fallback available!");
         return null;
     }
 
@@ -832,7 +839,7 @@ public class AudioManager : MonoBehaviour
 
         if (instruments.Length == 0)
         {
-            // Debug.LogError("❌ FATAL: No instruments could be loaded at all! Check Resources/Audio folder structure. Notes will be silent.");
+            Debug.LogError("❌ FATAL: No instruments could be loaded at all! Check Resources/Audio folder structure. Notes will be silent.");
         }
     }
 
