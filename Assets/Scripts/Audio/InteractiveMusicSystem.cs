@@ -296,48 +296,6 @@ public class InteractiveMusicSystem : MonoBehaviour
         */
     }
 
-    /// <summary>
-    /// Enhanced note playing with JSON pitch data (DEPRECATED - Use AudioManager directly + ProcessChartNoteHit)
-    /// </summary>
-    [System.Obsolete("Use AudioManager.Instance.PlayNote() + ProcessChartNoteHit() instead for better separation of concerns")]
-    public void PlayNoteFromChart(GameNoteInfo noteInfo)
-    {
-        if (noteInfo == null) return;
-
-        // Enhanced volume calculation based on note duration from JSON
-        float noteVolume = AudioManager.Instance != null ? AudioManager.Instance.CalculateNoteVolume(noteInfo.duration) : 1.0f;
-
-#if UNITY_EDITOR
-        // Debug tracking to ensure only HitZoneManager calls this method
-        var stackTrace = new System.Diagnostics.StackTrace();
-        var callingMethod = stackTrace.GetFrame(1)?.GetMethod()?.Name ?? "Unknown";
-        var callingClass = stackTrace.GetFrame(1)?.GetMethod()?.DeclaringType?.Name ?? "Unknown";
-
-        if (showDebugInfo)
-        {
-            // Debug.Log($"🎵 TriggerNoteAudio called by {callingClass}.{callingMethod} - Note: {noteInfo.pitch}");
-        }
-
-        // Alert if called from unexpected source - now expects HitZoneManager
-        if (callingClass != "HitZoneManager")
-        {
-            Debug.LogWarning($"⚠️ TriggerNoteAudio called from unexpected source: {callingClass}.{callingMethod}");
-        }
-#endif
-
-        // ENHANCED: AudioManager'ın unified metodunu Java mapping ile kullan
-        if (audioManager != null)
-        {
-            audioManager.PlayNote(currentInstrument, noteInfo.pitch, noteVolume, useJavaMapping: true, line: noteInfo.line);
-        }
-        else
-        {
-            Debug.LogWarning("🎵 AudioManager referansı bulunamadı!");
-        }
-
-        // Müzikal event ve analiz sistemini koru
-        ProcessMusicalEvent(noteInfo, noteVolume);
-    }
 
     /// <summary>
     /// Müzikal event'i işle ve analiz et (separated from audio playing)

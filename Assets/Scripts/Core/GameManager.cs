@@ -252,19 +252,6 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.Save();
     }
 
-    [System.Obsolete("Use UpdatePlayerDataInMemory and SavePlayerDataToDisk instead for better performance control.")]
-    public void SavePlayerData()
-    {
-        if (currentPlayer != null)
-        {
-            PlayerPrefs.SetString("PlayerName", currentPlayer.playerName);
-            PlayerPrefs.SetInt("TotalScore", currentPlayer.totalScore);
-            PlayerPrefs.SetInt("HighestCombo", currentPlayer.highestCombo);
-            PlayerPrefs.SetInt("PreferredInstrument", (int)currentPlayer.preferredInstrument);
-            PlayerPrefs.Save();
-
-        }
-    }
     #endregion
 
     #region Game Session Management

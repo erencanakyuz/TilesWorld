@@ -380,11 +380,6 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    [System.Obsolete("Use PlayNote with useJavaMapping=true instead")]
-    public void PlayNoteFromChart(int line, int pitch, InstrumentType instrument, float volume = 1.0f)
-    {
-        PlayNote(instrument, pitch, volume, useJavaMapping: true, line: line);
-    }
     #endregion
 
     #region Music Playback
