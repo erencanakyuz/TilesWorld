@@ -401,53 +401,6 @@ public class InteractiveMusicSystem : MonoBehaviour
     /// UNIFIED NOTE PROCESSING - Eliminates code duplication
     /// Handles all note playing, musical analysis, and event creation
     /// </summary>
-    private void ProcessAndPlayNote(int lane, int pitch, float velocity, bool isPlayerTriggered, InstrumentType instrumentType)
-    {
-        // 1. Play the sound using AudioManager
-        if (audioManager != null)
-        {
-            audioManager.PlayNote(instrumentType, pitch, velocity);
-        }
-
-        // 2. Create musical event for analysis (only for interactive notes)
-        if (isPlayerTriggered)
-        {
-            var musicalEvent = new MusicalEvent
-            {
-                lane = lane,
-                noteInfo = new MusicalNoteInfo
-                {
-                    midiNote = pitch,
-                    soundIndex = pitch,
-                    noteName = $"Note{pitch}",
-                    instrumentType = instrumentType,
-                    isValid = true
-                },
-                velocity = velocity,
-                timestamp = Time.time,
-                isPlayerTriggered = isPlayerTriggered
-            };
-
-            // Add to recent events for chord detection
-            recentMusicalEvents.Enqueue(musicalEvent);
-            CleanupOldMusicalEvents();
-
-            // Detect chords and harmonies
-            CheckForChordCreation(musicalEvent);
-
-            // Update statistics
-            notesPlayedThisSession++;
-            laneLastPlayTime[lane] = Time.time;
-
-            }
-
-        // 3. Debug logging (if enabled)
-        if (showDebugInfo)
-        {
-            // Debug.Log($"🎵 Playing {instrumentType} pitch {pitch} " +
-            //         $"lane {lane} volume {velocity:F2}");
-        }
-    }
 }
 
 // Data structures moved to DataStructures.cs to avoid duplicates
