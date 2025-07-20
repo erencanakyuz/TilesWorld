@@ -31,11 +31,6 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private bool enableLatencyMonitoring = true;
     [SerializeField] private float averageLatency = 0f;
 
-    [Header("🎼 Advanced Polyphony Management")]
-    [SerializeField] private bool enableVoiceStealing = true;
-    [SerializeField] private int maxPolyphony = 64; // Reduced for easier testing (was 128)
-    [SerializeField] private float voiceStealingVolumeThreshold = 0.3f; // Steal voices below this volume
-    [SerializeField] private bool prioritizeRecentNotes = true;
 
     // === ESKİ JAVA OYUNUNDAN: SOUND_RESOURCE_IDXS MAPPING SİSTEMİ ===
     // Bu sistem artık DataStructures.cs/AudioConstants'da merkezi olarak tanımlı
@@ -45,9 +40,6 @@ public class AudioManager : MonoBehaviour
     private List<AudioSource> activeAudioSources;
     private List<FadingAudioSource> fadingAudioSources; // For managing fades in Update()
 
-    // Advanced Polyphony Management
-    private List<VoiceInfo> activeVoices; // Track all active voices for stealing
-    private int currentPolyphonyCount = 0;
 
     // Current playing music
     private AudioSource musicAudioSource;
@@ -94,13 +86,8 @@ public class AudioManager : MonoBehaviour
     {
         CreateAudioSourcePool();
         ApplyDefaultSettings();
-        InitializeVoiceTracking();
     }
 
-    void InitializeVoiceTracking()
-    {
-        activeVoices = new List<VoiceInfo>();
-    }
 
     void CreateAudioSourcePool()
     {
@@ -253,11 +240,6 @@ public class AudioManager : MonoBehaviour
         audioSource.volume = volume * sfxVolume * masterVolume;
         audioSource.Play();
 
-        // === VOICE TRACKING FOR POLYPHONY MANAGEMENT ===
-        if (enableVoiceStealing)
-        {
-            AddVoiceInfo(audioSource, volume, finalPitch, instrument);
-        }
 
         if (enableNoteFadeOut)
         {
@@ -395,14 +377,6 @@ public class AudioManager : MonoBehaviour
                 activeAudioSources.RemoveAt(i);
                 audioSourcePool.Enqueue(source);
                 
-                // Update polyphony tracking
-                currentPolyphonyCount = Mathf.Max(0, currentPolyphonyCount - 1);
-                
-                // Remove from voice tracking
-                if (enableVoiceStealing)
-                {
-                    RemoveVoiceInfo(source);
-                }
 
             }
         }
@@ -423,14 +397,6 @@ public class AudioManager : MonoBehaviour
                 audioSourcePool.Enqueue(fadingSource.source);
                 fadingAudioSources.RemoveAt(i);
                 
-                // Update polyphony tracking
-                currentPolyphonyCount = Mathf.Max(0, currentPolyphonyCount - 1);
-                
-                // Remove from voice tracking
-                if (enableVoiceStealing)
-                {
-                    RemoveVoiceInfo(fadingSource.source);
-                }
 
             }
             else
@@ -448,132 +414,32 @@ public class AudioManager : MonoBehaviour
 
     AudioSource GetAvailableAudioSource(float noteVolume = 1.0f, int notePitch = 0, InstrumentType instrument = InstrumentType.Piano)
     {
-        // === ADVANCED POLYPHONY MANAGEMENT ===
-        if (enableVoiceStealing && currentPolyphonyCount >= maxPolyphony)
-        {
-            AudioSource stolenSource = FindVoiceToSteal(noteVolume);
-            if (stolenSource != null)
-            {
-                if (showDebugLogs) Debug.Log($"🎼 Voice stealing: Stole voice for {instrument} pitch {notePitch} (volume: {noteVolume:F2})");
-                return stolenSource;
-            }
-        }
-
         if (audioSourcePool.Count > 0)
         {
             AudioSource source = audioSourcePool.Dequeue();
             activeAudioSources.Add(source);
-            currentPolyphonyCount++;
             return source;
         }
 
-        // Expand pool if under polyphony limit
-        if (currentPolyphonyCount < maxPolyphony)
-        {
-            if (showDebugLogs) Debug.LogWarning($"🎵 Audio pool exhausted! Expanding from {audioSourcePoolSize} sources.");
-            
-            GameObject audioObject = new GameObject($"PooledAudioSource_{audioSourcePoolSize}");
-            audioObject.transform.SetParent(transform);
-            
-            AudioSource newSource = audioObject.AddComponent<AudioSource>();
-            newSource.playOnAwake = false;
-            newSource.volume = 1.0f;
-            
-            audioSourcePoolSize++; // Track pool growth
-            activeAudioSources.Add(newSource);
-            currentPolyphonyCount++;
-            
-            return newSource;
-        }
-
-        // Polyphony limit reached and no voice to steal
-        if (showDebugLogs) Debug.LogWarning($"🎼 Polyphony limit reached ({maxPolyphony}), note dropped!");
-        return null;
+        // Expand pool dynamically if needed
+        if (showDebugLogs) Debug.LogWarning($"🎵 Audio pool exhausted! Expanding from {audioSourcePoolSize} sources.");
+        
+        GameObject audioObject = new GameObject($"PooledAudioSource_{audioSourcePoolSize}");
+        audioObject.transform.SetParent(transform);
+        
+        AudioSource newSource = audioObject.AddComponent<AudioSource>();
+        newSource.playOnAwake = false;
+        newSource.volume = 1.0f;
+        
+        audioSourcePoolSize++; // Track pool growth
+        activeAudioSources.Add(newSource);
+        
+        return newSource;
     }
 
-    /// <summary>
-    /// Find the best voice to steal based on priority system
-    /// </summary>
-    AudioSource FindVoiceToSteal(float newNoteVolume)
-    {
-        AudioSource bestCandidate = null;
-        float lowestPriority = float.MaxValue;
 
-        foreach (var voice in activeVoices)
-        {
-            if (voice.audioSource == null || !voice.audioSource.isPlaying) continue;
 
-            float priority = CalculateVoicePriority(voice, newNoteVolume);
-            if (priority < lowestPriority)
-            {
-                lowestPriority = priority;
-                bestCandidate = voice.audioSource;
-            }
-        }
 
-        if (bestCandidate != null)
-        {
-            // Stop the stolen voice gracefully
-            bestCandidate.Stop();
-            RemoveVoiceInfo(bestCandidate);
-        }
-
-        return bestCandidate;
-    }
-
-    /// <summary>
-    /// Calculate voice priority for stealing algorithm
-    /// Lower values = higher chance of being stolen
-    /// </summary>
-    float CalculateVoicePriority(VoiceInfo voice, float newNoteVolume)
-    {
-        float priority = voice.volume * 100f; // Base priority from volume
-
-        // Prioritize keeping recent notes if enabled
-        if (prioritizeRecentNotes)
-        {
-            float age = Time.time - voice.startTime;
-            priority += age * 10f; // Older notes are more likely to be stolen
-        }
-
-        // Lower priority for very quiet notes
-        if (voice.volume < voiceStealingVolumeThreshold)
-        {
-            priority *= 0.5f; // Make quiet notes more likely to be stolen
-        }
-
-        // New note has much higher volume - steal lower volume notes
-        if (newNoteVolume > voice.volume + 0.3f)
-        {
-            priority *= 0.3f; // Much more likely to steal
-        }
-
-        return priority;
-    }
-
-    void AddVoiceInfo(AudioSource source, float volume, int pitch, InstrumentType instrument)
-    {
-        activeVoices.Add(new VoiceInfo
-        {
-            audioSource = source,
-            volume = volume,
-            pitch = pitch,
-            instrument = instrument,
-            startTime = Time.time
-        });
-    }
-
-    void RemoveVoiceInfo(AudioSource source)
-    {
-        for (int i = activeVoices.Count - 1; i >= 0; i--)
-        {
-            if (activeVoices[i].audioSource == source)
-            {
-                activeVoices.RemoveAt(i);
-                break;
-            }
-        }
-    }
 
 
     public AudioClip GetNoteClip(InstrumentType instrument, int pitch)
@@ -715,15 +581,6 @@ public class AudioManager : MonoBehaviour
         public float initialVolume;
     }
 
-    // Helper class for advanced polyphony management and voice stealing
-    private class VoiceInfo
-    {
-        public AudioSource audioSource;
-        public float volume;
-        public int pitch;
-        public InstrumentType instrument;
-        public float startTime;
-    }
 }
 
 [System.Serializable]
