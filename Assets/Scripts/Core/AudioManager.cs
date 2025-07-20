@@ -31,11 +31,7 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private bool enableLatencyMonitoring = true;
     [SerializeField] private float averageLatency = 0f;
 
-    [Header("🎯 Machine Gun Prevention & Note Collision")]
-    [SerializeField] private bool enableMachineGunPrevention = false; // Disabled - harmful for music games
-    [SerializeField] private float minNoteIntervalMs = 50f; // Minimum time between same pitch notes
-    [SerializeField] private float velocityPriorityThreshold = 1.5f; // Higher velocity can override interval (increased to actually block 1.0 volume)
-    [SerializeField] private bool enableVolumeRamping = true;
+    [Header("🎯 Note Collision Detection")]
     [SerializeField] private bool enableNoteCollisionDetection = true; // Prevent same pitch overlapping
 
     [Header("🎼 Advanced Polyphony Management")]
@@ -51,10 +47,6 @@ public class AudioManager : MonoBehaviour
     private Queue<AudioSource> audioSourcePool;
     private List<AudioSource> activeAudioSources;
     private List<FadingAudioSource> fadingAudioSources; // For managing fades in Update()
-
-    // Machine Gun Prevention System
-    private Dictionary<int, float> lastNotePlayTime; // pitch -> last play time
-    private Dictionary<int, float> lastNoteVolume;   // pitch -> last volume for ramping
 
     // Note Collision Detection System
     private Dictionary<int, AudioSource> currentlyPlayingNotes; // pitch -> currently playing AudioSource
@@ -111,13 +103,11 @@ public class AudioManager : MonoBehaviour
     {
         CreateAudioSourcePool();
         ApplyDefaultSettings();
-        InitializeMachineGunPrevention();
+        InitializeNoteCollisionDetection();
     }
 
-    void InitializeMachineGunPrevention()
+    void InitializeNoteCollisionDetection()
     {
-        lastNotePlayTime = new Dictionary<int, float>();
-        lastNoteVolume = new Dictionary<int, float>();
         currentlyPlayingNotes = new Dictionary<int, AudioSource>();
         activeVoices = new List<VoiceInfo>();
         InitializeAudioPathCache();
@@ -251,7 +241,7 @@ public class AudioManager : MonoBehaviour
     }
     
     /// <summary>
-    /// Internal note playing implementation with machine gun prevention
+    /// Internal note playing implementation
     /// </summary>
     private void PlayNoteInternal(InstrumentType instrument, int pitch, float volume, bool useJavaMapping, int line)
     {
@@ -263,47 +253,6 @@ public class AudioManager : MonoBehaviour
         }
 
         int maxIndex = instruments[instrumentId].noteClips.Length - 1;
-
-        // === MACHINE GUN PREVENTION SYSTEM ===
-        if (enableMachineGunPrevention)
-        {
-            // Create unique key combining instrument and pitch
-            int noteKey = ((int)instrument * 1000) + pitch;
-            float currentTime = Time.time * 1000f; // Convert to milliseconds
-
-            if (lastNotePlayTime.ContainsKey(noteKey))
-            {
-                float timeSinceLastPlay = currentTime - lastNotePlayTime[noteKey];
-                
-                // Check if note is being played too quickly
-                if (timeSinceLastPlay < minNoteIntervalMs)
-                {
-                    // Allow override for significantly higher velocity
-                    if (volume < velocityPriorityThreshold)
-                    {
-                        if (showDebugLogs) Debug.Log($"🎯 Machine gun prevention: Blocked {instrument} pitch {pitch} (interval: {timeSinceLastPlay:F1}ms < {minNoteIntervalMs}ms)");
-                        return; // Block the note
-                    }
-                    
-                    if (showDebugLogs) Debug.Log($"🎯 Machine gun prevention: Allowed {instrument} pitch {pitch} due to high velocity ({volume:F2})");
-                }
-
-                // Implement volume ramping for natural feel
-                if (enableVolumeRamping && lastNoteVolume.ContainsKey(noteKey))
-                {
-                    float rampFactor = Mathf.Clamp01(timeSinceLastPlay / minNoteIntervalMs);
-                    volume = Mathf.Lerp(lastNoteVolume[noteKey] * 0.7f, volume, rampFactor);
-                }
-            }
-
-            // Update tracking
-            lastNotePlayTime[noteKey] = currentTime;
-            lastNoteVolume[noteKey] = volume;
-        }
-
-        // === NOTE COLLISION DETECTION SYSTEM REMOVED ===
-        // Note collision detection removed - same pitch can play multiple times
-        // This is normal behavior for music games (chords, rapid notes, etc.)
 
         // --- CENTRALIZED PITCH CALCULATION ---
         // All mapping logic (Java-style + instrument offset) is now in one place.
