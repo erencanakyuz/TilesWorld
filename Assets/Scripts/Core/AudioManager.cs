@@ -103,51 +103,6 @@ public class AudioManager : MonoBehaviour
         activeVoices = new List<VoiceInfo>();
     }
 
-    /// <summary>
-    /// Pre-build all possible audio paths to eliminate runtime string concatenation
-    /// PERFORMANCE OPTIMIZATION: Prevents GC allocation spikes during gameplay
-    /// </summary>
-    void InitializeAudioPathCache()
-    {
-        audioPathCache = new Dictionary<string, string>();
-
-        foreach (InstrumentType instrument in System.Enum.GetValues(typeof(InstrumentType)))
-        {
-            string instrumentFolder = instrument.ToString();
-            
-            // Pre-build paths for all possible pitch values (0-44)
-            for (int pitch = 0; pitch <= 44; pitch++)
-            {
-                string fileName = instrument switch
-                {
-                    InstrumentType.Piano => $"piano_snd{pitch:D3}",
-                    InstrumentType.Harp => $"harp_snd{pitch:D3}",
-                    InstrumentType.Guitar => $"acustic_guitar_snd{pitch:D3}",
-                    _ => $"unknown_snd{pitch:D3}"
-                };
-
-                string key = $"{instrument}_{pitch}";
-                
-                // Store primary path
-                audioPathCache[key] = $"Audio/{instrumentFolder}/{fileName}";
-                
-                // Store fallback paths
-                audioPathCache[$"{key}_fallback1"] = $"{instrumentFolder}/{fileName}";
-                audioPathCache[$"{key}_fallback2"] = fileName;
-                
-                // Guitar alternative naming
-                if (instrument == InstrumentType.Guitar)
-                {
-                    string altFileName = $"classic_guitar_snd{pitch:D3}";
-                    audioPathCache[$"{key}_alt"] = $"Audio/{instrumentFolder}/{altFileName}";
-                    audioPathCache[$"{key}_alt_fallback1"] = $"{instrumentFolder}/{altFileName}";
-                    audioPathCache[$"{key}_alt_fallback2"] = altFileName;
-                }
-            }
-        }
-
-        if (showDebugLogs) Debug.Log($"🚀 Audio path cache initialized with {audioPathCache.Count} pre-built paths");
-    }
 
     void CreateAudioSourcePool()
     {
