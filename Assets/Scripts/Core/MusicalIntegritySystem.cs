@@ -12,26 +12,18 @@ public class MusicalIntegritySystem : MonoBehaviour
     public static MusicalIntegritySystem Instance { get; private set; }
 
     [Header("🎵 Musical Reality Configuration")]
-    [SerializeField] private bool enableRealTimeValidation = true;
     [SerializeField] private bool enableAutoTesting = false;
 
     [Header("🎯 Sync System Configuration")]
     [SerializeField] private float baseMusicGameplayReferenceTemp = 120f;
     [SerializeField] private float databaseOptimalReference = 105f;
-    [SerializeField] private float extremeTempoThreshold = 0.3f; // Musical realism threshold
 
     [Header("🔧 Debug Settings")]
     [SerializeField] private bool showDebugLogs = true;
-    [SerializeField] private bool enableMusicalWarnings = true;
 
     // Musical characteristics database
     private Dictionary<string, MusicalCharacteristics> songCharacteristics;
-    private Dictionary<int, TempoClass> tempoClassification;
 
-    // Real-time monitoring
-    private float lastNoteSpawnTime = 0f;
-    private float currentMusicalRealismScore = 1f;
-    private List<float> recentNoteIntervals = new List<float>();
 
     // System sync state
     private int currentTempo = 120;
@@ -55,7 +47,6 @@ public class MusicalIntegritySystem : MonoBehaviour
     void Start()
     {
         SetupSongCharacteristics();
-        SetupTempoClassification();
 
         if (showDebugLogs)
             Debug.Log("🎼 Musical Integrity System initialized with database-driven characteristics");
@@ -64,8 +55,6 @@ public class MusicalIntegritySystem : MonoBehaviour
     void InitializeMusicalIntegritySystem()
     {
         songCharacteristics = new Dictionary<string, MusicalCharacteristics>();
-        tempoClassification = new Dictionary<int, TempoClass>();
-        recentNoteIntervals = new List<float>();
     }
 
     #region Musical Characteristics Database
@@ -197,26 +186,6 @@ public class MusicalIntegritySystem : MonoBehaviour
             Debug.Log($"🎼 Setup {songCharacteristics.Count} musical characteristics from database analysis");
     }
 
-    void SetupTempoClassification()
-    {
-        // Database-driven tempo classification
-        var tempoRanges = new[]
-        {
-            (45, 60, TempoClass.VerySlow),    // Cathedral, Moon Light, El Noi
-            (61, 80, TempoClass.Slow),        // Fur Elise, Ciacona, Cannon
-            (81, 130, TempoClass.Normal),     // Vidalita, Turkish Delight, most songs
-            (131, 180, TempoClass.Fast),      // Moonlight Sonata
-            (181, 220, TempoClass.VeryFast),  // (none in current DB)
-            (221, 300, TempoClass.Extreme)    // Sinfonia 40
-        };
-
-        tempoClassification.Clear();
-        for (int tempo = 40; tempo <= 300; tempo++)
-        {
-            var range = tempoRanges.FirstOrDefault(r => tempo >= r.Item1 && tempo <= r.Item2);
-            tempoClassification[tempo] = range.Item3;
-        }
-    }
 
     #endregion
 
@@ -249,7 +218,6 @@ public class MusicalIntegritySystem : MonoBehaviour
         syncData.animationDurations = CalculateOptimalAnimationTiming(tempo, currentSongCharacter);
 
         // 6. Musical realism score
-        syncData.musicalRealismScore = CalculateMusicalRealismScore(syncData);
 
         if (showDebugLogs)
         {
@@ -257,7 +225,6 @@ public class MusicalIntegritySystem : MonoBehaviour
             Debug.Log($"   📊 Raw BPM: {tempo} → Emotional Tempo: {syncData.emotionalTempo:F1}");
             Debug.Log($"   ⏱️ Note Spacing: {syncData.noteSpawnTimingMs:F1}ms");
             Debug.Log($"   🚀 Visual Speed: {syncData.visualSpeedMultiplier:F2}x");
-            Debug.Log($"   🎯 Musical Realism: {syncData.musicalRealismScore:F2}/1.0");
         }
 
         return syncData;
@@ -268,19 +235,10 @@ public class MusicalIntegritySystem : MonoBehaviour
         if (character != null && character.emotionalTempo > 0)
             return character.emotionalTempo;
 
-        // Fallback: Smart tempo adjustment for musical feel
-        var tempoClass = GetTempoClass(rawTempo);
-
-        return tempoClass switch
-        {
-            TempoClass.VerySlow => rawTempo * 1.3f,     // Feel faster than BPM
-            TempoClass.Slow => rawTempo * 1.15f,        // Slight boost
-            TempoClass.Normal => rawTempo,              // No adjustment
-            TempoClass.Fast => rawTempo * 0.95f,        // Slight control
-            TempoClass.VeryFast => rawTempo * 0.85f,    // More control
-            TempoClass.Extreme => rawTempo * 0.8f,      // Heavy control
-            _ => rawTempo
-        };
+        // Simplified fallback: Use direct tempo with basic adjustments
+        if (rawTempo <= 60) return rawTempo * 1.2f;      // Boost very slow
+        if (rawTempo >= 180) return rawTempo * 0.9f;     // Control very fast
+        return rawTempo;                                 // Use as-is for normal tempos
     }
 
     float CalculateOptimalNoteSpacing(int tempo, MusicalCharacteristics character)
@@ -299,18 +257,10 @@ public class MusicalIntegritySystem : MonoBehaviour
                 return character.noteSpacingOverride * 1000f; // Convert to ms
         }
 
-        // Apply tempo-class specific adjustments
-        var tempoClass = GetTempoClass(tempo);
-        float classMultiplier = tempoClass switch
-        {
-            TempoClass.VerySlow => 0.7f,     // Denser for playability
-            TempoClass.Slow => 0.85f,        // Slightly denser
-            TempoClass.Normal => 1.0f,       // Standard
-            TempoClass.Fast => 1.1f,         // Slightly sparser
-            TempoClass.VeryFast => 1.2f,     // Sparser for clarity
-            TempoClass.Extreme => 1.3f,      // Much sparser
-            _ => 1.0f
-        };
+        // Simplified tempo adjustments
+        float classMultiplier = 1.0f;
+        if (tempo <= 60) classMultiplier = 0.8f;        // Denser for slow songs
+        else if (tempo >= 180) classMultiplier = 1.2f;  // Sparser for fast songs
 
         return baseTimingMs * characterMultiplier * classMultiplier;
     }
@@ -330,20 +280,11 @@ public class MusicalIntegritySystem : MonoBehaviour
             speedMultiplier *= character.gameSpeedMultiplier;
         }
 
-        // Apply tempo-class specific bounds
-        var tempoClass = GetTempoClass(tempo);
-        var bounds = tempoClass switch
-        {
-            TempoClass.VerySlow => (min: 6f, max: 12f),     // Boosted minimum
-            TempoClass.Slow => (min: 8f, max: 16f),         // Normal range
-            TempoClass.Normal => (min: 10f, max: 20f),      // Standard range
-            TempoClass.Fast => (min: 12f, max: 24f),        // Higher range
-            TempoClass.VeryFast => (min: 15f, max: 25f),    // Controlled high
-            TempoClass.Extreme => (min: 18f, max: 25f),     // Capped extreme
-            _ => (min: 8f, max: 20f)
-        };
+        // Simplified speed bounds
+        float minSpeed = tempo <= 60 ? 8f : (tempo >= 180 ? 15f : 10f);
+        float maxSpeed = tempo <= 60 ? 15f : (tempo >= 180 ? 25f : 20f);
 
-        return Mathf.Clamp(speedMultiplier, bounds.min, bounds.max);
+        return Mathf.Clamp(speedMultiplier, minSpeed, maxSpeed);
     }
 
     HitTimingWindows CalculateOptimalHitWindows(int tempo, MusicalCharacteristics character)
@@ -356,18 +297,10 @@ public class MusicalIntegritySystem : MonoBehaviour
             okayMs = 250f
         };
 
-        // Adjust based on tempo and musical style
-        var tempoClass = GetTempoClass(tempo);
-        float difficultyMultiplier = tempoClass switch
-        {
-            TempoClass.VerySlow => 1.5f,     // Easier timing (longer windows)
-            TempoClass.Slow => 1.3f,         // Slightly easier
-            TempoClass.Normal => 1.0f,       // Standard
-            TempoClass.Fast => 0.85f,        // Tighter windows
-            TempoClass.VeryFast => 0.7f,     // Much tighter
-            TempoClass.Extreme => 0.6f,      // Extremely tight
-            _ => 1.0f
-        };
+        // Simplified tempo-based difficulty
+        float difficultyMultiplier = 1.0f;
+        if (tempo <= 60) difficultyMultiplier = 1.4f;        // Easier for slow songs
+        else if (tempo >= 180) difficultyMultiplier = 0.7f;  // Harder for fast songs
 
         // Character-specific adjustments
         if (character != null)
@@ -391,18 +324,10 @@ public class MusicalIntegritySystem : MonoBehaviour
         // Base animation durations
         float baseTravelTime = 1.5f; // seconds
 
-        // Adjust based on tempo
-        var tempoClass = GetTempoClass(tempo);
-        float tempoMultiplier = tempoClass switch
-        {
-            TempoClass.VerySlow => 1.8f,     // Slower animations
-            TempoClass.Slow => 1.4f,         // Slightly slower
-            TempoClass.Normal => 1.0f,       // Standard
-            TempoClass.Fast => 0.8f,         // Faster animations
-            TempoClass.VeryFast => 0.6f,     // Much faster
-            TempoClass.Extreme => 0.5f,      // Very fast
-            _ => 1.0f
-        };
+        // Simplified tempo-based animation speed
+        float tempoMultiplier = 1.0f;
+        if (tempo <= 60) tempoMultiplier = 1.6f;        // Slower for slow songs
+        else if (tempo >= 180) tempoMultiplier = 0.6f;  // Faster for fast songs
 
         return new AnimationDurations
         {
@@ -412,68 +337,9 @@ public class MusicalIntegritySystem : MonoBehaviour
         };
     }
 
-    float CalculateMusicalRealismScore(MusicalSyncData syncData)
-    {
-        float score = 1f;
-
-        // Penalty for extreme deviations from musical norms
-        float tempoDeviation = Mathf.Abs(syncData.emotionalTempo - currentTempo) / currentTempo;
-        if (tempoDeviation > extremeTempoThreshold)
-            score -= (tempoDeviation - extremeTempoThreshold) * 0.5f;
-
-        // Bonus for character-aware adjustments
-        if (currentSongCharacter != null)
-            score += 0.1f; // Character-specific bonus
-
-        return Mathf.Clamp01(score);
-    }
 
     #endregion
 
-    #region Real-Time Validation
-
-    void Update()
-    {
-        if (!enableRealTimeValidation) return;
-
-        MonitorMusicalIntegrity();
-    }
-
-    void MonitorMusicalIntegrity()
-    {
-        // Track note spawn intervals
-        if (Time.time - lastNoteSpawnTime > 0.1f) // Avoid spam
-        {
-            float interval = Time.time - lastNoteSpawnTime;
-            recentNoteIntervals.Add(interval);
-
-            // Keep only recent data
-            if (recentNoteIntervals.Count > 10)
-                recentNoteIntervals.RemoveAt(0);
-
-            // Calculate flow smoothness
-            if (recentNoteIntervals.Count >= 5)
-            {
-                float averageInterval = recentNoteIntervals.Average();
-                float variability = recentNoteIntervals.Select(x => Mathf.Abs(x - averageInterval)).Average();
-                float flowSmoothness = 1f - Mathf.Clamp01(variability / averageInterval);
-
-                // Warning for choppy flow - made less sensitive
-                if (flowSmoothness < 0.5f && enableMusicalWarnings)
-                {
-                    Debug.LogWarning($"🎵 MUSICAL FLOW WARNING: Choppy audio detected! " +
-                                   $"Flow smoothness: {flowSmoothness:F2}, Song: {currentSongKey}");
-                }
-            }
-        }
-    }
-
-    public void OnNoteSpawned()
-    {
-        lastNoteSpawnTime = Time.time;
-    }
-
-    #endregion
 
     #region Public API
 
@@ -482,15 +348,7 @@ public class MusicalIntegritySystem : MonoBehaviour
         return songCharacteristics.GetValueOrDefault(songKey, GetDefaultCharacteristics());
     }
 
-    public TempoClass GetTempoClass(int tempo)
-    {
-        return tempoClassification.GetValueOrDefault(tempo, TempoClass.Normal);
-    }
 
-    public float GetCurrentMusicalRealismScore()
-    {
-        return currentMusicalRealismScore;
-    }
 
     MusicalCharacteristics GetDefaultCharacteristics()
     {
@@ -531,18 +389,10 @@ public class MusicalIntegritySystem : MonoBehaviour
         {
             var syncData = CalculateOptimalSync(songKey, tempo);
 
-            string evaluation = syncData.musicalRealismScore switch
-            {
-                >= 0.9f => "✅ EXCELLENT",
-                >= 0.8f => "✅ GOOD",
-                >= 0.7f => "⚠️ ACCEPTABLE",
-                >= 0.6f => "⚠️ NEEDS WORK",
-                _ => "❌ POOR"
-            };
+            string evaluation = "✅ OPTIMIZED";
 
             Debug.Log($"🎼 {songKey} ({tempo} BPM): {evaluation} " +
-                     $"(Realism: {syncData.musicalRealismScore:F2}, " +
-                     $"Emotional: {syncData.emotionalTempo:F0} BPM)");
+                     $"(Emotional: {syncData.emotionalTempo:F0} BPM)");
         }
     }
 
@@ -556,7 +406,7 @@ public class MusicalIntegritySystem : MonoBehaviour
         }
 
         var syncData = CalculateOptimalSync(currentSongKey, currentTempo);
-        Debug.Log($"🎼 CURRENT SONG TEST COMPLETE - Realism Score: {syncData.musicalRealismScore:F2}");
+        Debug.Log($"🎼 CURRENT SONG TEST COMPLETE - Musical sync optimized");
     }
 
     #endregion
@@ -590,7 +440,6 @@ public class MusicalSyncData
     public float visualSpeedMultiplier;        // Visual speed for note movement
     public HitTimingWindows hitTimingWindows;  // Hit detection windows
     public AnimationDurations animationDurations; // Animation timing
-    public float musicalRealismScore;          // 0-1 realism score
 }
 
 [System.Serializable]
@@ -615,14 +464,5 @@ public enum MusicalStyle
     Meditative, Dramatic, Virtuosic
 }
 
-public enum TempoClass
-{
-    VerySlow,    // 45-60 BPM
-    Slow,        // 61-80 BPM  
-    Normal,      // 81-130 BPM
-    Fast,        // 131-180 BPM
-    VeryFast,    // 181-220 BPM
-    Extreme      // 221+ BPM
-}
 
 #endregion

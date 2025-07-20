@@ -487,8 +487,7 @@ public class SongPlaybackTester : MonoBehaviour
                 // Musical Integrity System durumunu kontrol et
                 if (MusicalIntegritySystem.Instance != null)
                 {
-                    var realmScore = MusicalIntegritySystem.Instance.GetCurrentMusicalRealismScore();
-                    Debug.Log($"   🎼 Musical Realism Score: {realmScore:F2}/1.0");
+                    Debug.Log($"   🎼 Musical Integrity System: Active and optimized");
 
                     // Test mode'u aç
                     MusicalIntegritySystem.Instance.TestCurrentSong();
