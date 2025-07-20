@@ -49,7 +49,6 @@ public class AudioManager : MonoBehaviour
     private List<VoiceInfo> activeVoices; // Track all active voices for stealing
     private int currentPolyphonyCount = 0;
 
-
     // Current playing music
     private AudioSource musicAudioSource;
     private AudioSource backgroundAudioSource;
@@ -102,7 +101,6 @@ public class AudioManager : MonoBehaviour
     {
         activeVoices = new List<VoiceInfo>();
     }
-
 
     void CreateAudioSourcePool()
     {
@@ -604,55 +602,49 @@ public class AudioManager : MonoBehaviour
     }
 
     /// <summary>
-    /// OPTIMIZED: Load audio using pre-built path cache (eliminates runtime string concatenation)
+    /// Load audio clip directly from Resources folder with fallback paths
     /// </summary>
     AudioClip LoadAudioFromAssets(InstrumentType instrument, int pitch)
     {
-        string key = $"{instrument}_{pitch}";
-
-        // Try primary path first
-        if (audioPathCache.TryGetValue(key, out string primaryPath))
+        string instrumentFolder = instrument.ToString();
+        
+        // Build file name based on instrument
+        string fileName = instrument switch
         {
-            AudioClip clip = Resources.Load<AudioClip>(primaryPath);
-            if (clip != null) return clip;
-        }
+            InstrumentType.Piano => $"piano_snd{pitch:D3}",
+            InstrumentType.Harp => $"harp_snd{pitch:D3}",
+            InstrumentType.Guitar => $"acustic_guitar_snd{pitch:D3}",
+            _ => $"unknown_snd{pitch:D3}"
+        };
+
+        // Try primary path
+        string primaryPath = $"Audio/{instrumentFolder}/{fileName}";
+        AudioClip clip = Resources.Load<AudioClip>(primaryPath);
+        if (clip != null) return clip;
 
         // Try fallback paths
-        if (audioPathCache.TryGetValue($"{key}_fallback1", out string fallback1))
-        {
-            AudioClip clip = Resources.Load<AudioClip>(fallback1);
-            if (clip != null) return clip;
-        }
+        clip = Resources.Load<AudioClip>($"{instrumentFolder}/{fileName}");
+        if (clip != null) return clip;
 
-        if (audioPathCache.TryGetValue($"{key}_fallback2", out string fallback2))
-        {
-            AudioClip clip = Resources.Load<AudioClip>(fallback2);
-            if (clip != null) return clip;
-        }
+        clip = Resources.Load<AudioClip>(fileName);
+        if (clip != null) return clip;
 
         // Guitar alternative naming
         if (instrument == InstrumentType.Guitar)
         {
-            if (audioPathCache.TryGetValue($"{key}_alt", out string altPath))
-            {
-                AudioClip clip = Resources.Load<AudioClip>(altPath);
-                if (clip != null) return clip;
-            }
-
-            if (audioPathCache.TryGetValue($"{key}_alt_fallback1", out string altFallback1))
-            {
-                AudioClip clip = Resources.Load<AudioClip>(altFallback1);
-                if (clip != null) return clip;
-            }
-
-            if (audioPathCache.TryGetValue($"{key}_alt_fallback2", out string altFallback2))
-            {
-                AudioClip clip = Resources.Load<AudioClip>(altFallback2);
-                if (clip != null) return clip;
-            }
+            string altFileName = $"classic_guitar_snd{pitch:D3}";
+            
+            clip = Resources.Load<AudioClip>($"Audio/{instrumentFolder}/{altFileName}");
+            if (clip != null) return clip;
+            
+            clip = Resources.Load<AudioClip>($"{instrumentFolder}/{altFileName}");
+            if (clip != null) return clip;
+            
+            clip = Resources.Load<AudioClip>(altFileName);
+            if (clip != null) return clip;
         }
 
-        if (showDebugLogs) Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch} using cached paths!");
+        if (showDebugLogs) Debug.LogWarning($"🎵 Could not load audio for {instrument} pitch {pitch}!");
         return null;
     }
 
