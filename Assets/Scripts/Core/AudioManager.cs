@@ -9,7 +9,7 @@ public class AudioManager : MonoBehaviour
 
     [Header("🎵 Audio Configuration")]
     [SerializeField] private AudioMixer mainMixer;
-    [SerializeField] private int audioSourcePoolSize = 30;
+    [SerializeField] private int audioSourcePoolSize = 64; // Increased for better performance and consistency
 
     [Header("🎼 Instrument Audio Clips")]
     [SerializeField] private InstrumentAudioData[] instruments;
@@ -21,8 +21,8 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private float musicVolume = 0.8f;
     [Range(0f, 1f)]
     [SerializeField] private float sfxVolume = 0.9f;
-    [SerializeField] private bool enableNoteFadeOut = true;
-    [SerializeField] private float noteFadeDuration = 0.4f; // Değeri orijinal haline geri getirdik.
+    [SerializeField] private bool enableNoteFadeOut = false; // Disabled for natural piano sound and better performance
+    [SerializeField] private float noteFadeDuration = 0.0f; // Disabled - let notes play naturally
 
     [Header("🔧 Debugging")]
     [SerializeField] private bool showDebugLogs = true;

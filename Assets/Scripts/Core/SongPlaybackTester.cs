@@ -50,13 +50,11 @@ public class SongPlaybackTester : MonoBehaviour
     [Header("🧪 Inspector Test Controls")]
     [Tooltip("Test case'leri aktif olsun mu?")]
     [SerializeField] private bool enableTestCases = true;
-    [Tooltip("TEST: 1 tuşu - Rapid fire prevention. BEKLENEN: 10 notadan hepsini duymalısın (Machine Gun Prevention kapalı).")]
-    [SerializeField] private bool enableMachineGunTest = true;
+    // [REMOVED] Machine Gun Prevention system was deleted
     [Tooltip("TEST: 2 tuşu - Legitimate fast music. BEKLENEN: 9 notanın hepsini duymalısın, smooth melody çalmalıdır.")]
     [SerializeField] private bool enableLegitimateRapidTest = true;
-    [Tooltip("TEST: 3 tuşu - Voice stealing simulation. BEKLENEN: 64+ notada voice stealing mesajları, sistem crash olmamalıdır.")]
-    [SerializeField] private bool enableVoiceStealingTest = true;
-    [Tooltip("TEST: 4 tuşu - Chord progression harmony. BEKLENEN: 4 chord'u harmonic olarak duymalısın, 3 nota beraber çalmalıdır.")]
+    // [REMOVED] Voice Stealing system was deleted
+    [Tooltip("TEST: 3 tuşu - Chord progression harmony. BEKLENEN: 4 chord'u harmonic olarak duymalısın, 3 nota beraber çalmalıdır.")]
     [SerializeField] private bool enableChordProgressionTest = true;
     [Tooltip("Auto-play butonunun boyutu")]
     [SerializeField] private Vector2 buttonSize = new Vector2(120, 60);
@@ -137,26 +135,14 @@ public class SongPlaybackTester : MonoBehaviour
         // 🎯 AUDIO SYSTEM TEST CASES (Inspector Controllable)
         if (enableTestCases && Keyboard.current != null)
         {
-            // Test Case 1: Machine Gun Prevention (1 key)
-            if (enableMachineGunTest && Keyboard.current.digit1Key.wasPressedThisFrame)
-            {
-                StartCoroutine(TestMachineGunPrevention());
-            }
-            
             // Test Case 2: Legitimate Fast Music (2 key)
             if (enableLegitimateRapidTest && Keyboard.current.digit2Key.wasPressedThisFrame)
             {
                 StartCoroutine(TestLegitimateRapidNotes());
             }
             
-            // Test Case 3: Voice Stealing Simulation (3 key)
-            if (enableVoiceStealingTest && Keyboard.current.digit3Key.wasPressedThisFrame)
-            {
-                StartCoroutine(TestVoiceStealing());
-            }
-            
-            // Test Case 4: Chord Progression Stress Test (4 key)
-            if (enableChordProgressionTest && Keyboard.current.digit4Key.wasPressedThisFrame)
+            // Test Case 3: Chord Progression Stress Test (3 key)
+            if (enableChordProgressionTest && Keyboard.current.digit3Key.wasPressedThisFrame)
             {
                 StartCoroutine(TestChordProgression());
             }
@@ -653,22 +639,7 @@ public class SongPlaybackTester : MonoBehaviour
     /// Test Case 1: Machine Gun Prevention - Rapid Button Mashing
     /// Tests minTimeBetweenNotes system with 10ms intervals
     /// </summary>
-    IEnumerator TestMachineGunPrevention()
-    {
-        Debug.Log("🎯 === TEST CASE 1: MACHINE GUN PREVENTION ===");
-        Debug.Log("🔫 Rapid firing same pitch (10ms intervals) - Should hear ~2-3 notes instead of 10");
-        Debug.Log("📊 AudioManager debug status: " + (AudioManager.Instance ? "Available" : "Null"));
-        
-        // Aynı pitch'i çok hızlı çal (10ms interval)
-        for (int i = 0; i < 10; i++)
-        {
-            Debug.Log($"🔫 Firing note {i+1}/10 - Lane 2, Pitch 10");
-            AudioManager.Instance?.PlayNote(InstrumentType.Piano, 10, 1.0f, useJavaMapping: true, line: 2);
-            yield return new WaitForSeconds(0.01f); // 10ms
-        }
-        
-        Debug.Log("🎯 Machine Gun Prevention test completed - Check console for blocked notes");
-    }
+    // [REMOVED] TestMachineGunPrevention() - Machine Gun Prevention system was deleted
 
     /// <summary>
     /// Test Case 2: Legitimate Fast Music - Für Elise Fast Section
@@ -702,31 +673,10 @@ public class SongPlaybackTester : MonoBehaviour
         Debug.Log("🎯 Legitimate Fast Music test completed - Should hear smooth melody");
     }
 
-    /// <summary>
-    /// Test Case 3: Voice Stealing Simulation - Polyphony Stress Test
-    /// Tests 130 notes (exceeds 128 limit) to trigger voice stealing
-    /// </summary>
-    IEnumerator TestVoiceStealing()
-    {
-        Debug.Log("🎯 === TEST CASE 3: VOICE STEALING SIMULATION ===");
-        Debug.Log("🎭 Playing 80 notes (exceeds 64 limit) - Should trigger voice stealing");
-        Debug.Log("📊 AudioManager polyphony limit: " + (AudioManager.Instance ? "64" : "Unknown"));
-        
-        // 80 nota çal (64 limit aş) - correct lane+pitch mapping
-        for (int i = 0; i < 80; i++)
-        {
-            int lane = i % 6;       // 0-5 lane cycle
-            int pitch = i % 20;     // 0-19 pitch cycle (within valid range)
-            Debug.Log($"🎭 Note {i+1}/80: Lane {lane}, Pitch {pitch} - {(i >= 64 ? "VOICE STEALING EXPECTED" : "Normal")}");
-            AudioManager.Instance?.PlayNote(InstrumentType.Piano, pitch, 1.0f, useJavaMapping: true, line: lane);
-            yield return new WaitForSeconds(0.02f); // 20ms - faster to keep notes alive
-        }
-        
-        Debug.Log("🎯 Voice Stealing test completed - System should not crash");
-    }
+    // [REMOVED] TestVoiceStealing() - Voice Stealing system was deleted
 
     /// <summary>
-    /// Test Case 4: Chord Progression Stress Test - Harmony Test
+    /// Test Case 3: Chord Progression Stress Test - Harmony Test
     /// Tests multiple simultaneous notes (chords)
     /// </summary>
     IEnumerator TestChordProgression()
