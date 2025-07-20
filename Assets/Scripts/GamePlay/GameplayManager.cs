@@ -119,7 +119,6 @@ public class GameplayManager : MonoBehaviour
 
         // InteractiveMusicSystem events
         InteractiveMusicSystem.OnChordDetected += HandleChordDetected;
-        InteractiveMusicSystem.OnMusicalEventCreated += HandleMusicalEvent;
 
         // AudioManager events
         if (audioManager != null)
@@ -580,10 +579,6 @@ public class GameplayManager : MonoBehaviour
         }
     }
 
-    void HandleMusicalEvent(MusicalEvent musicalEvent)
-    {
-        // Additional processing for musical events if needed
-    }
 
     void HandleMusicFinished()
     {
@@ -732,7 +727,6 @@ public class GameplayManager : MonoBehaviour
         GameNoteCreator.OnNotesGenerated -= OnNotesSpawnRequest;
         GameNoteCreator.OnGenerationComplete -= HandleSongComplete;
         InteractiveMusicSystem.OnChordDetected -= HandleChordDetected;
-        InteractiveMusicSystem.OnMusicalEventCreated -= HandleMusicalEvent;
         GameManager.OnGameStateChanged -= HandleGameStateChange;
 
         if (audioManager != null)

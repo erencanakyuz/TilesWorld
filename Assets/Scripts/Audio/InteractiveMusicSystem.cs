@@ -28,15 +28,16 @@ public class InteractiveMusicSystem : MonoBehaviour
     // Chord detection and harmony
     private List<PlayingNote> currentlyPlayingNotes;
     private Dictionary<int, float> laneLastPlayTime;
-    private Queue<MusicalEvent> recentMusicalEvents;
 
     // Performance tracking
     private AudioManager audioManager;
     private float lastChordTime = 0f;
     private const float CHORD_DETECTION_WINDOW = 0.2f; // 200ms window for chord detection
 
-    // Events for musical feedback
-    public static System.Action<MusicalEvent> OnMusicalEventCreated;
+    // Chord detection system
+    private Queue<MusicalEvent> recentMusicalEvents;
+    
+    // Events for musical feedback  
     public static System.Action<ChordType> OnChordDetected;
 
     void Awake()
@@ -46,6 +47,7 @@ public class InteractiveMusicSystem : MonoBehaviour
             Instance = this;
             DontDestroyOnLoad(gameObject);
             InitializeInteractiveMusic();
+        recentMusicalEvents = new Queue<MusicalEvent>();
         }
         else
         {
@@ -63,7 +65,6 @@ public class InteractiveMusicSystem : MonoBehaviour
     {
         currentlyPlayingNotes = new List<PlayingNote>();
         laneLastPlayTime = new Dictionary<int, float>();
-        recentMusicalEvents = new Queue<MusicalEvent>();
 
         // Initialize lane play times
         for (int i = 0; i < 6; i++)
@@ -98,60 +99,8 @@ public class InteractiveMusicSystem : MonoBehaviour
     /// Original Java: playSound(int line, int pitch) - The heart of interactive music
     /// Now enhanced with musical theory and real-time composition
     /// </summary>
-    public void PlayInteractiveNote(int lane, float velocity = 1.0f, bool isPlayerTriggered = true)
-    {
-        // Get musical note information for this lane
-        MusicalNoteInfo noteInfo = CalculateMusicalNote(lane);
 
-        if (noteInfo.isValid)
-        {
-            // Use unified processing method
-            ProcessAndPlayNote(lane, noteInfo.midiNote, velocity, isPlayerTriggered, noteInfo.instrumentType);
-        }
-    }
 
-    /// <summary>
-    /// Original Java SOUND_RESOURCE_IDXS mapping - simplified
-    /// </summary>
-    MusicalNoteInfo CalculateMusicalNote(int lane)
-    {
-        var noteInfo = new MusicalNoteInfo();
-
-        if (lane < 0 || lane >= 6)
-        {
-            noteInfo.isValid = false;
-            return noteInfo;
-        }
-
-        // Use AudioConstants for centralized sound mapping with defensive programming
-        int soundIndex;
-        try
-        {
-            soundIndex = AudioConstants.GetSoundIndex(lane, 0); // Use lane as base, pitch 0 for this context
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogError($"🎵 AudioConstants.GetSoundIndex failed for lane {lane}: {ex.Message}. Using fallback.");
-            soundIndex = lane * 5; // Simple fallback mapping
-        }
-
-        // Simple direct mapping - no complex musical theory
-        noteInfo.midiNote = soundIndex + 60; // Direct mapping
-        noteInfo.soundIndex = soundIndex;
-        noteInfo.noteName = GetNoteName(noteInfo.midiNote);
-        noteInfo.instrumentType = currentInstrument;
-        noteInfo.isValid = true;
-
-        return noteInfo;
-    }
-
-    string GetNoteName(int midiNote)
-    {
-        string[] noteNames = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
-        int noteIndex = midiNote % 12;
-        int octave = midiNote / 12 - 1;
-        return $"{noteNames[noteIndex]}{octave}";
-    }
     #endregion
 
     #region Chord Detection & Harmony Analysis
@@ -283,10 +232,10 @@ public class InteractiveMusicSystem : MonoBehaviour
         switch (newState)
         {
             case GameState.Playing:
-                ResetSessionStats();
+                // Clear recent events for new session
+                recentMusicalEvents.Clear();
                 break;
             case GameState.GameOver:
-                LogSessionSummary();
                 break;
         }
     }
@@ -321,7 +270,7 @@ public class InteractiveMusicSystem : MonoBehaviour
             {
                 midiNote = noteInfo.pitch,
                 soundIndex = noteInfo.pitch,
-                noteName = GetNoteName(noteInfo.pitch),
+                noteName = $"Note{noteInfo.pitch}",
                 instrumentType = currentInstrument,
                 isValid = true
             }
@@ -329,7 +278,6 @@ public class InteractiveMusicSystem : MonoBehaviour
 
         // Add to recent events for chord detection
         recentMusicalEvents.Enqueue(musicalEvent);
-        OnMusicalEventCreated?.Invoke(musicalEvent);
 
         // Update session statistics
         notesPlayedThisSession++;
@@ -430,29 +378,8 @@ public class InteractiveMusicSystem : MonoBehaviour
         return ChordType.None;
     }
 
-    public MusicalSessionStats GetSessionStats()
-    {
-        return new MusicalSessionStats
-        {
-            notesPlayed = notesPlayedThisSession,
-            chordsPlayed = chordsPlayedThisSession,
-            melodyComplexity = 0f, // Simplified - no longer calculated
-            currentInstrument = currentInstrument,
-            currentScale = MusicalScale.CMajor // Default - no longer changeable
-        };
-    }
 
-    void ResetSessionStats()
-    {
-        notesPlayedThisSession = 0;
-        chordsPlayedThisSession = 0;
-        recentMusicalEvents.Clear();
-    }
 
-    void LogSessionSummary()
-    {
-        // Session logging removed for performance
-    }
 
     // NEW METHOD: Handle chart note hit for analysis only (no audio)
     public void ProcessChartNoteHit(GameNoteInfo noteInfo)
@@ -488,7 +415,14 @@ public class InteractiveMusicSystem : MonoBehaviour
             var musicalEvent = new MusicalEvent
             {
                 lane = lane,
-                noteInfo = CalculateMusicalNote(lane), // Recalculate for consistency
+                noteInfo = new MusicalNoteInfo
+                {
+                    midiNote = pitch,
+                    soundIndex = pitch,
+                    noteName = $"Note{pitch}",
+                    instrumentType = instrumentType,
+                    isValid = true
+                },
                 velocity = velocity,
                 timestamp = Time.time,
                 isPlayerTriggered = isPlayerTriggered
@@ -505,8 +439,7 @@ public class InteractiveMusicSystem : MonoBehaviour
             notesPlayedThisSession++;
             laneLastPlayTime[lane] = Time.time;
 
-            OnMusicalEventCreated?.Invoke(musicalEvent);
-        }
+            }
 
         // 3. Debug logging (if enabled)
         if (showDebugInfo)
