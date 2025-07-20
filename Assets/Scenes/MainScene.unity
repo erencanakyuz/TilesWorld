@@ -1645,7 +1645,7 @@ Transform:
   m_GameObject: {fileID: 946726221}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.34535, y: 3.11722, z: -5.51129}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3181,6 +3181,11 @@ MonoBehaviour:
   speedMultiplier: 2
   isPerfectAutoPlayEnabled: 0
   buttonPosition: {x: 100, y: 240}
+  enableTestCases: 1
+  enableMachineGunTest: 1
+  enableLegitimateRapidTest: 1
+  enableVoiceStealingTest: 1
+  enableChordProgressionTest: 1
   buttonSize: {x: 120, y: 60}
   useJavaMapping: 1
   enableCustomMapping: 0
