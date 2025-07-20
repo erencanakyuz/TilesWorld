@@ -31,9 +31,6 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private bool enableLatencyMonitoring = true;
     [SerializeField] private float averageLatency = 0f;
 
-    [Header("🎯 Note Collision Detection")]
-    [SerializeField] private bool enableNoteCollisionDetection = true; // Prevent same pitch overlapping
-
     [Header("🎼 Advanced Polyphony Management")]
     [SerializeField] private bool enableVoiceStealing = true;
     [SerializeField] private int maxPolyphony = 64; // Reduced for easier testing (was 128)
@@ -48,15 +45,10 @@ public class AudioManager : MonoBehaviour
     private List<AudioSource> activeAudioSources;
     private List<FadingAudioSource> fadingAudioSources; // For managing fades in Update()
 
-    // Note Collision Detection System
-    private Dictionary<int, AudioSource> currentlyPlayingNotes; // pitch -> currently playing AudioSource
-
     // Advanced Polyphony Management
     private List<VoiceInfo> activeVoices; // Track all active voices for stealing
     private int currentPolyphonyCount = 0;
 
-    // Performance Optimization - Pre-built audio path cache
-    private Dictionary<string, string> audioPathCache;
 
     // Current playing music
     private AudioSource musicAudioSource;
@@ -103,14 +95,12 @@ public class AudioManager : MonoBehaviour
     {
         CreateAudioSourcePool();
         ApplyDefaultSettings();
-        InitializeNoteCollisionDetection();
+        InitializeVoiceTracking();
     }
 
-    void InitializeNoteCollisionDetection()
+    void InitializeVoiceTracking()
     {
-        currentlyPlayingNotes = new Dictionary<int, AudioSource>();
         activeVoices = new List<VoiceInfo>();
-        InitializeAudioPathCache();
     }
 
     /// <summary>
@@ -316,12 +306,6 @@ public class AudioManager : MonoBehaviour
             AddVoiceInfo(audioSource, volume, finalPitch, instrument);
         }
 
-        // === NOTE COLLISION TRACKING ===
-        if (enableNoteCollisionDetection)
-        {
-            currentlyPlayingNotes[pitch] = audioSource;
-        }
-
         if (enableNoteFadeOut)
         {
             // Instead of starting a coroutine, add to the list to be managed by Update()
@@ -467,11 +451,6 @@ public class AudioManager : MonoBehaviour
                     RemoveVoiceInfo(source);
                 }
 
-                // Remove from collision tracking
-                if (enableNoteCollisionDetection)
-                {
-                    RemoveFromCollisionTracking(source);
-                }
             }
         }
     }
@@ -500,11 +479,6 @@ public class AudioManager : MonoBehaviour
                     RemoveVoiceInfo(fadingSource.source);
                 }
 
-                // Remove from collision tracking
-                if (enableNoteCollisionDetection)
-                {
-                    RemoveFromCollisionTracking(fadingSource.source);
-                }
             }
             else
             {
@@ -648,26 +622,6 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Remove audio source from collision tracking when note finishes
-    /// </summary>
-    void RemoveFromCollisionTracking(AudioSource source)
-    {
-        // Find and remove the source from collision tracking
-        var keysToRemove = new List<int>();
-        foreach (var kvp in currentlyPlayingNotes)
-        {
-            if (kvp.Value == source)
-            {
-                keysToRemove.Add(kvp.Key);
-            }
-        }
-
-        foreach (int key in keysToRemove)
-        {
-            currentlyPlayingNotes.Remove(key);
-        }
-    }
 
     public AudioClip GetNoteClip(InstrumentType instrument, int pitch)
     {
