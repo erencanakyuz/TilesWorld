@@ -286,18 +286,6 @@ public class NoteRenderer : MonoBehaviour
         }
     }
 
-    // DEĞİŞİKLİK: Bu metod artık doğrudan kullanılmıyor. İşlevselliği NoteAnimator'a devredildi.
-    // Yine de birisi çağırırsa diye boş bırakmak veya uyarı vermek iyi bir pratiktir.
-    public void ProcessHitNote(GameObject noteObject)
-    {
-        // Bu metodun sorumluluğu HitZoneManager'dan NoteAnimator'a geçti.
-        // Bu metod artık kullanılmamalıdır.
-        if (showDebugLogs)
-        {
-            // Debug.LogWarning("NoteRenderer.ProcessHitNote() çağrıldı, ancak bu metod artık geçerli değil. Çağrıyı HitZoneManager'dan kontrol edin.");
-        }
-    }
-
     #endregion
 
     #region Public Interface

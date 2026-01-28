@@ -202,6 +202,49 @@ public static class GameConstants
     {
         return (laneIndex - LaneCenterOffset) * LaneSpacing;
     }
+    
+    // Duration Estimation (centralized to avoid duplicate code)
+    
+    /// <summary>
+    /// Estimate song duration in seconds based on tempo (BPM)
+    /// Slower songs tend to be longer. This is a heuristic until actual duration data is available.
+    /// </summary>
+    public static float EstimateDurationSeconds(int tempo)
+    {
+        if (tempo < 60) return 240f;      // Very slow: 4 minutes
+        if (tempo < 80) return 210f;      // Slow: 3.5 minutes  
+        if (tempo < 120) return 180f;     // Moderate: 3 minutes
+        if (tempo < 140) return 150f;     // Fast: 2.5 minutes
+        return 120f;                      // Very fast: 2 minutes
+    }
+    
+    /// <summary>
+    /// Format duration seconds as "M:SS" string (e.g., "3:45")
+    /// </summary>
+    public static string FormatDuration(float seconds)
+    {
+        int totalSeconds = UnityEngine.Mathf.RoundToInt(seconds);
+        int minutes = totalSeconds / 60;
+        int secs = totalSeconds % 60;
+        return $"{minutes}:{secs:D2}";
+    }
+    
+    /// <summary>
+    /// Parse "M:SS" duration string to seconds
+    /// </summary>
+    public static float ParseDuration(string duration, float fallback = 180f)
+    {
+        if (string.IsNullOrEmpty(duration)) return fallback;
+        
+        string[] parts = duration.Split(':');
+        if (parts.Length == 2 && 
+            int.TryParse(parts[0], out int minutes) && 
+            int.TryParse(parts[1], out int seconds))
+        {
+            return minutes * 60 + seconds;
+        }
+        return fallback;
+    }
 }
 
 #endregion

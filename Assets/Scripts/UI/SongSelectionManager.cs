@@ -165,14 +165,8 @@ public class SongSelectionManager : MonoBehaviour
         };
     }
 
-    private string CalculateDuration(int bpm)
-    {
-        // Estimate song duration based on BPM (rough calculation)
-        int estimatedSeconds = Mathf.Clamp(300 - bpm, 60, 240); // 1-4 minutes
-        int minutes = estimatedSeconds / 60;
-        int seconds = estimatedSeconds % 60;
-        return $"{minutes}:{seconds:D2}";
-    }
+    private string CalculateDuration(int bpm) => 
+        GameConstants.FormatDuration(GameConstants.EstimateDurationSeconds(bpm));
 
     private void CreateFallbackSongs()
     {
@@ -369,26 +363,7 @@ public class SongSelectionManager : MonoBehaviour
         }
     }
 
-    private float ParseDurationToSeconds(string duration)
-    {
-        // Parse "3:45" format to seconds
-        try
-        {
-            string[] parts = duration.Split(':');
-            if (parts.Length == 2)
-            {
-                int minutes = int.Parse(parts[0]);
-                int seconds = int.Parse(parts[1]);
-                return minutes * 60 + seconds;
-            }
-        }
-        catch
-        {
-            Debug.LogWarning($"Could not parse duration: {duration}");
-        }
-
-        return 180f; // Default 3 minutes
-    }
+    private float ParseDurationToSeconds(string duration) => GameConstants.ParseDuration(duration, 180f);
 
     // Helper class to match GameplayManager's expected SongData format
     [System.Serializable]

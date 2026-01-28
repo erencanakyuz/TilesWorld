@@ -412,16 +412,7 @@ public class GameplayManager : MonoBehaviour
     /// <summary>
     /// Estimate song duration based on tempo (BPM)
     /// </summary>
-    private float EstimateDuration(int tempo)
-    {
-        // Simple heuristic: slower songs are generally longer
-        // This is a rough estimation until we have actual duration data
-        if (tempo < 60) return 240f;      // Very slow: 4 minutes
-        if (tempo < 80) return 210f;      // Slow: 3.5 minutes  
-        if (tempo < 120) return 180f;     // Moderate: 3 minutes
-        if (tempo < 140) return 150f;     // Fast: 2.5 minutes
-        return 120f;                      // Very fast: 2 minutes
-    }
+    private float EstimateDuration(int tempo) => GameConstants.EstimateDurationSeconds(tempo);
 
     private IEnumerator ShowCountdown()
     {
@@ -632,12 +623,6 @@ public class GameplayManager : MonoBehaviour
     public void UpdateStatsOnHit()
     {
         UpdateGameStats();
-    }
-
-    void UpdateGameplayUI()
-    {
-        // This runs every frame to keep UI updated
-        // In a real implementation, this would be more optimized
     }
 
     void CalculateFinalStats()
