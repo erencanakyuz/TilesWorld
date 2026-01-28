@@ -204,6 +204,8 @@ public static class GameConstants
     }
 }
 
+#endregion
+
 #region Song Database Structures
 
 [System.Serializable]
