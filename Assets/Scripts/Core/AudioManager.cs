@@ -210,22 +210,7 @@ public class AudioManager : MonoBehaviour
 
         AudioClip clip = GetNoteClip(instrument, finalPitch);
 
-        // --- DETAILED DEBUG LOG (Editor / Debug Builds) ---
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-        if (showDebugLogs)
-        {
-            var log = new System.Text.StringBuilder();
-            log.AppendLine("--- 🎵 AudioManager PlayNote Details ---");
-            log.AppendLine($"  - Instrument: {instrument}");
-            log.AppendLine($"  - Volume: {volume:F2}");
-            log.AppendLine($"  - Java Mapping: {useJavaMapping} (Line: {line}, Pitch: {pitch})");
-            log.AppendLine($"  - FINAL PITCH INDEX: {finalPitch}");
-            log.AppendLine($"  - Audio Clip: {(clip != null ? clip.name : "!!! NOT FOUND !!!")}");
-            log.AppendLine("------------------------------------");
-            Debug.Log(log.ToString());
-        }
-#endif
-        // --- END DEBUG LOG ---
+        // Debug log removed - was spamming console with every note
 
         if (clip == null)
         {

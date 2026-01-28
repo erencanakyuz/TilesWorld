@@ -220,12 +220,7 @@ public class MusicalIntegritySystem : MonoBehaviour
         // 6. Musical realism score
 
         if (showDebugLogs)
-        {
-            Debug.Log($"🎼 MUSICAL SYNC CALCULATED for {songKey}:");
-            Debug.Log($"   📊 Raw BPM: {tempo} → Emotional Tempo: {syncData.emotionalTempo:F1}");
-            Debug.Log($"   ⏱️ Note Spacing: {syncData.noteSpawnTimingMs:F1}ms");
-            Debug.Log($"   🚀 Visual Speed: {syncData.visualSpeedMultiplier:F2}x");
-        }
+            Debug.Log($"🎼 SYNC: {songKey} | BPM: {tempo}→{syncData.emotionalTempo:F0} | Spacing: {syncData.noteSpawnTimingMs:F0}ms | Speed: {syncData.visualSpeedMultiplier:F1}x");
 
         return syncData;
     }
