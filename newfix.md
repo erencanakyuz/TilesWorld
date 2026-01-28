@@ -4,7 +4,7 @@
 
 **Dosya:** `Assets/Scripts/UI/UIManager.cs`  
 **Toplam Satır:** 1217  
-**Bootstrap.unity:** UIManager objesi var, tüm prefab referansları Inspector'da ayarlı
+**Bootstrap.unity:** UIManager objesi var, tüm prefab referansları Inspector'da ayarlı (Bootstrap.cs ayrıca UIManager'ı da create ediyor; çift instance riski var)
 
 ---
 
@@ -166,6 +166,8 @@ public class UIConfig : ScriptableObject
 - `ConfigureCanvasScalers()` (359-382)
 - `SetupScaler()` (384-395)
 
+**Not:** `AutoFindUIElements()` orkestrasyonu UIManager'da kalmalı; CanvasLocator sadece canvas/fallback/scaler sorumluluğu almalı.
+
 **Yeni dosya:** `Assets/Scripts/UI/Canvas/CanvasLocator.cs`
 
 ```csharp
@@ -217,6 +219,8 @@ public class CanvasLocator : MonoBehaviour
 - `ScaleTextEffect()` (921-946)
 - `ComboMilestoneEffect()` (948-963)
 
+**Not:** Mobile buton layout (`SetupMobileLandscapeControls`) HUDController'a taşınmamalı; MobileFinder'da kalmalı.
+
 **Yeni dosya:** `Assets/Scripts/UI/HUD/HUDController.cs`
 
 ```csharp
@@ -263,7 +267,7 @@ public class HUDController : MonoBehaviour
 - `SetupCanvasReferences()` (397-421) - Dictionary init kısmı
 - `HandleStateChangeImmediate()` (477-513)
 - `GetParentCanvasForState()` (515-541)
-- `ShowGameplayUI()` (543-556)
+- `ShowGameplayUI()` (543-556) **PanelManager'a taşınmamalı** (HUD/Mobile görünürlük ve layout koordinasyonu UIManager + HUDController/MobileFinder'da kalmalı)
 - `ShowPauseUI()` (634-641)
 - `ShowGameOverUI()` (671-692)
 - `ShowMainMenuUI()` (736-743)
@@ -319,6 +323,8 @@ public class PanelManager : MonoBehaviour
 - `SetupPausePanelButtons()` (643-669)
 - `SetupGameOverPanelButtons()` (694-734)
 
+**Not:** GameOver paneli için `GraphicRaycaster` guard'ı PanelManager içinde korunmalı (UIManager.cs:682-687).
+
 **Yeni dosya:** `Assets/Scripts/UI/Panels/PanelButtonWirer.cs`
 
 ```csharp
@@ -351,6 +357,8 @@ public static class PanelButtonWirer
 - `GetEffectPrefab()` (892-901)
 - `GetPooledEffect()` (903-917)
 - `Update()` effect animation kısmı (1172-1203)
+
+**Ek:** `FindEffectElements()` (222-233) ya UIEffectPool'a taşınmalı ya da UIManager bu parent'ı bulup Initialize'a geçirmeli.
 
 **Nested Class:**
 - `ActiveHitEffect` (1207-1213)
@@ -395,6 +403,8 @@ public class UIEffectPool : MonoBehaviour
 - `CreateCountdownUIIfNeeded()` (1046-1092)
 - `CountdownPulseEffect()` (1094-1124)
 
+**Not:** Countdown parent seçiminde HUD yoksa MainCanvas fallback korunmalı (UIManager.cs:1050-1052).
+
 **Yeni dosya:** `Assets/Scripts/UI/Countdown/CountdownController.cs`
 
 ```csharp
@@ -428,6 +438,8 @@ public class CountdownController : MonoBehaviour
 - `FindMobileControls()` (235-301)
 - `SetupMobileLandscapeControls()` (609-632) - UIConfig'den layout değerlerini alır
 
+**Not:** `cachedUIElements` cache mekanizması MobileFinder'a taşınmalı (UIManager.cs:60, 235-269).
+
 **Yeni dosya:** `Assets/Scripts/UI/Mobile/MobileFinder.cs`
 
 ```csharp
@@ -458,6 +470,7 @@ public class MobileFinder : MonoBehaviour
 - `Instance` (Singleton)
 - Events: `OnPausePressed`, `OnResumePressed`, `OnRestartPressed`, `OnMainMenuPressed`, `OnSettingsPressed`
 - Scene lifecycle metodları
+ - GameManager event subscription (OnGameStateChanged/OnScoreChanged/OnComboChanged)
 
 **Yeni dosya:** `Assets/Scripts/UI/UIManager.cs` (Refactored)
 
@@ -620,8 +633,7 @@ public class UIManager : MonoBehaviour
         try
         {
             GameManager.OnGameStateChanged -= HandleGameStateChange;
-            GameManager.OnScoreChanged -= score => hudController?.UpdateScore((int)score);
-            GameManager.OnComboChanged -= combo => hudController?.UpdateCombo(combo);
+            // NOTE: Lambda unsubscribe çalışmaz; delegate referanslarını field olarak saklayıp aynı referansla unsubscribe et.
         }
         catch (System.Exception e)
         {
@@ -689,9 +701,12 @@ public class UIManager : MonoBehaviour
 1. **UIConfig.asset** önce oluşturulmalı (Resources'dan yüklenecek)
 2. **CanvasLocator** ilk init edilmeli (diğerleri canvas'a bağlı)
 3. **Backwards compatibility** - Mevcut API korunuyor:
-   - `UIManager.Instance.ShowCountdown()` ✅
-   - `UIManager.Instance.ShowHitEffect()` ✅
-   - `UIManager.Instance.OnPausePressed` ✅
+    - `UIManager.Instance.ShowCountdown()` ✅
+    - `UIManager.Instance.ShowHitEffect()` ✅
+    - `UIManager.Instance.OnPausePressed` ✅
+    - `UIManager.Instance.UpdateHealth()` ✅
+    - `UIManager.Instance.SetUIInteractable()` ✅
+    - `UIManager.Instance.RefreshUIElements()` ✅
 
 ---
 
@@ -703,7 +718,7 @@ public class UIManager : MonoBehaviour
 | Toplam UI LOC | 1217 | ~1040 |
 | Dosya sayısı | 1 | 8 |
 | ScriptableObject | 0 | 1 |
-| Magic Numbers | ~20 | 0 |
+| Magic Numbers | ~20 | Merkezi config'e taşındı |
 | Test edilebilirlik | ❌ | ✅ |
 | Single Responsibility | ❌ | ✅ |
 

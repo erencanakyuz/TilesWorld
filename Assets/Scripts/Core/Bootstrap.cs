@@ -135,8 +135,8 @@ public class Bootstrap : MonoBehaviour
     /// </summary>
     void InitializeUIManager()
     {
-        // Eğer zaten var olan bir UIManager instance'ı yoksa oluştur
-        if (UIManager.Instance == null)
+        // If an existing UIManager is already present in the scene hierarchy, don't create another.
+        if (UIManager.Instance == null && FindFirstObjectByType<UIManager>() == null)
         {
             GameObject uiMgrObject = new GameObject("UIManager");
             uiMgrObject.AddComponent<UIManager>();
