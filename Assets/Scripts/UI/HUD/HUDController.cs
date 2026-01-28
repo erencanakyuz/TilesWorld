@@ -68,7 +68,7 @@ public class HUDController : MonoBehaviour
                 stringBuilder.Append(currentScore.ToString("N0"));
                 scoreText.text = stringBuilder.ToString();
 
-                StartCoroutine(ScaleTextEffect(scoreText.transform));
+                _ = ScaleTextEffectAsync(scoreText.transform);
             }
         }
     }
@@ -83,7 +83,7 @@ public class HUDController : MonoBehaviour
 
             if (combo > 0 && combo % 10 == 0)
             {
-                StartCoroutine(ComboMilestoneEffect());
+                _ = ComboMilestoneEffectAsync();
             }
         }
 
@@ -202,7 +202,7 @@ public class HUDController : MonoBehaviour
         }
     }
 
-    private IEnumerator ScaleTextEffect(Transform textTransform)
+    private async Awaitable ScaleTextEffectAsync(Transform textTransform)
     {
         Vector3 originalScale = textTransform.localScale;
         Vector3 targetScale = originalScale * 1.2f;
@@ -213,7 +213,7 @@ public class HUDController : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             textTransform.localScale = Vector3.Lerp(originalScale, targetScale, elapsed / duration);
-            yield return null;
+            await Awaitable.NextFrameAsync();
         }
 
         elapsed = 0f;
@@ -221,13 +221,13 @@ public class HUDController : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             textTransform.localScale = Vector3.Lerp(targetScale, originalScale, elapsed / duration);
-            yield return null;
+            await Awaitable.NextFrameAsync();
         }
 
         textTransform.localScale = originalScale;
     }
 
-    private IEnumerator ComboMilestoneEffect()
+    private async Awaitable ComboMilestoneEffectAsync()
     {
         if (comboText != null)
         {
@@ -236,9 +236,9 @@ public class HUDController : MonoBehaviour
             for (int i = 0; i < 3; i++)
             {
                 comboText.color = Color.white;
-                yield return new WaitForSeconds(0.1f);
+                await Awaitable.WaitForSecondsAsync(0.1f);
                 comboText.color = originalColor;
-                yield return new WaitForSeconds(0.1f);
+                await Awaitable.WaitForSecondsAsync(0.1f);
             }
         }
     }

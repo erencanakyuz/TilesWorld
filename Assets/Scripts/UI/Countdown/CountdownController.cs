@@ -37,7 +37,7 @@ public class CountdownController : MonoBehaviour
                 countdownText.fontSize = 100;
             }
 
-            StartCoroutine(CountdownPulseEffect());
+            _ = CountdownPulseEffectAsync();
         }
 
         if (countdownUI != null)
@@ -94,9 +94,9 @@ public class CountdownController : MonoBehaviour
         countdownUI.SetActive(false);
     }
 
-    private IEnumerator CountdownPulseEffect()
+    private async Awaitable CountdownPulseEffectAsync()
     {
-        if (countdownText == null) yield break;
+        if (countdownText == null) return;
 
         Vector3 originalScale = countdownText.transform.localScale;
         Vector3 largeScale = originalScale * 1.3f;
@@ -108,7 +108,7 @@ public class CountdownController : MonoBehaviour
             elapsed += Time.deltaTime;
             float progress = elapsed / duration;
             countdownText.transform.localScale = Vector3.Lerp(originalScale, largeScale, progress);
-            yield return null;
+            await Awaitable.NextFrameAsync();
         }
 
         elapsed = 0f;
@@ -118,7 +118,7 @@ public class CountdownController : MonoBehaviour
             elapsed += Time.deltaTime;
             float progress = elapsed / duration;
             countdownText.transform.localScale = Vector3.Lerp(largeScale, originalScale, progress);
-            yield return null;
+            await Awaitable.NextFrameAsync();
         }
 
         countdownText.transform.localScale = originalScale;

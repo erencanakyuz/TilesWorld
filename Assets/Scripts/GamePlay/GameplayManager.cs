@@ -140,9 +140,9 @@ public class GameplayManager : MonoBehaviour
         }
     }
 
-    IEnumerator DelayedGameStartCoroutine(float delay)
+    async Awaitable DelayedGameStartAsync(float delay)
     {
-        yield return new WaitForSeconds(delay);
+        await Awaitable.WaitForSecondsAsync(delay);
         if (currentSong != null)
         {
             StartGameplay(currentSong);
@@ -236,7 +236,7 @@ public class GameplayManager : MonoBehaviour
         currentSong.songKey = songInfo.songKey;
 
         // Debug.Log($"🎮 Starting gameplay via SongDatabase: {currentSong.songName} by {currentSong.artist} (Tempo: {songInfo.tempo})");
-        StartCoroutine(StartGameplaySequence());
+        _ = StartGameplaySequenceAsync();
     }
 
     /// <summary>
@@ -275,7 +275,7 @@ public class GameplayManager : MonoBehaviour
         currentSong.noteChartPath = songData.chartFilePath;
         currentSong.songKey = songData.songKey;
 
-        StartCoroutine(StartGameplaySequence());
+        _ = StartGameplaySequenceAsync();
     }
 
     // Overload for backward compatibility
@@ -288,17 +288,17 @@ public class GameplayManager : MonoBehaviour
         }
 
         currentSong = song;
-        StartCoroutine(StartGameplaySequence());
+        _ = StartGameplaySequenceAsync();
     }
 
-    private IEnumerator StartGameplaySequence()
+    private async Awaitable StartGameplaySequenceAsync()
     {
         PrepareGameplaySystems();
 
-        yield return StartCoroutine(ShowCountdown());
+        await ShowCountdownAsync();
 
         // Music loading now happens in the background.
-        StartCoroutine(StartMusicWithDelay(songStartDelay));
+        _ = StartMusicWithDelayAsync(songStartDelay);
 
         // Gameplay logic starts immediately.
         BeginActiveGameplay();
@@ -414,30 +414,29 @@ public class GameplayManager : MonoBehaviour
     /// </summary>
     private float EstimateDuration(int tempo) => GameConstants.EstimateDurationSeconds(tempo);
 
-    private IEnumerator ShowCountdown()
+    private async Awaitable ShowCountdownAsync()
     {
         _isCountingDown = true;
 
         for (int i = (int)countdownDuration; i > 0; i--)
         {
-            if (showDebugLogs) Debug.Log($"🎮 Starting in {i}...");
+            if (showDebugLogs) Debug.Log($"Starting in {i}...");
 
-            // Show countdown UI number
             if (UIManager.Instance != null)
             {
                 UIManager.Instance.ShowCountdown(i);
             }
 
-            yield return new WaitForSeconds(1f);
+            await Awaitable.WaitForSecondsAsync(1f);
         }
 
-        // Show "GO!" or "Start!" message
+        // Show "GO!" message
         if (UIManager.Instance != null)
         {
-            UIManager.Instance.ShowCountdown(0); // 0 = GO!
+            UIManager.Instance.ShowCountdown(0);
         }
 
-        yield return new WaitForSeconds(0.5f); // Brief pause for "GO!" message
+        await Awaitable.WaitForSecondsAsync(0.5f);
 
         // Hide countdown UI
         if (UIManager.Instance != null)
@@ -448,26 +447,27 @@ public class GameplayManager : MonoBehaviour
         _isCountingDown = false;
     }
 
-    private IEnumerator StartMusicWithDelay(float delay)
+    private async Awaitable StartMusicWithDelayAsync(float delay)
     {
         if (string.IsNullOrEmpty(currentSong.audioFilePath))
         {
             if (showDebugLogs) Debug.Log("No background music path provided.");
-            yield break;
+            return;
         }
 
+        // Load audio clip asynchronously
         ResourceRequest request = Resources.LoadAsync<AudioClip>(currentSong.audioFilePath);
-        yield return request; // Wait for the async operation to complete
+        await Awaitable.FromAsyncOperation(request);
 
         AudioClip clip = request.asset as AudioClip;
 
         if (clip != null)
         {
-            yield return new WaitForSeconds(delay);
+            await Awaitable.WaitForSecondsAsync(delay);
             if (audioManager != null)
             {
                 audioManager.PlayMusic(clip);
-                if (showDebugLogs) Debug.Log($"🎵 Asynchronously loaded and playing: {clip.name}");
+                if (showDebugLogs) Debug.Log($"Asynchronously loaded and playing: {clip.name}");
             }
         }
         else

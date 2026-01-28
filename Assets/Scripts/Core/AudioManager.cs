@@ -252,7 +252,7 @@ public class AudioManager : MonoBehaviour
             musicAudioSource.time = startTime;
             musicAudioSource.Play();
 
-            StartCoroutine(MonitorMusicPlayback());
+            _ = MonitorMusicPlaybackAsync();
         }
     }
 
@@ -280,12 +280,12 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    IEnumerator MonitorMusicPlayback()
+    async Awaitable MonitorMusicPlaybackAsync()
     {
         while (musicAudioSource != null && musicAudioSource.isPlaying)
         {
             OnMusicTimeUpdate?.Invoke(musicAudioSource.time);
-            yield return null;
+            await Awaitable.NextFrameAsync();
         }
         OnMusicFinished?.Invoke();
     }
