@@ -221,7 +221,7 @@ public class HitZoneManager : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"⚠️ HitZoneManager: Error processing lane tap for lane {lane}: {e.Message}");
+            Debug.LogError($"HitZoneManager: Error processing lane tap for lane {lane}: {e.Message}");
         }
     }
 

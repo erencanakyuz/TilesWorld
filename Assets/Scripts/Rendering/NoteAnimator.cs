@@ -90,76 +90,86 @@ public class NoteAnimator : MonoBehaviour
 
         // Kill any ongoing animations
         noteTransform.DOKill();
-        // No need to kill material animations since we use PropertyBlock
+
+        // Get animation parameters for this hit quality
+        var animParams = GetHitAnimationParams(quality);
+        
+        // Set color using PropertyBlock
+        Color hitColor = animParams.color;
+        propertyBlock.SetColor("_BaseColor", hitColor);
+        
+        if (animParams.hasEmission && noteRenderer.sharedMaterial.HasProperty("_EmissionColor"))
+        {
+            propertyBlock.SetColor("_EmissionColor", hitColor * 2f);
+        }
+        noteRenderer.SetPropertyBlock(propertyBlock);
 
         // Create hit animation sequence
         Sequence hitSequence = DOTween.Sequence();
 
-        switch (quality)
+        if (animParams.usePunchScale)
         {
-            case HitAccuracy.Perfect:
-                // Explosive perfect hit animation
-                Color perfectColor = new Color(0f, 1f, 1f, 1f); // Cyan
-                
-                // Set colors using PropertyBlock
-                propertyBlock.SetColor("_BaseColor", perfectColor);
-                if (noteRenderer.sharedMaterial.HasProperty("_EmissionColor"))
-                {
-                    propertyBlock.SetColor("_EmissionColor", perfectColor * 2f);
-                }
-                noteRenderer.SetPropertyBlock(propertyBlock);
-
-                hitSequence.Append(noteTransform.DOPunchScale(Vector3.one * hitScalePunchAmount, hitScalePunchDuration, 2, 0.5f));
-                hitSequence.Join(noteTransform.DORotate(new Vector3(0, 0, hitRotationAmount), hitScalePunchDuration, RotateMode.FastBeyond360));
-                
-                // Fade out using PropertyBlock
-                hitSequence.Join(DOTween.To(() => perfectColor.a, x => {
-                    perfectColor.a = x;
-                    propertyBlock.SetColor("_BaseColor", perfectColor);
-                    noteRenderer.SetPropertyBlock(propertyBlock);
-                }, 0f, hitFadeOutDuration).SetDelay(0.1f));
-                break;
-
-            case HitAccuracy.Good:
-                // Good hit animation - simpler but still satisfying
-                Color goodColor = new Color(0f, 1f, 0f, 1f); // Green
-                
-                // Set color using PropertyBlock
-                propertyBlock.SetColor("_BaseColor", goodColor);
-                noteRenderer.SetPropertyBlock(propertyBlock);
-
-                hitSequence.Append(noteTransform.DOPunchScale(Vector3.one * (hitScalePunchAmount * 0.7f), hitScalePunchDuration, 1, 0.5f));
-                hitSequence.Join(noteTransform.DORotate(new Vector3(0, 0, hitRotationAmount * 0.5f), hitScalePunchDuration, RotateMode.FastBeyond360));
-                
-                // Fade out using PropertyBlock
-                hitSequence.Join(DOTween.To(() => goodColor.a, x => {
-                    goodColor.a = x;
-                    propertyBlock.SetColor("_BaseColor", goodColor);
-                    noteRenderer.SetPropertyBlock(propertyBlock);
-                }, 0f, hitFadeOutDuration).SetDelay(0.1f));
-                break;
-
-            default: // Okay hit
-                // Simple hit animation
-                Color okayColor = new Color(1f, 1f, 0f, 1f); // Yellow
-                
-                // Set color using PropertyBlock
-                propertyBlock.SetColor("_BaseColor", okayColor);
-                noteRenderer.SetPropertyBlock(propertyBlock);
-
-                hitSequence.Append(noteTransform.DOScale(1.2f, 0.2f).SetEase(Ease.OutCubic));
-                
-                // Fade out using PropertyBlock
-                hitSequence.Join(DOTween.To(() => okayColor.a, x => {
-                    okayColor.a = x;
-                    propertyBlock.SetColor("_BaseColor", okayColor);
-                    noteRenderer.SetPropertyBlock(propertyBlock);
-                }, 0f, hitFadeOutDuration));
-                break;
+            hitSequence.Append(noteTransform.DOPunchScale(Vector3.one * animParams.scalePunch, hitScalePunchDuration, animParams.vibrato, 0.5f));
+            hitSequence.Join(noteTransform.DORotate(new Vector3(0, 0, animParams.rotation), hitScalePunchDuration, RotateMode.FastBeyond360));
         }
+        else
+        {
+            hitSequence.Append(noteTransform.DOScale(animParams.scalePunch + 1f, 0.2f).SetEase(Ease.OutCubic));
+        }
+
+        // Fade out using PropertyBlock
+        hitSequence.Join(DOTween.To(() => hitColor.a, x => {
+            hitColor.a = x;
+            propertyBlock.SetColor("_BaseColor", hitColor);
+            noteRenderer.SetPropertyBlock(propertyBlock);
+        }, 0f, hitFadeOutDuration).SetDelay(animParams.usePunchScale ? 0.1f : 0f));
 
         // Return to pool when animation completes
         hitSequence.OnComplete(ReturnToPool);
+    }
+
+    private struct HitAnimationParams
+    {
+        public Color color;
+        public float scalePunch;
+        public float rotation;
+        public int vibrato;
+        public bool usePunchScale;
+        public bool hasEmission;
+    }
+
+    private HitAnimationParams GetHitAnimationParams(HitAccuracy quality)
+    {
+        return quality switch
+        {
+            HitAccuracy.Perfect => new HitAnimationParams
+            {
+                color = new Color(0f, 1f, 1f, 1f), // Cyan
+                scalePunch = hitScalePunchAmount,
+                rotation = hitRotationAmount,
+                vibrato = 2,
+                usePunchScale = true,
+                hasEmission = true
+            },
+            HitAccuracy.Good => new HitAnimationParams
+            {
+                color = new Color(0f, 1f, 0f, 1f), // Green
+                scalePunch = hitScalePunchAmount * 0.7f,
+                rotation = hitRotationAmount * 0.5f,
+                vibrato = 1,
+                usePunchScale = true,
+                hasEmission = false
+            },
+            _ => new HitAnimationParams // Okay
+            {
+                color = new Color(1f, 1f, 0f, 1f), // Yellow
+                scalePunch = 0.2f,
+                rotation = 0f,
+                vibrato = 0,
+                usePunchScale = false,
+                hasEmission = false
+            }
+        };
     }
 
     /// <summary>

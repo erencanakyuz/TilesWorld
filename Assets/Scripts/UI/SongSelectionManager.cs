@@ -56,14 +56,14 @@ public class SongSelectionManager : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("🎵 SongDatabase not ready yet, subscribing to load event...");
+                Debug.LogWarning("SongDatabase not ready yet, subscribing to load event...");
                 SongDatabase.OnDatabaseLoaded += LoadFromSongDatabase;
                 SongDatabase.OnDatabaseError += HandleDatabaseError;
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ Error loading songs from database: {e.Message}");
+            Debug.LogError($"Error loading songs from database: {e.Message}");
             CreateFallbackSongs();
         }
     }
@@ -79,7 +79,7 @@ public class SongSelectionManager : MonoBehaviour
 
         if (SongDatabase.Instance == null || !SongDatabase.Instance.IsLoaded())
         {
-            Debug.LogError("❌ SongDatabase not available!");
+            Debug.LogError("SongDatabase not available!");
             CreateFallbackSongs();
             return;
         }
@@ -116,7 +116,7 @@ public class SongSelectionManager : MonoBehaviour
         SongDatabase.OnDatabaseLoaded -= LoadFromSongDatabase;
         SongDatabase.OnDatabaseError -= HandleDatabaseError;
 
-        Debug.LogError($"❌ SongDatabase error: {error}");
+        Debug.LogError($"SongDatabase error: {error}");
         CreateFallbackSongs();
     }
 
@@ -360,7 +360,7 @@ public class SongSelectionManager : MonoBehaviour
         }
         else
         {
-            Debug.LogError("❌ GameplayManager not found!");
+            Debug.LogError("GameplayManager not found!");
             // Fallback - just change state
             if (GameManager.Instance != null)
             {
@@ -384,7 +384,7 @@ public class SongSelectionManager : MonoBehaviour
         }
         catch
         {
-            Debug.LogWarning($"⚠️ Could not parse duration: {duration}");
+            Debug.LogWarning($"Could not parse duration: {duration}");
         }
 
         return 180f; // Default 3 minutes

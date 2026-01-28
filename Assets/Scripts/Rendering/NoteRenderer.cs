@@ -153,7 +153,7 @@ public class NoteRenderer : MonoBehaviour
         lanePositions = new Vector3[laneCount];
         for (int i = 0; i < laneCount; i++)
         {
-            float xOffset = (i - 2.5f) * 1.8f;
+            float xOffset = GameConstants.GetLaneXPosition(i);
             lanePositions[i] = new Vector3(xOffset, 0, 0);
         }
     }

@@ -6,9 +6,10 @@ trigger: always_on
 
 ## API Compatibility (Unity 6 - October 2024)
 
+dont forget this project for mobile every aspect should aligns with mobile ui etc
 
-no emojies in the code
-dont use emojies in code
+no emojies in the actual code
+dont use emojies in code only u can use in debug or in md files
 
 ### Object Finding Methods - DEPRECATED vs NEW
 | Deprecated (Pre-2022) | Unity 2022+ | Unity 6+ (Fastest) |

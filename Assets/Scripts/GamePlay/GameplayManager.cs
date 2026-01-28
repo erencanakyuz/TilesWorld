@@ -325,10 +325,14 @@ public class GameplayManager : MonoBehaviour
         // Wire up the note travel time to the note creator for perfect sync.
         if (noteRenderer != null && noteCreator != null)
         {
-            // 🎼 MUSICAL INTEGRITY SYSTEM ENTEGRASYONU
+            // MUSICAL INTEGRITY SYSTEM INTEGRATION
             if (currentSong != null)
             {
-                string songKey = currentSong.songName.Replace(" ", "_").ToLower(); // Song key oluştur
+                // CRITICAL FIX: Use the actual songKey from database, not derived from songName
+                // songName: "Vidalita" vs songKey: "vidalita_traditional"
+                string songKey = !string.IsNullOrEmpty(currentSong.songKey) 
+                    ? currentSong.songKey 
+                    : currentSong.songName.Replace(" ", "_").ToLower(); // Fallback only
 
                 // NoteCreator'a song key'i set et
                 noteCreator.SetCurrentSong(songKey);
@@ -338,9 +342,9 @@ public class GameplayManager : MonoBehaviour
 
                 if (showDebugLogs)
                 {
-                    Debug.Log($"🎼 [MUSICAL INTEGRITY] Systems synchronized:");
-                    Debug.Log($"   🎵 Song: {songKey} ({currentSong.bpm} BPM)");
-                    Debug.Log($"   🎯 NoteCreator & NoteRenderer updated with Musical Integrity System");
+                    Debug.Log($"[MUSICAL INTEGRITY] Systems synchronized:");
+                    Debug.Log($"   Song: {songKey} ({currentSong.bpm} BPM)");
+                    Debug.Log($"   NoteCreator & NoteRenderer updated with Musical Integrity System");
                 }
             }
             else

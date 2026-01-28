@@ -143,33 +143,12 @@ public class GameManager : MonoBehaviour
                 break;
 
             default:
-                Application.targetFrameRate = 60; // Default for any other states
+                Application.targetFrameRate = 60;
                 break;
         }
 
+        // Notify all listeners of state change (UIManager, GameplayManager, etc.)
         OnGameStateChanged?.Invoke(newState);
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-#endif
-
-        // Handle state-specific logic
-        switch (newState)
-        {
-            case GameState.MainMenu:
-                HandleMainMenuState();
-                break;
-            case GameState.SongSelection:
-                HandleSongSelectionState();
-                break;
-            case GameState.Playing:
-                HandlePlayingState();
-                break;
-            case GameState.Paused:
-                HandlePausedState();
-                break;
-            case GameState.GameOver:
-                HandleGameOverState();
-                break;
-        }
     }
 
     public void PauseGame()
@@ -311,33 +290,6 @@ public class GameManager : MonoBehaviour
     }
     #endregion
 
-    #region State Handlers
-    void HandleMainMenuState()
-    {
-        // Main menu specific logic
-    }
-
-    void HandleSongSelectionState()
-    {
-        // Song selection specific logic
-    }
-
-    void HandlePlayingState()
-    {
-        // Game playing specific logic
-    }
-
-    void HandlePausedState()
-    {
-        // Paused game specific logic
-    }
-
-    void HandleGameOverState()
-    {
-        // Game over specific logic
-    }
-    #endregion
-
     #region UI Event Handlers
     void HandlePauseButtonPressed()
     {
@@ -451,35 +403,31 @@ public class GameManager : MonoBehaviour
 
     void ShowGameStateDebug()
     {
-        Debug.Log("=== 🎮 OYUN DURUMU DEBUG ===");
-        Debug.Log($"🎯 Current State: {CurrentGameState}");
-        Debug.Log($"⏸️ Is Paused: {IsGamePaused}");
-        Debug.Log($"🎵 Selected Instrument: {selectedInstrument}");
+        Debug.Log("=== GAME STATE DEBUG ===");
+        Debug.Log($"Current State: {CurrentGameState}");
+        Debug.Log($"Is Paused: {IsGamePaused}");
+        Debug.Log($"Selected Instrument: {selectedInstrument}");
 
         if (currentPlayer != null)
         {
-            Debug.Log($"👤 Player: {currentPlayer.playerName}");
-            Debug.Log($"🏆 High Score: {currentPlayer.totalScore}");
-            Debug.Log($"🔥 Best Combo: {currentPlayer.highestCombo}");
+            Debug.Log($"Player: {currentPlayer.playerName}");
+            Debug.Log($"High Score: {currentPlayer.totalScore}");
+            Debug.Log($"Best Combo: {currentPlayer.highestCombo}");
         }
 
         if (currentSession != null)
         {
-            Debug.Log($"🎵 Current Song: {currentSession.songData?.songName ?? "None"}");
-            Debug.Log($"📊 Score: {currentSession.currentScore}");
-            Debug.Log($"🔥 Combo: {currentSession.currentCombo}");
-            Debug.Log($"✨ Perfect: {currentSession.perfectHits}, Good: {currentSession.goodHits}, Miss: {currentSession.missedNotes}");
+            Debug.Log($"Current Song: {currentSession.songData?.songName ?? "None"}");
+            Debug.Log($"Score: {currentSession.currentScore}");
+            Debug.Log($"Combo: {currentSession.currentCombo}");
+            Debug.Log($"Perfect: {currentSession.perfectHits}, Good: {currentSession.goodHits}, Miss: {currentSession.missedNotes}");
         }
         else
         {
-            Debug.Log("🎵 No active session");
+            Debug.Log("No active session");
         }
 
         Debug.Log("========================");
-
-        // Test: Switch to Song Selection state
-        Debug.Log("🎵 Testing Song Selection - Press S to switch to SongSelection state");
-        Debug.Log("🎮 Press K to show this debug info");
     }
 
     public void RestartGame()

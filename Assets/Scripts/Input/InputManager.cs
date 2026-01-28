@@ -85,10 +85,8 @@ public class InputManager : MonoBehaviour
 
         for (int i = 0; i < laneCount; i++)
         {
-            // Match NoteRenderer and existing HitZoneTrigger positions:
-            // Lane 0: x: -4.5, Lane 1: x: -2.7, Lane 2: x: -0.9
-            // Lane 3: x: 0.9, Lane 4: x: 2.7, Lane 5: x: 4.5
-            float xOffset = (i - 2.5f) * 1.8f; // 1.8f spacing between lanes
+            // Use centralized GameConstants for lane positions
+            float xOffset = GameConstants.GetLaneXPosition(i);
             laneWorldPositions[i] = new Vector3(xOffset, 0, 0);
         }
     }

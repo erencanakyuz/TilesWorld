@@ -178,6 +178,32 @@ public enum MusicalScale
 
 #endregion
 
+#region Game Constants
+
+/// <summary>
+/// Centralized game layout and timing constants
+/// Eliminates magic numbers scattered across codebase
+/// </summary>
+public static class GameConstants
+{
+    // Lane Layout
+    public const int LaneCount = 6;
+    public const float LaneSpacing = 1.8f;
+    
+    /// <summary>
+    /// Center offset for lane positioning, computed from LaneCount
+    /// </summary>
+    public static float LaneCenterOffset => (LaneCount - 1) / 2f;
+    
+    /// <summary>
+    /// Calculate X position for a given lane index
+    /// </summary>
+    public static float GetLaneXPosition(int laneIndex)
+    {
+        return (laneIndex - LaneCenterOffset) * LaneSpacing;
+    }
+}
+
 #region Song Database Structures
 
 [System.Serializable]
@@ -306,7 +332,7 @@ public static class AudioConstants
 
         if (pitch < 0 || pitch >= SOUND_RESOURCE_IDXS[safeLane].Length)
         {
-            UnityEngine.Debug.LogWarning($"⚠️ AudioConstants: Geçersiz pitch değeri! Lane: {lane}, Pitch: {pitch}. Varsayılan olarak 0 kullanılıyor.");
+            UnityEngine.Debug.LogWarning($"AudioConstants: Invalid pitch value! Lane: {lane}, Pitch: {pitch}. Using default 0.");
             pitch = UnityEngine.Mathf.Clamp(pitch, 0, SOUND_RESOURCE_IDXS[safeLane].Length - 1);
         }
 
