@@ -102,9 +102,13 @@ public class SongPlaybackTester : MonoBehaviour
 
     // Auto-play için hitzone izleme
     private HitZoneTrigger[] hitZones;
+    
+    // UI Theme
+    private UIConfig uiConfig;
 
     void Start()
     {
+        uiConfig = Resources.Load<UIConfig>("UI/UIConfig");
         SetupAutoPlayUI();
         SetupHitZones();
     }
@@ -404,7 +408,9 @@ public class SongPlaybackTester : MonoBehaviour
 
         // Background image (opsiyonel - basit renkli arkaplan)
         Image buttonImage = buttonObj.AddComponent<Image>();
-        buttonImage.color = isPerfectAutoPlayEnabled ? Color.green : Color.red;
+        buttonImage.color = isPerfectAutoPlayEnabled ? 
+            (uiConfig != null ? uiConfig.successColor : Color.green) : 
+            (uiConfig != null ? uiConfig.dangerColor : Color.red);
 
         // Text ekle
         GameObject textObj = new GameObject("Text");
@@ -420,7 +426,7 @@ public class SongPlaybackTester : MonoBehaviour
         buttonText.text = isPerfectAutoPlayEnabled ? "AUTO\nON" : "AUTO\nOFF";
         buttonText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         buttonText.fontSize = 14;
-        buttonText.color = Color.white;
+        buttonText.color = uiConfig != null ? uiConfig.textPrimaryColor : Color.white;
         buttonText.alignment = TextAnchor.MiddleCenter;
 
         // Button click event
@@ -453,7 +459,9 @@ public class SongPlaybackTester : MonoBehaviour
             if (buttonText != null)
             {
                 buttonText.text = isPerfectAutoPlayEnabled ? "AUTO ON" : "AUTO OFF";
-                autoPlayButton.GetComponent<Image>().color = isPerfectAutoPlayEnabled ? Color.green : Color.red;
+                autoPlayButton.GetComponent<Image>().color = isPerfectAutoPlayEnabled ? 
+                    (uiConfig != null ? uiConfig.successColor : Color.green) : 
+                    (uiConfig != null ? uiConfig.dangerColor : Color.red);
             }
         }
 

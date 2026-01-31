@@ -6,6 +6,7 @@ public class CountdownController : MonoBehaviour
 {
     public static CountdownController Instance { get; private set; }
 
+    private UIConfig config;
     private Canvas hudCanvas;
     private Canvas mainCanvas;
     private GameObject countdownUI;
@@ -16,6 +17,7 @@ public class CountdownController : MonoBehaviour
         Instance = this;
         this.hudCanvas = hudCanvas;
         this.mainCanvas = mainCanvas;
+        this.config = Resources.Load<UIConfig>("UI/UIConfig");
     }
 
     public void ShowCountdown(int number)
@@ -27,13 +29,13 @@ public class CountdownController : MonoBehaviour
             if (number > 0)
             {
                 countdownText.text = number.ToString();
-                countdownText.color = Color.white;
+                countdownText.color = config != null ? config.textPrimaryColor : Color.white;
                 countdownText.fontSize = 120;
             }
             else
             {
                 countdownText.text = "GO!";
-                countdownText.color = Color.green;
+                countdownText.color = config != null ? config.successColor : Color.green;
                 countdownText.fontSize = 100;
             }
 
@@ -76,7 +78,7 @@ public class CountdownController : MonoBehaviour
         countdownText = textObj.AddComponent<TextMeshProUGUI>();
         countdownText.text = "3";
         countdownText.fontSize = 120;
-        countdownText.color = Color.white;
+        countdownText.color = config != null ? config.textPrimaryColor : Color.white;
         countdownText.alignment = TextAlignmentOptions.Center;
 
         TMP_FontAsset font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");

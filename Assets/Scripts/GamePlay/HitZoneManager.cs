@@ -55,12 +55,8 @@ public class HitZoneManager : MonoBehaviour
     private HitZoneTrigger[] zones;
     private float noteTravelTime;
     private Dictionary<int, Renderer> hitZoneRenderers = new Dictionary<int, Renderer>();
-    private Dictionary<HitAccuracy, Color> hitColors = new Dictionary<HitAccuracy, Color>()
-    {
-        { HitAccuracy.Perfect, new Color(0f, 1f, 1f, 0.8f) }, // Cyan
-        { HitAccuracy.Good, new Color(0f, 1f, 0f, 0.8f) },    // Green
-        { HitAccuracy.Okay, new Color(1f, 1f, 0f, 0.8f) }     // Yellow
-    };
+    private Dictionary<HitAccuracy, Color> hitColors;
+    private UIConfig uiConfig;
 
     void Awake()
     {
@@ -68,6 +64,10 @@ public class HitZoneManager : MonoBehaviour
         System.Array.Sort(zones, (a, b) => a.laneIndex.CompareTo(b.laneIndex));
 
         if (audioManager == null) audioManager = AudioManager.Instance;
+
+        // Load UI config for hit colors
+        uiConfig = Resources.Load<UIConfig>("UI/UIConfig");
+        InitializeHitColors();
 
         // Auto-find prefabs if enabled and not assigned
         if (autoFindPrefabs)
@@ -77,6 +77,25 @@ public class HitZoneManager : MonoBehaviour
 
         // Create hit zone visuals
         CreateHitZoneVisuals();
+    }
+
+    private void InitializeHitColors()
+    {
+        hitColors = new Dictionary<HitAccuracy, Color>();
+        
+        if (uiConfig != null)
+        {
+            hitColors[HitAccuracy.Perfect] = uiConfig.successColor;
+            hitColors[HitAccuracy.Good] = uiConfig.warningColor;
+            hitColors[HitAccuracy.Okay] = uiConfig.textSecondaryColor;
+        }
+        else
+        {
+            // Fallback colors
+            hitColors[HitAccuracy.Perfect] = new Color(0f, 1f, 1f, 0.8f);
+            hitColors[HitAccuracy.Good] = new Color(0f, 1f, 0f, 0.8f);
+            hitColors[HitAccuracy.Okay] = new Color(1f, 1f, 0f, 0.8f);
+        }
     }
 
     private void AutoFindPrefabs()
@@ -349,7 +368,8 @@ public class HitZoneManager : MonoBehaviour
 
     private void FlashHitZone(HitAccuracy accuracy)
     {
-        Color flashColor = hitColors.ContainsKey(accuracy) ? hitColors[accuracy] : Color.white;
+        Color flashColor = hitColors.ContainsKey(accuracy) ? hitColors[accuracy] : 
+            (uiConfig != null ? uiConfig.textPrimaryColor : Color.white);
 
         // Flash all hit zones with the specified color
         foreach (var renderer in hitZoneRenderers.Values)
@@ -359,7 +379,7 @@ public class HitZoneManager : MonoBehaviour
             // Use DOTween for a smooth, punchy flash effect
             renderer.material.DOKill(); // Kill previous tweens on this material
             renderer.material.SetColor("_EmissionColor", flashColor * 2f); // Make it glow intensely
-            renderer.material.DOColor(Color.white, "_EmissionColor", 0.5f)
+            renderer.material.DOColor(uiConfig != null ? uiConfig.textPrimaryColor : Color.white, "_EmissionColor", 0.5f)
                 .SetEase(Ease.OutQuad);
         }
 

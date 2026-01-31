@@ -104,14 +104,14 @@ public class HUDController : MonoBehaviour
             healthBar.value = currentHealth;
 
             Image fill = healthBar.fillRect.GetComponent<Image>();
-            if (fill != null)
+            if (fill != null && config != null)
             {
                 if (currentHealth < 0.3f)
-                    fill.color = Color.red;
+                    fill.color = config.dangerColor;
                 else if (currentHealth < 0.6f)
-                    fill.color = Color.yellow;
+                    fill.color = config.warningColor;
                 else
-                    fill.color = Color.green;
+                    fill.color = config.successColor;
             }
         }
     }
@@ -142,16 +142,16 @@ public class HUDController : MonoBehaviour
 
     private void UpdateMultiplier()
     {
-        if (multiplierText != null)
+        if (multiplierText != null && config != null)
         {
             multiplierText.text = $"x{currentMultiplier}";
 
             if (currentMultiplier >= 5)
-                multiplierText.color = Color.red;
+                multiplierText.color = config.dangerColor;
             else if (currentMultiplier >= 3)
-                multiplierText.color = Color.yellow;
+                multiplierText.color = config.warningColor;
             else
-                multiplierText.color = Color.white;
+                multiplierText.color = config.textPrimaryColor;
         }
     }
 
@@ -229,13 +229,13 @@ public class HUDController : MonoBehaviour
 
     private async Awaitable ComboMilestoneEffectAsync()
     {
-        if (comboText != null)
+        if (comboText != null && config != null)
         {
             Color originalColor = comboText.color;
 
             for (int i = 0; i < 3; i++)
             {
-                comboText.color = Color.white;
+                comboText.color = config.primaryColor;
                 await Awaitable.WaitForSecondsAsync(0.1f);
                 comboText.color = originalColor;
                 await Awaitable.WaitForSecondsAsync(0.1f);

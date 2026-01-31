@@ -12,6 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 84149e1c897eb3c45a903de0c5062383, type: 3}
   m_Name: UIConfig
   m_EditorClassIdentifier: Assembly-CSharp::UIConfig
+  primaryColor: {r: 0.2, g: 0.8, b: 1, a: 1}
+  accentColor: {r: 1, g: 0.4, b: 0.6, a: 1}
+  backgroundColor: {r: 0.08, g: 0.08, b: 0.12, a: 1}
+  textPrimaryColor: {r: 1, g: 1, b: 1, a: 1}
+  textSecondaryColor: {r: 0.7, g: 0.7, b: 0.8, a: 1}
+  successColor: {r: 0.3, g: 1, b: 0.4, a: 1}
+  warningColor: {r: 1, g: 0.8, b: 0.2, a: 1}
+  dangerColor: {r: 1, g: 0.2, b: 0.3, a: 1}
+  useGradients: 1
+  gradientStart: {r: 0.15, g: 0.15, b: 0.25, a: 1}
+  gradientEnd: {r: 0.05, g: 0.05, b: 0.15, a: 1}
   mainMenuPanelPrefab: {fileID: 4949574427873613607, guid: 0f7824b817dda044eacbba45df62a0b8, type: 3}
   songSelectionPanelPrefab: {fileID: 7482992003517174357, guid: 3167509f19bfaf04fa530ce24aba5f91, type: 3}
   gameplayPanelPrefab: {fileID: 6801837407720441779, guid: 6b33929a40b2ede479d132d9229cfc48, type: 3}
@@ -60,5 +71,8 @@ MonoBehaviour:
   pauseButtonPosition: {x: -80, y: -80}
   settingsButtonPosition: {x: -80, y: -160}
   buttonSize: {x: 60, y: 60}
+  buttonScalePunch: 1.15
+  buttonAnimDuration: 0.1
+  uiFadeSpeed: 0.3
   enableDebugLogging: 0
   enableFallbackUI: 1
