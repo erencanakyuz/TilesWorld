@@ -25,9 +25,6 @@ public class InputManager : MonoBehaviour
     // [Header("🔧 Configuration")] 
     // [SerializeField] private int maxSimultaneousTouches = 10; // No longer used
 
-    [Header("🐛 Debug")]
-    [SerializeField] private bool showTouchDebug = true; // Enable for testing
-
     // Input Events
     public delegate void LaneTapHandler(int lane, Vector2 screenPos);
     public static event LaneTapHandler OnLaneTapped;     // lane, position
@@ -41,11 +38,6 @@ public class InputManager : MonoBehaviour
     // Screen to lane conversion
     private Camera mainCamera;
     private Vector3[] laneWorldPositions; // Match NoteRenderer lanes
-
-    // Debug tracking
-    private Vector2 lastTouchScreenPos;
-    private Vector3 lastTouchWorldPos;
-    private int lastDetectedLane = -1;
 
     void Awake()
     {
@@ -65,20 +57,6 @@ public class InputManager : MonoBehaviour
     {
         // Setup lane positions after SerializeField values are loaded
         SetupLanePositions();
-
-        // ================== ADIM 1: KONTROL LOGU ==================
-        if (laneWorldPositions != null && laneWorldPositions.Length > 0)
-        {
-            string positions = "";
-            for (int i = 0; i < laneWorldPositions.Length; i++)
-            {
-                positions += $"Lane {i}: {laneWorldPositions[i].x:F2} | ";
-            }
-        }
-        else
-        {
-        }
-        // =========================================================
     }
 
     void InitializeInputSystem()
@@ -301,11 +279,6 @@ public class InputManager : MonoBehaviour
             if (lane >= 0 && lane < laneCount)
             {
                 OnLaneTapped?.Invoke(lane, mousePosition);
-                
-                if (showTouchDebug)
-                {
-                    Debug.Log($"[Mouse] Click at ({mousePosition.x:F0}, {mousePosition.y:F0}) -> Lane {lane}");
-                }
             }
         }
     }
@@ -331,9 +304,6 @@ public class InputManager : MonoBehaviour
             return 0;
         }
 
-        // Store for debug visualization
-        lastTouchScreenPos = screenPosition;
-
         // Use camera raycast to convert screen position to world coordinates
         Ray ray = mainCamera.ScreenPointToRay(screenPosition);
 
@@ -347,9 +317,6 @@ public class InputManager : MonoBehaviour
         if (distanceToPlane < 0) return 0;
         
         Vector3 worldPosition = ray.origin + ray.direction * distanceToPlane;
-        
-        // Store for debug visualization
-        lastTouchWorldPos = worldPosition;
 
         // Find the closest lane to this world position
         int closestLane = 0;
@@ -364,9 +331,6 @@ public class InputManager : MonoBehaviour
                 closestLane = i;
             }
         }
-
-        // Store for debug visualization
-        lastDetectedLane = closestLane;
 
         return closestLane;
     }
@@ -434,58 +398,6 @@ public class InputManager : MonoBehaviour
     {
         PlayerPrefs.SetFloat("TouchSensitivity", touchSensitivity);
         PlayerPrefs.Save();
-    }
-    #endregion
-
-    #region Debug Visualization
-    void OnGUI()
-    {
-        if (!showTouchDebug) return;
-
-        GUI.Box(new Rect(5, 5, 420, 120), "Touch Debug");
-        GUI.Label(new Rect(10, 25, 400, 20), 
-            $"Screen: ({lastTouchScreenPos.x:F0}, {lastTouchScreenPos.y:F0})");
-        GUI.Label(new Rect(10, 45, 400, 20), 
-            $"World: ({lastTouchWorldPos.x:F2}, {lastTouchWorldPos.y:F2}, {lastTouchWorldPos.z:F2})");
-        GUI.Label(new Rect(10, 65, 400, 20), 
-            $"Lane: {lastDetectedLane}");
-        GUI.Label(new Rect(10, 85, 400, 20), 
-            $"HitZone Y: {hitZoneY}");
-        GUI.Label(new Rect(10, 105, 400, 20), 
-            $"Camera: {(mainCamera != null ? mainCamera.transform.position.ToString() : "NULL")}");
-    }
-
-    void OnDrawGizmos()
-    {
-        if (!showTouchDebug || mainCamera == null) return;
-
-        // Draw ray from camera to touch point
-        Ray ray = mainCamera.ScreenPointToRay(lastTouchScreenPos);
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawLine(ray.origin, ray.origin + ray.direction * 20f);
-
-        // Draw hit point on hit zone plane
-        if (Mathf.Abs(ray.direction.y) > 0.001f)
-        {
-            float distanceToPlane = (hitZoneY - ray.origin.y) / ray.direction.y;
-            if (distanceToPlane > 0)
-            {
-                Vector3 hitPoint = ray.origin + ray.direction * distanceToPlane;
-                Gizmos.color = Color.red;
-                Gizmos.DrawSphere(hitPoint, 0.2f);
-
-                // Draw lane boundaries
-                Gizmos.color = Color.green;
-                for (int i = 0; i < laneCount; i++)
-                {
-                    float laneX = laneWorldPositions[i].x;
-                    Gizmos.DrawLine(
-                        new Vector3(laneX - 0.9f, hitZoneY, hitPoint.z),
-                        new Vector3(laneX + 0.9f, hitZoneY, hitPoint.z)
-                    );
-                }
-            }
-        }
     }
     #endregion
 }
