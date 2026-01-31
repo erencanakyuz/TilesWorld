@@ -21,8 +21,25 @@ public class InputManager : MonoBehaviour
     [Tooltip("Hit zone Y position - must match HitZoneTrigger objects in scene")]
     [SerializeField] private float hitZoneY = 0.45f;
 
+    [Header("Swipe Settings")]
+    [Tooltip("Minimum swipe velocity in pixels/second to register lane changes")]
+    [SerializeField] private float minSwipeVelocity = 300f;
+    [Tooltip("Maximum time in seconds for a swipe gesture")]
+    [SerializeField] private float maxSwipeTime = 0.5f;
+    [Tooltip("Maximum vertical deviation in pixels allowed during horizontal swipe")]
+    [SerializeField] private float maxVerticalDeviation = 150f;
+
+    [Header("Latency Debug")]
+    [Tooltip("Enable to measure and log input latency")]
+    [SerializeField] private bool measureLatency = false;
+    
+    // Latency tracking
+    private float[] latencySamples = new float[30];
+    private int latencySampleIndex = 0;
+    private int latencySampleCount = 0;
+
     // This header was causing an error because it was not attached to a field.
-    // [Header("🔧 Configuration")] 
+    // [Header("Configuration")] 
     // [SerializeField] private int maxSimultaneousTouches = 10; // No longer used
 
     // Input Events
@@ -38,6 +55,7 @@ public class InputManager : MonoBehaviour
     // Screen to lane conversion
     private Camera mainCamera;
     private Vector3[] laneWorldPositions; // Match NoteRenderer lanes
+
 
     void Awake()
     {
@@ -61,6 +79,10 @@ public class InputManager : MonoBehaviour
 
     void InitializeInputSystem()
     {
+        // Set low-latency mode for mobile touch response
+        // Process input events every frame instead of fixed update
+        InputSystem.settings.updateMode = InputSettings.UpdateMode.ProcessEventsInDynamicUpdate;
+        
         // Get main camera
         mainCamera = Camera.main;
         if (mainCamera == null)
@@ -149,12 +171,15 @@ public class InputManager : MonoBehaviour
     {
         if (lane >= 0 && lane < laneCount)
         {
+            float inputReceivedTime = Time.realtimeSinceStartup;
+            
             TouchData touchData = new TouchData
             {
                 touchId = touchId,
                 startPosition = screenPosition,
                 currentPosition = screenPosition,
                 startTime = Time.time,
+                inputTime = inputReceivedTime,
                 lane = lane,
                 isActive = true
             };
@@ -164,6 +189,17 @@ public class InputManager : MonoBehaviour
             if (!currentlyActiveLanes.Contains(lane))
             {
                 currentlyActiveLanes.Add(lane);
+                
+                // Measure and log latency
+                float processingTime = Time.realtimeSinceStartup;
+                float latency = (processingTime - inputReceivedTime) * 1000f; // ms
+                
+                if (measureLatency)
+                {
+                    MeasureInputLatency(latency);
+                    Debug.Log($"[LATENCY] Lane {lane} clicked - Latency: {latency:F3}ms");
+                }
+                
                 OnLaneTapped?.Invoke(lane, screenPosition);
             }
         }
@@ -174,20 +210,63 @@ public class InputManager : MonoBehaviour
         if (activeTouches.ContainsKey(touchId))
         {
             TouchData touchData = activeTouches[touchId];
+            Vector2 previousPosition = touchData.currentPosition;
             touchData.currentPosition = screenPosition;
 
             // Check if moved to different lane
             if (lane != touchData.lane && lane >= 0 && lane < laneCount)
             {
-                // Remove from old lane
-                currentlyActiveLanes.Remove(touchData.lane);
-
-                // Add to new lane
-                touchData.lane = lane;
-                if (!currentlyActiveLanes.Contains(lane))
+                // SWIPE CONSTRAINTS: Validate swipe gesture
+                float swipeTime = Time.time - touchData.startTime;
+                float verticalDeviation = Mathf.Abs(screenPosition.y - touchData.startPosition.y);
+                float deltaX = Mathf.Abs(screenPosition.x - previousPosition.x);
+                float velocity = deltaX / Time.deltaTime;
+                
+                // Check constraints
+                bool isValidSwipe = true;
+                
+                // 1. Time constraint - swipe must be within time limit
+                if (swipeTime > maxSwipeTime)
                 {
-                    currentlyActiveLanes.Add(lane);
-                    OnLaneTapped?.Invoke(lane, screenPosition);
+                    isValidSwipe = false;
+                }
+                
+                // 2. Vertical deviation - must be mostly horizontal
+                if (verticalDeviation > maxVerticalDeviation)
+                {
+                    isValidSwipe = false;
+                }
+                
+                // 3. Velocity threshold - must be fast enough
+                if (velocity < minSwipeVelocity)
+                {
+                    isValidSwipe = false;
+                }
+                
+                if (isValidSwipe)
+                {
+                    int oldLane = touchData.lane;
+                    int newLane = lane;
+                    
+                    // SWIPE ENHANCEMENT: Trigger all lanes between old and new position
+                    int step = (newLane > oldLane) ? 1 : -1;
+                    
+                    for (int swipeLane = oldLane + step; swipeLane != newLane + step; swipeLane += step)
+                    {
+                        if (swipeLane >= 0 && swipeLane < laneCount)
+                        {
+                            OnLaneTapped?.Invoke(swipeLane, screenPosition);
+                        }
+                    }
+                    
+                    // Update touch data to new lane
+                    currentlyActiveLanes.Remove(oldLane);
+                    touchData.lane = newLane;
+                    
+                    if (!currentlyActiveLanes.Contains(newLane))
+                    {
+                        currentlyActiveLanes.Add(newLane);
+                    }
                 }
             }
 
@@ -264,24 +343,70 @@ public class InputManager : MonoBehaviour
         if (keyboard.yKey.wasPressedThisFrame) HandleLaneKeyPress(5);
     }
 
+    // Mouse drag tracking for PC swipe testing
+    private int lastMouseLane = -1;
+    private bool isMouseDragging = false;
+
     void HandleMouseInput()
     {
         // Handle mouse input for PC testing
         if (UnityEngine.InputSystem.Mouse.current == null) return;
         
         var mouse = UnityEngine.InputSystem.Mouse.current;
+        Vector2 mousePosition = mouse.position.ReadValue();
         
+        // Mouse button pressed - start drag
         if (mouse.leftButton.wasPressedThisFrame)
         {
-            Vector2 mousePosition = mouse.position.ReadValue();
+            float inputReceivedTime = Time.realtimeSinceStartup;
             int lane = ScreenPositionToLane(mousePosition);
             
             if (lane >= 0 && lane < laneCount)
             {
+                // Measure and log latency
+                float processingTime = Time.realtimeSinceStartup;
+                float latency = (processingTime - inputReceivedTime) * 1000f;
+                
+                if (measureLatency)
+                {
+                    MeasureInputLatency(latency);
+                    Debug.Log($"[LATENCY] Mouse Lane {lane} - Latency: {latency:F3}ms");
+                }
+                
                 OnLaneTapped?.Invoke(lane, mousePosition);
+                lastMouseLane = lane;
+                isMouseDragging = true;
             }
         }
+        // Mouse button held - check for lane changes (swipe simulation)
+        else if (mouse.leftButton.isPressed && isMouseDragging)
+        {
+            int currentLane = ScreenPositionToLane(mousePosition);
+            
+            if (currentLane != lastMouseLane && currentLane >= 0 && currentLane < laneCount)
+            {
+                // Trigger all lanes between old and new (same as touch swipe)
+                int step = (currentLane > lastMouseLane) ? 1 : -1;
+                
+                for (int swipeLane = lastMouseLane + step; swipeLane != currentLane + step; swipeLane += step)
+                {
+                    if (swipeLane >= 0 && swipeLane < laneCount)
+                    {
+                        OnLaneTapped?.Invoke(swipeLane, mousePosition);
+                    }
+                }
+                
+                lastMouseLane = currentLane;
+            }
+        }
+        // Mouse button released - end drag
+        else if (mouse.leftButton.wasReleasedThisFrame)
+        {
+            isMouseDragging = false;
+            lastMouseLane = -1;
+        }
     }
+
 
 
     void HandleLaneKeyPress(int lane)
@@ -388,6 +513,44 @@ public class InputManager : MonoBehaviour
     }
     #endregion
 
+    #region Latency Measurement
+    void MeasureInputLatency(float latency)
+    {
+        // Store measured latency in circular buffer
+        latencySamples[latencySampleIndex] = latency;
+        latencySampleIndex = (latencySampleIndex + 1) % latencySamples.Length;
+        
+        if (latencySampleCount < latencySamples.Length)
+        {
+            latencySampleCount++;
+        }
+    }
+    
+    float GetAverageLatency()
+    {
+        if (latencySampleCount == 0) return 0f;
+        
+        float sum = 0f;
+        for (int i = 0; i < latencySampleCount; i++)
+        {
+            sum += latencySamples[i];
+        }
+        return sum / latencySampleCount;
+    }
+    
+    void OnGUI()
+    {
+        if (!measureLatency) return;
+        
+        float avgLatency = GetAverageLatency();
+        
+        GUI.Box(new Rect(10, 10, 300, 80), "Input Latency Monitor");
+        GUI.Label(new Rect(20, 35, 280, 20), $"Average Latency: {avgLatency:F2}ms");
+        GUI.Label(new Rect(20, 55, 280, 20), $"Current FPS: {(1f / Time.deltaTime):F1}");
+        GUI.Label(new Rect(20, 75, 280, 20), $"Update Mode: Dynamic Update");
+    }
+    #endregion
+
     #region Settings Integration
     void LoadInputSettings()
     {
@@ -409,6 +572,7 @@ public class TouchData
     public Vector2 startPosition;
     public Vector2 currentPosition;
     public float startTime;
+    public float inputTime; // Time when input was received
     public int lane;
     public bool isActive;
 }
