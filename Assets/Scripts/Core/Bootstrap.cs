@@ -21,6 +21,7 @@ public class Bootstrap : MonoBehaviour
         }
 
         Application.targetFrameRate = 60;
+        QualitySettings.vSyncCount = 0; // Mobile: VSync off for targetFrameRate to work
 
         // Bu objeyi sahneler arasında koru
         DontDestroyOnLoad(gameObject);
