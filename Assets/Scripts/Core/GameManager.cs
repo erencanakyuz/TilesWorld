@@ -79,6 +79,9 @@ public class GameManager : MonoBehaviour
 
         LoadPlayerData();
         InitializeCoreComponents();
+        
+        // CRITICAL: Notify listeners of initial state so UI panels appear
+        OnGameStateChanged?.Invoke(CurrentGameState);
     }
 
     void InitializeCoreComponents()
@@ -309,14 +312,38 @@ public class GameManager : MonoBehaviour
 
     void HandleRestartButtonPressed()
     {
-        Time.timeScale = 1f; // Ensure time is running
+        // Clean up before reload
+        CleanupBeforeSceneChange();
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     void HandleMainMenuButtonPressed()
     {
-        Time.timeScale = 1f; // Ensure time is running
-        SceneManager.LoadScene("MainScene"); // Assuming your main menu scene is named "MainScene"
+        // Clean up before reload
+        CleanupBeforeSceneChange();
+        SceneManager.LoadScene("MainScene");
+    }
+
+    void CleanupBeforeSceneChange()
+    {
+        Time.timeScale = 1f;
+        
+        // Kill all DOTween animations first
+        DG.Tweening.DOTween.KillAll();
+        
+        // Force stop gameplay without triggering state changes
+        var gameplayManager = FindAnyObjectByType<GameplayManager>();
+        if (gameplayManager != null)
+        {
+            gameplayManager.ForceStopGameplay();
+        }
+        
+        // Stop any playing audio
+        var audioManager = FindAnyObjectByType<AudioManager>();
+        if (audioManager != null)
+        {
+            audioManager.StopMusic();
+        }
     }
     #endregion
 

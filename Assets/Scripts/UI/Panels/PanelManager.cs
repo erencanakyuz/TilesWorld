@@ -36,7 +36,7 @@ public class PanelManager : MonoBehaviour
         };
     }
 
-    public void ShowPanelForState(GameState state)
+public void ShowPanelForState(GameState state)
     {
         HideCurrentPanel();
 
@@ -44,17 +44,33 @@ public class PanelManager : MonoBehaviour
         GameObject prefab = null;
         bool hasPrefab = statePanelPrefabs != null && statePanelPrefabs.TryGetValue(state, out prefab) && prefab != null;
         
+        Debug.Log($"[PanelManager] ShowPanelForState({state}): canvas={parentCanvas?.name ?? "NULL"}, prefab={prefab?.name ?? "NULL"}, hasPrefab={hasPrefab}");
+        
         if (parentCanvas != null && hasPrefab)
         {
             currentPanelInstance = Object.Instantiate(prefab, parentCanvas);
+            Debug.Log($"[PanelManager] Created panel: {currentPanelInstance.name}");
+        }
+        else
+        {
+            Debug.LogWarning($"[PanelManager] Could not show panel for {state}!");
         }
 
         switch (state)
         {
+            case GameState.MainMenu:
+                if (currentPanelInstance != null)
+                {
+                    PanelButtonWirer.WireMainMenuPanel(currentPanelInstance, 
+                        () => GameManager.Instance?.ChangeGameState(GameState.SongSelection),
+                        () => Debug.Log("[PanelManager] Settings panel not implemented yet"),
+                        () => Application.Quit());
+                }
+                break;
             case GameState.Paused:
                 if (currentPanelInstance != null)
                 {
-                    PanelButtonWirer.WirePausePanel(currentPanelInstance, OnResumePressed, OnRestartPressed);
+                    PanelButtonWirer.WirePausePanel(currentPanelInstance, OnResumePressed, OnRestartPressed, OnMainMenuPressed);
                 }
                 break;
             case GameState.GameOver:

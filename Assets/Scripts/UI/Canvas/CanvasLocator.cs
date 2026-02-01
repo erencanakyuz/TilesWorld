@@ -38,7 +38,10 @@ public class CanvasLocator : MonoBehaviour
 
     private bool FindCanvases()
     {
-        var allCanvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+        // CRITICAL: Include inactive objects - HUDCanvas starts as inactive!
+        var allCanvases = FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        
+        Debug.Log($"[CanvasLocator] Found {allCanvases.Length} canvases in scene");
 
         MainCanvas = System.Array.Find(allCanvases, c =>
             c.name.ToLower().Contains("main") ||
@@ -51,6 +54,8 @@ public class CanvasLocator : MonoBehaviour
         OverlayCanvas = System.Array.Find(allCanvases, c =>
             c.name.ToLower().Contains("overlay") ||
             c.sortingOrder > 10);
+
+        Debug.Log($"[CanvasLocator] Main={MainCanvas?.name ?? "NULL"}, HUD={HUDCanvas?.name ?? "NULL"}, Overlay={OverlayCanvas?.name ?? "NULL"}");
 
         return MainCanvas != null;
     }

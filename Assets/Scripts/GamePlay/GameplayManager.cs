@@ -242,7 +242,7 @@ public class GameplayManager : MonoBehaviour
     /// <summary>
     /// BACKWARD COMPATIBILITY: Start gameplay with GameplaySongData (for existing UI)
     /// </summary>
-    public void StartGameplay(SongSelectionManager.GameplaySongData songData)
+    public void StartGameplay(GameplaySongData songData)
     {
         if (songData == null)
         {
@@ -523,7 +523,28 @@ public class GameplayManager : MonoBehaviour
             GameManager.Instance.ChangeGameState(GameState.Playing);
         }
 
-        //Debug.Log($"▶️ Gameplay resumed! TimeScale: {Time.timeScale}");
+        //Debug.Log($"Gameplay resumed! TimeScale: {Time.timeScale}");
+    }
+
+    /// <summary>
+    /// Force stops gameplay without triggering state changes.
+    /// Used for scene transitions (restart/menu) to avoid GameOver panel.
+    /// </summary>
+    public void ForceStopGameplay()
+    {
+        isGameActive = false;
+        Time.timeScale = 1f;
+        
+        // Kill all active tweens
+        DG.Tweening.DOTween.KillAll();
+        
+        // Stop audio but don't trigger any events
+        if (audioManager != null)
+        {
+            audioManager.StopMusic();
+        }
+        
+        // Don't call EndGameSession - we're reloading the scene
     }
 
     public void EndGameplay()
@@ -532,6 +553,9 @@ public class GameplayManager : MonoBehaviour
 
         isGameActive = false;
         Time.timeScale = 1f;
+
+        // Kill all DOTween animations to prevent errors on scene reload
+        DG.Tweening.DOTween.KillAll();
 
         // Stop audio
         if (audioManager != null)
@@ -550,7 +574,7 @@ public class GameplayManager : MonoBehaviour
 
         OnGameplayEnded?.Invoke();
 
-        //Debug.Log($"🏁 Gameplay ended! Final score: Accuracy {accuracy:F1}%, Max combo: {maxCombo}");
+        //Debug.Log($"Game ended! Final score: Accuracy {accuracy:F1}%, Max combo: {maxCombo}");
     }
     #endregion
 

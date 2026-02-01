@@ -24,7 +24,7 @@ MonoBehaviour:
   gradientStart: {r: 0.15, g: 0.15, b: 0.25, a: 1}
   gradientEnd: {r: 0.05, g: 0.05, b: 0.15, a: 1}
   mainMenuPanelPrefab: {fileID: 4949574427873613607, guid: 0f7824b817dda044eacbba45df62a0b8, type: 3}
-  songSelectionPanelPrefab: {fileID: 7482992003517174357, guid: 3167509f19bfaf04fa530ce24aba5f91, type: 3}
+  songSelectionPanelPrefab: {fileID: 1986389454947432251, guid: 11c9fe6d9244c1f4d8f43636e16d0890, type: 3}
   gameplayPanelPrefab: {fileID: 6801837407720441779, guid: 6b33929a40b2ede479d132d9229cfc48, type: 3}
   pausePanelPrefab: {fileID: 7818130866711618077, guid: 8f0a8e83f900c424cbd3493d8d548fcc, type: 3}
   gameOverPanelPrefab: {fileID: 1383066566220183752, guid: c78e37983fe153a4d9b5da11d27d4e38, type: 3}

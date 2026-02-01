@@ -365,9 +365,16 @@ public class SongPlaybackTester : MonoBehaviour
         return 120f;
     }
 
-    void SetupAutoPlayUI()
+void SetupAutoPlayUI()
     {
         if (isAutoPlayUISetup) return;
+        
+        // Only show AUTO button during gameplay, not in song selection
+        if (GameManager.Instance != null && GameManager.Instance.CurrentGameState != GameState.Playing)
+        {
+            Debug.Log("🎯 Auto-play button hidden - not in gameplay mode");
+            return;
+        }
 
         // Canvas oluştur
         GameObject canvasObj = new GameObject("AutoPlayCanvas");

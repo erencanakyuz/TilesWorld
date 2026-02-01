@@ -48,6 +48,15 @@ public class NoteAnimator : MonoBehaviour
         isAnimatingHit = false;
     }
 
+    void OnDisable()
+    {
+        // Kill all tweens on this transform to prevent DOTween errors when object is destroyed
+        if (noteTransform != null)
+        {
+            noteTransform.DOKill();
+        }
+    }
+
     /// <summary>
     /// Plays when note first spawns and starts flowing.
     /// Transitions from invisible to visible, scales up, and moves to target.

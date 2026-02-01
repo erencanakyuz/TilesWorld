@@ -16,7 +16,6 @@ public class StyledButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
     [Header("Animation")]
     [SerializeField] private bool enablePunchAnimation = true;
     [SerializeField] private float punchScale = 1.15f;
-    [SerializeField] private float animDuration = 0.1f;
 
     private Button button;
     private Image buttonImage;

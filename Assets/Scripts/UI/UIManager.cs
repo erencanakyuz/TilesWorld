@@ -146,8 +146,17 @@ public class UIManager : MonoBehaviour
 
         if (newState == GameState.Playing)
         {
+            // Ensure HUD canvas is found and activated
             if (canvasLocator?.HUDCanvas != null)
+            {
                 canvasLocator.HUDCanvas.gameObject.SetActive(true);
+                Debug.Log($"[UIManager] HUD Canvas activated for Playing state");
+            }
+            else
+            {
+                Debug.LogWarning("[UIManager] HUDCanvas is NULL - cannot activate HUD!");
+            }
+            
             if (mobileFinder?.MobileControls != null)
                 mobileFinder.MobileControls.SetActive(true);
 
@@ -156,11 +165,13 @@ public class UIManager : MonoBehaviour
         }
         else if (newState == GameState.Paused)
         {
+            // Keep HUD visible during pause
             if (canvasLocator?.HUDCanvas != null)
                 canvasLocator.HUDCanvas.gameObject.SetActive(true);
         }
         else
         {
+            // Hide HUD for other states (MainMenu, SongSelection, GameOver)
             if (canvasLocator?.HUDCanvas != null)
                 canvasLocator.HUDCanvas.gameObject.SetActive(false);
             if (mobileFinder?.MobileControls != null)
