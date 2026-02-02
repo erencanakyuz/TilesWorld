@@ -24,32 +24,47 @@ public class InputManager : MonoBehaviour
     [Tooltip("Minimum time between OnLaneHeld ticks (seconds).")]
     [SerializeField] private float holdTickInterval = 0.05f;
 
-    [Header("Swipe / Lane Change")]
-    [Tooltip("Minimum horizontal movement in pixels to register a lane change.")]
-    [SerializeField] private float swipeDeadzonePixels = 16f;
+    [Header("Swipe / Lane Change (DPI-aware)")]
+    [Tooltip("Minimum movement in mm to register a lane change (DPI-aware).")]
+    [SerializeField] private float deadzoneMm = 2.0f;
+    [SerializeField] private float fallbackDpi = 300f;
 
     [Header("Debug")]
     [SerializeField] private bool measureLatency = false;
     [SerializeField] private bool logTouchEvents = false;
 
-    // Input Events - fired for gameplay
+    // Input Events - fired for gameplay (backward compatible)
     public delegate void LaneTapHandler(int lane, Vector2 screenPos);
     public static event LaneTapHandler OnLaneTapped;
     public static event Action<int, float> OnLaneHeld;
     public static event Action<int> OnLaneReleased;
+    
+    // Timestamped events for DSP-accurate timing (use with RhythmTimingSystem)
+    // inputTime is from touch.time or Time.realtimeSinceStartupAsDouble
+    public delegate void TimestampedTapHandler(int lane, Vector2 screenPos, double inputTime);
+    public static event TimestampedTapHandler OnLaneTappedTimestamped;
+    public static event Action<int, float, double> OnLaneHeldTimestamped;  // lane, holdDuration, inputTime
+    public static event Action<int, double> OnLaneReleasedTimestamped;     // lane, inputTime
 
-    // Touch tracking - maps fingerId to lane
-    private Dictionary<int, int> fingerToLane = new Dictionary<int, int>();
-    private Dictionary<int, Vector2> fingerLastLaneChangePos = new Dictionary<int, Vector2>();
-    private Dictionary<int, float> fingerLastHoldDispatchTime = new Dictionary<int, float>();
+    // Per-finger state array (zero GC, fast access by finger.index)
+    private const int MaxFingers = 16;
+    
+    private struct FingerState
+    {
+        public bool down;
+        public int lane;
+        public Vector2 lastPos;
+        public double nextHoldTickTime;  // input timestamp based
+        public double lastSeenTime;      // for hold processing
+    }
+    
+    private FingerState[] fingerStates = new FingerState[MaxFingers];
     private HashSet<int> activeLanes = new HashSet<int>();
 
-    // Mouse tracking (simulates touch)
-    private const int MOUSE_FINGER_ID = -999;
+    // Mouse tracking (simulates finger index 15)
+    private const int MOUSE_FINGER_INDEX = 15;
     private bool isMouseDown = false;
-    private int lastMouseLane = -1;
-    private float mouseHoldStartTime = 0f;
-    private float lastMouseHoldDispatchTime = 0f;
+    private double mouseDownTime = 0;
 
     // Camera for screen-to-world conversion
     private Camera mainCamera;
@@ -108,9 +123,11 @@ public class InputManager : MonoBehaviour
         {
             Instance = null;
         }
-        fingerToLane?.Clear();
-        fingerLastLaneChangePos?.Clear();
-        fingerLastHoldDispatchTime?.Clear();
+        // Reset all finger states
+        for (int i = 0; i < MaxFingers; i++)
+        {
+            fingerStates[i] = default;
+        }
         activeLanes?.Clear();
     }
 
@@ -150,34 +167,41 @@ public class InputManager : MonoBehaviour
     /// <summary>
     /// Process touches using EnhancedTouch API.
     /// This API protects against losing short taps that begin and end in the same frame.
+    /// Uses input timestamps for frame-rate independent judgment.
     /// </summary>
     void ProcessEnhancedTouches()
     {
         // Use Touch.activeTouches - the recommended way to read touches
         foreach (var touch in Touch.activeTouches)
         {
-            int fingerId = touch.finger.index;
+            int fingerIndex = touch.finger.index;
             Vector2 screenPos = touch.screenPosition;
             int lane = ScreenPositionToLane(screenPos);
+            double inputTime = touch.time;
 
             switch (touch.phase)
             {
                 case TouchPhase.Began:
-                    OnFingerDown(fingerId, screenPos, lane);
+                    HandleFingerDown(fingerIndex, screenPos, lane, inputTime);
                     break;
 
                 case TouchPhase.Moved:
-                    OnFingerMoved(fingerId, screenPos, lane);
-                    TryDispatchHold(fingerId, touch.time, touch.startTime);
+                    HandleFingerMove(fingerIndex, screenPos, lane, inputTime);
+                    ProcessHoldTick(fingerIndex, inputTime);
                     break;
 
                 case TouchPhase.Stationary:
-                    TryDispatchHold(fingerId, touch.time, touch.startTime);
+                    // Update lastSeenTime for hold processing
+                    if ((uint)fingerIndex < MaxFingers && fingerStates[fingerIndex].down)
+                    {
+                        fingerStates[fingerIndex].lastSeenTime = inputTime;
+                    }
+                    ProcessHoldTick(fingerIndex, inputTime);
                     break;
 
                 case TouchPhase.Ended:
                 case TouchPhase.Canceled:
-                    OnFingerUp(fingerId, lane);
+                    HandleFingerUp(fingerIndex, inputTime);
                     break;
             }
         }
@@ -188,153 +212,188 @@ public class InputManager : MonoBehaviour
     #region Core Input Handlers
 
     /// <summary>
-    /// Called when a finger touches the screen or mouse clicks.
-    /// ALWAYS fires OnLaneTapped - no blocking conditions.
+    /// Called when a finger touches the screen.
+    /// Uses finger index for zero-GC array access.
+    /// ALWAYS fires OnLaneTapped - critical for rhythm games.
     /// </summary>
-    void OnFingerDown(int fingerId, Vector2 screenPos, int lane)
+    void HandleFingerDown(int fingerIndex, Vector2 screenPos, int lane, double inputTime)
     {
+        if ((uint)fingerIndex >= MaxFingers) return;
         if (lane < 0 || lane >= laneCount) return;
 
-        float inputTime = Time.realtimeSinceStartup;
-
-        // Track this finger's lane
-        fingerToLane[fingerId] = lane;
-        fingerLastLaneChangePos[fingerId] = screenPos;
+        ref FingerState state = ref fingerStates[fingerIndex];
+        state.down = true;
+        state.lane = lane;
+        state.lastPos = screenPos;
+        state.nextHoldTickTime = inputTime + holdTickInterval;
+        state.lastSeenTime = inputTime;
+        
         activeLanes.Add(lane);
 
-        // ALWAYS fire tap event - this is critical for rhythm games
+        // ALWAYS fire tap event - critical for rhythm games
         OnLaneTapped?.Invoke(lane, screenPos);
+        OnLaneTappedTimestamped?.Invoke(lane, screenPos, inputTime);
 
-        // Log if enabled
         if (logTouchEvents)
         {
-            Debug.Log($"[INPUT] Finger {fingerId} DOWN on Lane {lane}");
+            Debug.Log($"[INPUT] Finger {fingerIndex} DOWN on Lane {lane}");
         }
 
-        // Measure latency if enabled
         if (measureLatency)
         {
-            float latency = (Time.realtimeSinceStartup - inputTime) * 1000f;
+            float latency = (float)((Time.realtimeSinceStartupAsDouble - inputTime) * 1000.0);
             RecordLatency(latency);
             Debug.Log($"[LATENCY] Lane {lane} - {latency:F3}ms");
         }
     }
 
     /// <summary>
-    /// Called when finger moves. Triggers lanes during swipe.
-    /// Simple logic: if lane changed, fire tap for the new lane.
+    /// Called when finger moves. Triggers intermediate lanes during swipe.
+    /// Uses mm-based deadzone for DPI-aware behavior.
     /// </summary>
-    void OnFingerMoved(int fingerId, Vector2 screenPos, int currentLane)
+    void HandleFingerMove(int fingerIndex, Vector2 screenPos, int currentLane, double inputTime)
     {
+        if ((uint)fingerIndex >= MaxFingers) return;
         if (currentLane < 0 || currentLane >= laneCount) return;
 
-        // Get previous lane for this finger
-        if (!fingerToLane.TryGetValue(fingerId, out int previousLane))
+        ref FingerState state = ref fingerStates[fingerIndex];
+        
+        // If not tracked, treat as new touch
+        if (!state.down)
         {
-            // First time seeing this finger in Moved state - treat as new touch
-            OnFingerDown(fingerId, screenPos, currentLane);
+            HandleFingerDown(fingerIndex, screenPos, currentLane, inputTime);
             return;
         }
 
-        // If lane changed, trigger all lanes between old and new
+        state.lastSeenTime = inputTime;
+        int previousLane = state.lane;
+
+        // Apply mm-based deadzone
+        float dz = DeadzonePixels();
+        if ((screenPos - state.lastPos).sqrMagnitude < dz * dz)
+        {
+            return;
+        }
+
+        // If lane changed, emit intermediate lanes
         if (currentLane != previousLane)
         {
-            if (fingerLastLaneChangePos.TryGetValue(fingerId, out Vector2 lastChangePos))
-            {
-                if (Mathf.Abs(screenPos.x - lastChangePos.x) < swipeDeadzonePixels)
-                {
-                    return;
-                }
-            }
-
-            int step = (currentLane > previousLane) ? 1 : -1;
+            EmitIntermediateLanes(previousLane, currentLane, screenPos, inputTime);
             
-            // Fire OnLaneTapped for each lane we swipe through
-            for (int lane = previousLane + step; lane != currentLane + step; lane += step)
-            {
-                if (lane >= 0 && lane < laneCount)
-                {
-                    OnLaneTapped?.Invoke(lane, screenPos);
-                    
-                    if (logTouchEvents)
-                    {
-                        Debug.Log($"[INPUT] Swipe through Lane {lane}");
-                    }
-                }
-            }
-
-            // Update finger's current lane
-            fingerToLane[fingerId] = currentLane;
+            // Update state
+            state.lane = currentLane;
+            state.lastPos = screenPos;
             activeLanes.Add(currentLane);
-            fingerLastLaneChangePos[fingerId] = screenPos;
 
-            if (!IsLaneStillActive(previousLane, fingerId))
+            // Check if previous lane should be released
+            if (!IsLaneStillActive(previousLane, fingerIndex))
             {
                 activeLanes.Remove(previousLane);
                 OnLaneReleased?.Invoke(previousLane);
+                OnLaneReleasedTimestamped?.Invoke(previousLane, inputTime);
+            }
+        }
+        else
+        {
+            state.lastPos = screenPos;
+        }
+    }
+
+    /// <summary>
+    /// Emit tap events for all lanes between from and to (exclusive of from, inclusive of to).
+    /// </summary>
+    void EmitIntermediateLanes(int from, int to, Vector2 screenPos, double inputTime = 0)
+    {
+        if (inputTime == 0) inputTime = Time.realtimeSinceStartupAsDouble;
+        
+        int dir = System.Math.Sign(to - from);
+        int lane = from;
+        while (lane != to)
+        {
+            lane += dir;
+            if (lane >= 0 && lane < laneCount)
+            {
+                OnLaneTapped?.Invoke(lane, screenPos);
+                OnLaneTappedTimestamped?.Invoke(lane, screenPos, inputTime);
+                
+                if (logTouchEvents)
+                {
+                    Debug.Log($"[INPUT] Swipe through Lane {lane}");
+                }
             }
         }
     }
 
-    bool IsLaneStillActive(int lane, int exceptFingerId)
+    /// <summary>
+    /// Check if any other finger is still on the given lane.
+    /// </summary>
+    bool IsLaneStillActive(int lane, int exceptFingerIndex)
     {
-        foreach (var kvp in fingerToLane)
+        for (int i = 0; i < MaxFingers; i++)
         {
-            if (kvp.Key == exceptFingerId) continue;
-            if (kvp.Value == lane) return true;
+            if (i == exceptFingerIndex) continue;
+            if (fingerStates[i].down && fingerStates[i].lane == lane) return true;
         }
         return false;
     }
 
-    void TryDispatchHold(int fingerId, double touchTime, double touchStartTime)
+    /// <summary>
+    /// Process hold tick using input timestamps for deterministic cadence.
+    /// </summary>
+    void ProcessHoldTick(int fingerIndex, double currentTime)
     {
-        if (!fingerToLane.TryGetValue(fingerId, out int heldLane)) return;
+        if ((uint)fingerIndex >= MaxFingers) return;
+        
+        ref FingerState state = ref fingerStates[fingerIndex];
+        if (!state.down) return;
 
-        float holdTime = (float)(touchTime - touchStartTime);
+        float holdTime = (float)(currentTime - state.lastSeenTime + holdTickInterval);
         if (holdTime <= holdTimeThreshold) return;
 
-        float now = Time.unscaledTime;
-        if (!fingerLastHoldDispatchTime.TryGetValue(fingerId, out float lastDispatch) ||
-            (now - lastDispatch) >= holdTickInterval)
+        while (currentTime >= state.nextHoldTickTime)
         {
-            fingerLastHoldDispatchTime[fingerId] = now;
-            OnLaneHeld?.Invoke(heldLane, holdTime);
+            float tickHoldTime = (float)(state.nextHoldTickTime - state.lastSeenTime);
+            OnLaneHeld?.Invoke(state.lane, tickHoldTime);
+            OnLaneHeldTimestamped?.Invoke(state.lane, tickHoldTime, state.nextHoldTickTime);
+            state.nextHoldTickTime += holdTickInterval;
         }
     }
 
     /// <summary>
     /// Called when finger lifts from screen.
     /// </summary>
-    void OnFingerUp(int fingerId, int lane)
+    void HandleFingerUp(int fingerIndex, double inputTime)
     {
-        if (fingerToLane.TryGetValue(fingerId, out int trackedLane))
+        if ((uint)fingerIndex >= MaxFingers) return;
+
+        ref FingerState state = ref fingerStates[fingerIndex];
+        if (!state.down) return;
+
+        int trackedLane = state.lane;
+        state.down = false;
+
+        // Check if any other finger is still on this lane
+        if (!IsLaneStillActive(trackedLane, fingerIndex))
         {
-            fingerToLane.Remove(fingerId);
-            fingerLastLaneChangePos.Remove(fingerId);
-            fingerLastHoldDispatchTime.Remove(fingerId);
-            
-            // Check if any other finger is still on this lane
-            bool laneStillActive = false;
-            foreach (var kvp in fingerToLane)
-            {
-                if (kvp.Value == trackedLane)
-                {
-                    laneStillActive = true;
-                    break;
-                }
-            }
-
-            if (!laneStillActive)
-            {
-                activeLanes.Remove(trackedLane);
-                OnLaneReleased?.Invoke(trackedLane);
-            }
-
-            if (logTouchEvents)
-            {
-                Debug.Log($"[INPUT] Finger {fingerId} UP from Lane {trackedLane}");
-            }
+            activeLanes.Remove(trackedLane);
+            OnLaneReleased?.Invoke(trackedLane);
+            OnLaneReleasedTimestamped?.Invoke(trackedLane, inputTime);
         }
+
+        if (logTouchEvents)
+        {
+            Debug.Log($"[INPUT] Finger {fingerIndex} UP from Lane {trackedLane}");
+        }
+    }
+
+    /// <summary>
+    /// Calculate deadzone in pixels from mm value (DPI-aware).
+    /// </summary>
+    float DeadzonePixels()
+    {
+        float dpi = Screen.dpi > 0f ? Screen.dpi : fallbackDpi;
+        float inches = deadzoneMm / 25.4f;
+        return inches * dpi;
     }
 
     #endregion
@@ -345,6 +404,7 @@ public class InputManager : MonoBehaviour
 
     /// <summary>
     /// Mouse input uses same handlers as touch for identical behavior.
+    /// Uses MOUSE_FINGER_INDEX (15) to avoid conflicts with touch indices.
     /// </summary>
     void ProcessMouseInput()
     {
@@ -353,46 +413,30 @@ public class InputManager : MonoBehaviour
         var mouse = Mouse.current;
         Vector2 mousePos = mouse.position.ReadValue();
         int lane = ScreenPositionToLane(mousePos);
+        double inputTime = Time.realtimeSinceStartupAsDouble;
 
         // Mouse down - same as finger down
         if (mouse.leftButton.wasPressedThisFrame)
         {
             isMouseDown = true;
-            lastMouseLane = lane;
-            mouseHoldStartTime = Time.unscaledTime;
-            lastMouseHoldDispatchTime = 0f;
-            OnFingerDown(MOUSE_FINGER_ID, mousePos, lane);
+            mouseDownTime = inputTime;
+            HandleFingerDown(MOUSE_FINGER_INDEX, mousePos, lane, inputTime);
         }
         // Mouse held and moved - same as finger moved
         else if (mouse.leftButton.isPressed && isMouseDown)
         {
-            OnFingerMoved(MOUSE_FINGER_ID, mousePos, lane);
-            HandleMouseHold();
+            HandleFingerMove(MOUSE_FINGER_INDEX, mousePos, lane, inputTime);
+            ProcessHoldTick(MOUSE_FINGER_INDEX, inputTime);
         }
         // Mouse up - same as finger up
         else if (mouse.leftButton.wasReleasedThisFrame)
         {
             isMouseDown = false;
-            OnFingerUp(MOUSE_FINGER_ID, lane);
-            lastMouseLane = -1;
+            HandleFingerUp(MOUSE_FINGER_INDEX, inputTime);
         }
     }
 
     #endregion
-
-    void HandleMouseHold()
-    {
-        if (!isMouseDown || lastMouseLane < 0) return;
-
-        float holdTime = Time.unscaledTime - mouseHoldStartTime;
-        if (holdTime < holdTimeThreshold) return;
-
-        if (Time.unscaledTime - lastMouseHoldDispatchTime >= holdTickInterval)
-        {
-            lastMouseHoldDispatchTime = Time.unscaledTime;
-            OnLaneHeld?.Invoke(lastMouseLane, holdTime);
-        }
-    }
 
     #region Keyboard Input
 
@@ -416,7 +460,9 @@ public class InputManager : MonoBehaviour
         if (lane >= 0 && lane < laneCount)
         {
             Vector2 screenPos = LaneToScreenPosition(lane);
+            double inputTime = Time.realtimeSinceStartupAsDouble;
             OnLaneTapped?.Invoke(lane, screenPos);
+            OnLaneTappedTimestamped?.Invoke(lane, screenPos, inputTime);
         }
     }
 

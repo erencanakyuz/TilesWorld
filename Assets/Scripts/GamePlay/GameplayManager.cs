@@ -506,6 +506,13 @@ public class GameplayManager : MonoBehaviour
     {
         isGameActive = true;
         gameStartTime = Time.time;
+        
+        // Start DSP timing system for accurate rhythm judgment
+        if (RhythmTimingSystem.Instance != null)
+        {
+            RhythmTimingSystem.Instance.StartSong();
+        }
+        
         OnGameplayStarted?.Invoke();
     }
 
@@ -583,6 +590,12 @@ public class GameplayManager : MonoBehaviour
         if (audioManager != null)
         {
             audioManager.StopMusic();
+        }
+        
+        // Stop DSP timing system
+        if (RhythmTimingSystem.Instance != null)
+        {
+            RhythmTimingSystem.Instance.StopSong();
         }
 
         // Calculate final stats
