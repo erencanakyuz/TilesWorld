@@ -122,6 +122,7 @@ public class UIManager : MonoBehaviour
         if (panelManager != null)
         {
             panelManager.Initialize(config, canvasLocator);
+            // These are lambda assignments, not additive - safe to reassign
             panelManager.OnPausePressed = () => OnPausePressed?.Invoke();
             panelManager.OnResumePressed = () => OnResumePressed?.Invoke();
             panelManager.OnRestartPressed = () => OnRestartPressed?.Invoke();
@@ -133,10 +134,17 @@ public class UIManager : MonoBehaviour
             mobileFinder.Initialize(config);
             mobileFinder.DiscoverControls(new[] { mainCanvas, hudCanvas, overlayCanvas });
 
+            // CRITICAL FIX: Remove old listeners before adding new ones to prevent duplicates
             if (mobileFinder.PauseButton != null)
+            {
+                mobileFinder.PauseButton.onClick.RemoveAllListeners();
                 mobileFinder.PauseButton.onClick.AddListener(() => OnPausePressed?.Invoke());
+            }
             if (mobileFinder.SettingsButton != null)
+            {
+                mobileFinder.SettingsButton.onClick.RemoveAllListeners();
                 mobileFinder.SettingsButton.onClick.AddListener(() => OnSettingsPressed?.Invoke());
+            }
         }
     }
 

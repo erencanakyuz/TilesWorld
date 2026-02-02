@@ -241,15 +241,26 @@ public class NoteRenderer : MonoBehaviour
         {
             if (notePool.Count == 0)
             {
-                if (showDebugLogs) Debug.LogWarning("Pool empty, expanding is not implemented. Increase pool size.");
-                // Pool'u dinamik genişletme eklenebilir. Şimdilik hata vermemesi için yeni obje oluşturuyoruz.
-                return Instantiate(notePrefab, noteParent);
+                if (showDebugLogs) Debug.LogWarning("Pool empty, expanding dynamically.");
+                // CRITICAL FIX: Ensure NoteAnimator exists on dynamically created notes
+                GameObject newNote = Instantiate(notePrefab, noteParent);
+                if (newNote.GetComponent<NoteAnimator>() == null)
+                {
+                    newNote.AddComponent<NoteAnimator>();
+                }
+                return newNote;
             }
             return notePool.Dequeue();
         }
         else
         {
-            return Instantiate(notePrefab, noteParent);
+            // CRITICAL FIX: Ensure NoteAnimator exists on non-pooled notes too
+            GameObject newNote = Instantiate(notePrefab, noteParent);
+            if (newNote.GetComponent<NoteAnimator>() == null)
+            {
+                newNote.AddComponent<NoteAnimator>();
+            }
+            return newNote;
         }
     }
 
@@ -323,11 +334,26 @@ public class NoteRenderer : MonoBehaviour
 
     public void ClearAllNotes()
     {
-        // Aktif tüm notaların animasyonlarını durdur ve havuza geri gönder
-        foreach (var noteObject in activeNotesForDebug)
+        // CRITICAL FIX: Copy list before iterating to avoid InvalidOperationException
+        // ReturnNoteToPool modifies activeNotesForDebug, so we can't iterate directly
+        var notesToClear = new List<GameObject>(activeNotesForDebug);
+        
+        foreach (var noteObject in notesToClear)
         {
-            noteObject.transform.DOKill();
-            ReturnNoteToPool(noteObject);
+            if (noteObject != null)
+            {
+                noteObject.transform.DOKill();
+                // Don't call ReturnNoteToPool here - just return to pool directly
+                if (enableObjectPooling)
+                {
+                    noteObject.SetActive(false);
+                    notePool.Enqueue(noteObject);
+                }
+                else
+                {
+                    Destroy(noteObject);
+                }
+            }
         }
         activeNotesForDebug.Clear();
     }

@@ -58,6 +58,11 @@ public class HitZoneManager : MonoBehaviour
     private Dictionary<HitAccuracy, Color> hitColors;
     private UIConfig uiConfig;
 
+    // PARTICLE POOLING - Reduces GC spikes during heavy note density
+    private Queue<GameObject> perfectParticlePool = new Queue<GameObject>();
+    private Queue<GameObject> goodParticlePool = new Queue<GameObject>();
+    private const int PARTICLE_POOL_SIZE = 10;
+
     void Awake()
     {
         zones = FindObjectsByType<HitZoneTrigger>(FindObjectsSortMode.None);
@@ -77,6 +82,34 @@ public class HitZoneManager : MonoBehaviour
 
         // Create hit zone visuals
         CreateHitZoneVisuals();
+
+        // Initialize particle pools
+        InitializeParticlePools();
+    }
+
+    private void InitializeParticlePools()
+    {
+        // Pre-instantiate Perfect particles
+        if (perfectHitEffectPrefab != null)
+        {
+            for (int i = 0; i < PARTICLE_POOL_SIZE; i++)
+            {
+                var particle = Instantiate(perfectHitEffectPrefab);
+                particle.SetActive(false);
+                perfectParticlePool.Enqueue(particle);
+            }
+        }
+
+        // Pre-instantiate Good particles
+        if (goodHitEffectPrefab != null)
+        {
+            for (int i = 0; i < PARTICLE_POOL_SIZE; i++)
+            {
+                var particle = Instantiate(goodHitEffectPrefab);
+                particle.SetActive(false);
+                goodParticlePool.Enqueue(particle);
+            }
+        }
     }
 
     private void InitializeHitColors()
@@ -345,24 +378,58 @@ public class HitZoneManager : MonoBehaviour
 
     private void SpawnParticleEffect(Vector3 position, HitAccuracy accuracy)
     {
-        GameObject prefabToSpawn = accuracy switch
+        // PERF FIX: Use pooled particles instead of Instantiate
+        GameObject effect = GetPooledParticle(accuracy);
+        
+        if (effect != null)
         {
-            HitAccuracy.Perfect => perfectHitEffectPrefab,
-            HitAccuracy.Good => goodHitEffectPrefab,
-            _ => goodHitEffectPrefab // Use good effect for okay hits too
-        };
-
-        if (prefabToSpawn != null)
-        {
-            // Instantiate the particle effect
-            GameObject effect = Instantiate(prefabToSpawn, position, Quaternion.identity);
-
-            // The ParticleAutoDestroy component will handle cleanup
-            // Debug.Log($"✨ Spawned {accuracy} particle effect at {position}");
+            effect.transform.position = position;
+            effect.transform.rotation = Quaternion.identity;
+            effect.SetActive(true);
+            
+            // Auto-return to pool after particle finishes
+            var particleSystem = effect.GetComponent<ParticleSystem>();
+            if (particleSystem != null)
+            {
+                _ = ReturnParticleAfterDelay(effect, accuracy, particleSystem.main.duration + 0.5f);
+            }
+            else
+            {
+                // Fallback: return after 2 seconds
+                _ = ReturnParticleAfterDelay(effect, accuracy, 2f);
+            }
         }
-        else
+    }
+
+    private GameObject GetPooledParticle(HitAccuracy accuracy)
+    {
+        Queue<GameObject> pool = accuracy == HitAccuracy.Perfect ? perfectParticlePool : goodParticlePool;
+        GameObject prefab = accuracy == HitAccuracy.Perfect ? perfectHitEffectPrefab : goodHitEffectPrefab;
+        
+        // Try to get from pool
+        while (pool.Count > 0)
         {
-            // Debug.LogWarning($"⚠️ No particle effect prefab assigned for {accuracy} hit!");
+            var particle = pool.Dequeue();
+            if (particle != null) return particle;
+        }
+        
+        // Pool empty - create new (fallback)
+        if (prefab != null)
+        {
+            return Instantiate(prefab);
+        }
+        return null;
+    }
+
+    private async Awaitable ReturnParticleAfterDelay(GameObject particle, HitAccuracy accuracy, float delay)
+    {
+        await Awaitable.WaitForSecondsAsync(delay);
+        
+        if (particle != null)
+        {
+            particle.SetActive(false);
+            Queue<GameObject> pool = accuracy == HitAccuracy.Perfect ? perfectParticlePool : goodParticlePool;
+            pool.Enqueue(particle);
         }
     }
 

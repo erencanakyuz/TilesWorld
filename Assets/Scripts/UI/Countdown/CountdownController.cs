@@ -37,6 +37,9 @@ public class CountdownController : MonoBehaviour
                 countdownText.text = "GO!";
                 countdownText.color = config != null ? config.successColor : Color.green;
                 countdownText.fontSize = 100;
+                
+                // CRITICAL FIX: Auto-hide after showing GO! for robustness
+                _ = AutoHideAfterDelayAsync(1f);
             }
 
             _ = CountdownPulseEffectAsync();
@@ -54,6 +57,12 @@ public class CountdownController : MonoBehaviour
         {
             countdownUI.SetActive(false);
         }
+    }
+
+    private async Awaitable AutoHideAfterDelayAsync(float delay)
+    {
+        await Awaitable.WaitForSecondsAsync(delay);
+        HideCountdown();
     }
 
     private void CreateCountdownUIIfNeeded()

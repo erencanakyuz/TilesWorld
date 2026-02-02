@@ -21,7 +21,19 @@ public class PanelManager : MonoBehaviour
         Instance = this;
         this.config = config;
         this.canvasLocator = canvasLocator;
+        
+        // Clear any stale panel reference from previous scene
+        // (panel was destroyed with the scene but reference might still exist)
+        if (currentPanelInstance != null && currentPanelInstance.Equals(null))
+        {
+            currentPanelInstance = null;
+        }
+        
+        // Destroy any lingering panel
+        HideCurrentPanel();
+        
         SetupPanelDictionary();
+        Debug.Log("[PanelManager] Initialized with fresh state");
     }
 
     private void SetupPanelDictionary()

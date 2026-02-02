@@ -7,10 +7,17 @@ public class Bootstrap : MonoBehaviour
     // Bu sahne, Build Settings'de MainScene'in bir üstündeki sahne olmalıdır.
     private const string TargetSceneName = "MainScene";
 
-    [Header("🎵 Core Systems")]
+    [Header("Core Systems")]
     [SerializeField] private GameObject songDatabasePrefab;
 
     private static bool s_isInitialized = false;
+
+    // Reset static flag on domain reload (editor play mode)
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStaticData()
+    {
+        s_isInitialized = false;
+    }
 
     private void Awake()
     {
@@ -248,8 +255,22 @@ public class Bootstrap : MonoBehaviour
 
     private void LoadTargetScene()
     {
-        // Debug.Log($"'{TargetSceneName}' sahnesi yükleniyor...");
-        // Sahneyi asenkron olarak yükle, böylece oyun donmaz.
-        SceneManager.LoadSceneAsync(TargetSceneName, LoadSceneMode.Additive);
+        // Check if we were redirected from another scene
+        string returnScene = PlayerPrefs.GetString("BootstrapReturnScene", "");
+        
+        if (!string.IsNullOrEmpty(returnScene))
+        {
+            // Clear the return scene preference
+            PlayerPrefs.DeleteKey("BootstrapReturnScene");
+            PlayerPrefs.Save();
+            
+            Debug.Log($"[Bootstrap] Returning to original scene: {returnScene}");
+            SceneManager.LoadSceneAsync(returnScene, LoadSceneMode.Additive);
+        }
+        else
+        {
+            // Normal bootstrap - load target scene
+            SceneManager.LoadSceneAsync(TargetSceneName, LoadSceneMode.Additive);
+        }
     }
 }

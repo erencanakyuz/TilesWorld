@@ -386,8 +386,9 @@ public class AudioManager : MonoBehaviour
             }
             else
             {
-                // Still fading, update volume
-                fadingSource.source.volume = Mathf.Lerp(0f, fadingSource.initialVolume, fadingSource.fadeTimer / noteFadeDuration);
+                // CRITICAL FIX: Guard against divide by zero if noteFadeDuration is 0
+                float safeDuration = Mathf.Max(0.001f, noteFadeDuration);
+                fadingSource.source.volume = Mathf.Lerp(0f, fadingSource.initialVolume, fadingSource.fadeTimer / safeDuration);
             }
         }
     }

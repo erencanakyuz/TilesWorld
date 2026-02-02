@@ -607,15 +607,18 @@ public class GameplayManager : MonoBehaviour
 
     void HandleGameStateChange(GameState newState)
     {
+        // CRITICAL FIX: Don't compare newState with CurrentGameState - they're already the same!
+        // Just check if we're active and respond to the state change directly
+        if (!isGameActive) return;
+        
         switch (newState)
         {
             case GameState.Paused:
-                if (isGameActive && GameManager.Instance?.CurrentGameState != GameState.Paused)
-                    PauseGameplay();
+                PauseGameplay();
                 break;
             case GameState.Playing:
-                if (isGameActive && GameManager.Instance?.CurrentGameState == GameState.Paused)
-                    ResumeGameplay();
+                // Only resume if we were paused (isPaused flag check happens inside ResumeGameplay)
+                ResumeGameplay();
                 break;
         }
     }

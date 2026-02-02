@@ -292,6 +292,21 @@ public class DOTweenEnhancementManager : MonoBehaviour
     }
 
     #endregion
+
+    void OnDestroy()
+    {
+        // Kill all active tweens to prevent errors
+        DOTween.KillAll();
+        
+        // Clear instance reference
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+        
+        // Clear material dictionary
+        hitEffectMaterials?.Clear();
+    }
 }
 
 /// <summary>

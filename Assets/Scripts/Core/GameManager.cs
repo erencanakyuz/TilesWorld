@@ -28,7 +28,13 @@ public class GameManager : MonoBehaviour
 
     void Awake()
     {
-        // Bootstrap tarafından yaratıldığı için sadece Instance'ı set et
+        // CRITICAL FIX: Guard against duplicate instances
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        
         Instance = this;
         DontDestroyOnLoad(gameObject);
     }

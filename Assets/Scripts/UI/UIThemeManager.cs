@@ -164,4 +164,13 @@ public class UIThemeManager : MonoBehaviour
         config = newConfig;
         ApplyThemeToAllUI();
     }
+
+    void OnDestroy()
+    {
+        // Clear instance reference
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
 }

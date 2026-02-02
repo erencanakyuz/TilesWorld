@@ -109,8 +109,36 @@ public class SongPlaybackTester : MonoBehaviour
     void Start()
     {
         uiConfig = Resources.Load<UIConfig>("UI/UIConfig");
-        SetupAutoPlayUI();
         SetupHitZones();
+        // NOTE: Don't call SetupAutoPlayUI here - it will be called when GameState changes to Playing
+    }
+
+    void OnEnable()
+    {
+        GameManager.OnGameStateChanged += HandleGameStateChanged;
+    }
+
+    void OnDisable()
+    {
+        GameManager.OnGameStateChanged -= HandleGameStateChanged;
+    }
+
+    void HandleGameStateChanged(GameState newState)
+    {
+        if (newState == GameState.Playing && !isAutoPlayUISetup)
+        {
+            SetupAutoPlayUI();
+        }
+        else if (newState != GameState.Playing && autoPlayCanvas != null)
+        {
+            // Hide the auto-play button when not in gameplay
+            autoPlayCanvas.gameObject.SetActive(false);
+        }
+        else if (newState == GameState.Playing && autoPlayCanvas != null)
+        {
+            // Show the auto-play button when returning to gameplay
+            autoPlayCanvas.gameObject.SetActive(true);
+        }
     }
 
     void Update()
@@ -369,12 +397,7 @@ void SetupAutoPlayUI()
     {
         if (isAutoPlayUISetup) return;
         
-        // Only show AUTO button during gameplay, not in song selection
-        if (GameManager.Instance != null && GameManager.Instance.CurrentGameState != GameState.Playing)
-        {
-            Debug.Log("🎯 Auto-play button hidden - not in gameplay mode");
-            return;
-        }
+        // NOTE: GameState check removed - now handled by HandleGameStateChanged event subscription
 
         // Canvas oluştur
         GameObject canvasObj = new GameObject("AutoPlayCanvas");

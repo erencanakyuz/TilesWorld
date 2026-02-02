@@ -106,6 +106,23 @@ public class InputManager : MonoBehaviour
         EnhancedTouchSupport.Disable();
     }
 
+    void OnDestroy()
+    {
+        // NOTE: Do NOT clear static events here!
+        // Static events persist across scene loads and are subscribed to by HitZoneManager etc.
+        // Clearing them breaks input handling until next domain reload.
+        
+        // Only clear instance reference
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+        
+        // Clear tracking data
+        activeTouches?.Clear();
+        currentlyActiveLanes?.Clear();
+    }
+
     void Update()
     {
         // Optimize: Only search for camera every 30 frames instead of every frame

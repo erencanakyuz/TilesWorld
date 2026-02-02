@@ -9,6 +9,7 @@ public class UIEffectPool : MonoBehaviour
     private Transform effectParent;
     private Queue<GameObject> hitEffectPool;
     private List<ActiveHitEffect> activeEffects;
+    private bool isInitialized = false;
 
     public void Initialize(UIConfig config, Transform effectParent)
     {
@@ -16,10 +17,40 @@ public class UIEffectPool : MonoBehaviour
         this.config = config;
         this.effectParent = effectParent;
 
+        // CRITICAL FIX: Clear old pool to avoid destroyed object references
+        ClearPool();
+        
         hitEffectPool ??= new Queue<GameObject>();
         activeEffects ??= new List<ActiveHitEffect>();
 
         InitializePool();
+        isInitialized = true;
+    }
+
+    private void ClearPool()
+    {
+        // Clear active effects
+        if (activeEffects != null)
+        {
+            foreach (var effect in activeEffects)
+            {
+                if (effect.effectObject != null)
+                    Destroy(effect.effectObject);
+            }
+            activeEffects.Clear();
+        }
+        
+        // Clear pooled effects
+        if (hitEffectPool != null)
+        {
+            while (hitEffectPool.Count > 0)
+            {
+                var obj = hitEffectPool.Dequeue();
+                if (obj != null)
+                    Destroy(obj);
+            }
+            hitEffectPool.Clear();
+        }
     }
 
     public Transform DiscoverEffectParent(Canvas overlayCanvas, Canvas hudCanvas)
@@ -38,7 +69,8 @@ public class UIEffectPool : MonoBehaviour
     {
         if (config == null || effectParent == null) return;
 
-        GameObject effect = GetPooledEffect();
+        // CRITICAL FIX: Use accuracy-specific prefab
+        GameObject effect = GetPooledEffect(accuracy);
         if (effect == null) return;
 
         RectTransform effectRect = effect.GetComponent<RectTransform>();
@@ -71,6 +103,14 @@ public class UIEffectPool : MonoBehaviour
         for (int i = activeEffects.Count - 1; i >= 0; i--)
         {
             var activeEffect = activeEffects[i];
+            
+            // CRITICAL FIX: Check for destroyed objects
+            if (activeEffect.effectObject == null)
+            {
+                activeEffects.RemoveAt(i);
+                continue;
+            }
+            
             activeEffect.elapsedTime += Time.deltaTime;
 
             if (activeEffect.elapsedTime >= config.effectDuration)
@@ -117,15 +157,21 @@ public class UIEffectPool : MonoBehaviour
         };
     }
 
-    private GameObject GetPooledEffect()
+    // CRITICAL FIX: Accept accuracy parameter
+    private GameObject GetPooledEffect(HitAccuracy accuracy = HitAccuracy.Perfect)
     {
-        if (hitEffectPool.Count > 0)
+        // Try to get from pool first
+        while (hitEffectPool.Count > 0)
         {
-            return hitEffectPool.Dequeue();
+            var pooledObj = hitEffectPool.Dequeue();
+            // CRITICAL FIX: Skip destroyed objects
+            if (pooledObj != null)
+                return pooledObj;
         }
 
-        GameObject prefab = GetEffectPrefab(HitAccuracy.Perfect);
-        if (prefab != null)
+        // Pool empty - instantiate correct prefab based on accuracy
+        GameObject prefab = GetEffectPrefab(accuracy);
+        if (prefab != null && effectParent != null)
         {
             return Instantiate(prefab, effectParent);
         }
@@ -141,3 +187,4 @@ public class UIEffectPool : MonoBehaviour
         public CanvasGroup canvasGroup;
     }
 }
+

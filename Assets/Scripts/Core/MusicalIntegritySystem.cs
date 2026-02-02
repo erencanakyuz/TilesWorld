@@ -57,6 +57,18 @@ public class MusicalIntegritySystem : MonoBehaviour
         songCharacteristics = new Dictionary<string, MusicalCharacteristics>();
     }
 
+    void OnDestroy()
+    {
+        // Clear instance reference
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+        
+        // Clear dictionary to free memory
+        songCharacteristics?.Clear();
+    }
+
     #region Musical Characteristics Database
 
     void SetupSongCharacteristics()
