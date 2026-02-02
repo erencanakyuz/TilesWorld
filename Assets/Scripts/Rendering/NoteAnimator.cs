@@ -63,30 +63,32 @@ public class NoteAnimator : MonoBehaviour
     /// </summary>
     public void AnimateSpawnAndFlow(Vector3 targetPosition, float duration)
     {
+        // OPTIMIZATION: Kill any existing tweens on this note from previous pool usage
+        noteTransform.DOKill(true);
+        
         // Reset state
         isAnimatingHit = false;
         noteTransform.localScale = Vector3.one * 0.5f;
         
-        // Set transparent using PropertyBlock (no material instance creation)
-        Color transparentColor = new Color(originalColor.r, originalColor.g, originalColor.b, 0f);
-        propertyBlock.SetColor("_BaseColor", transparentColor);
+        // PERFORMANCE FIX: Set color directly instead of animating via lambda (was causing frame drops)
+        propertyBlock.SetColor("_BaseColor", originalColor);
         noteRenderer.SetPropertyBlock(propertyBlock);
 
-        // Create animation sequence
-        Sequence spawnSequence = DOTween.Sequence();
-
-        // Fade in and scale up with bounce
-        spawnSequence.Join(noteTransform.DOScale(1f, 0.4f).SetEase(Ease.OutBack));
-        spawnSequence.Join(DOTween.To(() => transparentColor.a, x => {
-            transparentColor.a = x;
-            propertyBlock.SetColor("_BaseColor", transparentColor);
-            noteRenderer.SetPropertyBlock(propertyBlock);
-        }, 1f, 0.3f));
+        // SIMPLIFIED ANIMATION: Just scale up, no fade (reduces per-frame lambda calls)
+        noteTransform.DOScale(1f, 0.3f).SetEase(Ease.OutBack).SetTarget(noteTransform);
 
         // Flow to target position (linear, constant speed)
+        // Cache the callback reference to avoid creating new delegate each time
         noteTransform.DOMove(targetPosition, duration)
             .SetEase(Ease.Linear)
-            .OnComplete(() => { if (!isAnimatingHit) AnimateMiss(); });
+            .SetTarget(noteTransform)
+            .OnComplete(OnMoveComplete);
+    }
+    
+    // Cached callback to avoid delegate allocation
+    private void OnMoveComplete()
+    {
+        if (!isAnimatingHit) AnimateMiss();
     }
 
     /// <summary>
@@ -103,7 +105,7 @@ public class NoteAnimator : MonoBehaviour
         // Get animation parameters for this hit quality
         var animParams = GetHitAnimationParams(quality);
         
-        // Set color using PropertyBlock
+        // Set color using PropertyBlock - DO THIS ONCE, NOT EVERY FRAME!
         Color hitColor = animParams.color;
         propertyBlock.SetColor("_BaseColor", hitColor);
         
@@ -113,8 +115,8 @@ public class NoteAnimator : MonoBehaviour
         }
         noteRenderer.SetPropertyBlock(propertyBlock);
 
-        // Create hit animation sequence
-        Sequence hitSequence = DOTween.Sequence();
+        // Create hit animation sequence - LINK TO TRANSFORM so DOKill() works
+        Sequence hitSequence = DOTween.Sequence().SetTarget(noteTransform);
 
         if (animParams.usePunchScale)
         {
@@ -126,12 +128,9 @@ public class NoteAnimator : MonoBehaviour
             hitSequence.Append(noteTransform.DOScale(animParams.scalePunch + 1f, 0.2f).SetEase(Ease.OutCubic));
         }
 
-        // Fade out using PropertyBlock
-        hitSequence.Join(DOTween.To(() => hitColor.a, x => {
-            hitColor.a = x;
-            propertyBlock.SetColor("_BaseColor", hitColor);
-            noteRenderer.SetPropertyBlock(propertyBlock);
-        }, 0f, hitFadeOutDuration).SetDelay(animParams.usePunchScale ? 0.1f : 0f));
+        // PERFORMANCE FIX: Simple scale down instead of per-frame fade callback
+        // This eliminates the lambda that was calling SetPropertyBlock every frame
+        hitSequence.Append(noteTransform.DOScale(0f, hitFadeOutDuration).SetEase(Ease.InQuad));
 
         // Return to pool when animation completes
         hitSequence.OnComplete(ReturnToPool);
@@ -193,8 +192,8 @@ public class NoteAnimator : MonoBehaviour
         noteTransform.DOKill();
         // No need to kill material animations since we use PropertyBlock
 
-        // Create miss animation sequence
-        Sequence missSequence = DOTween.Sequence();
+        // Create miss animation sequence - LINK TO TRANSFORM so DOKill() works
+        Sequence missSequence = DOTween.Sequence().SetTarget(noteTransform);
         
         // Grey out using PropertyBlock
         Color grayColor = Color.gray;
@@ -205,15 +204,18 @@ public class NoteAnimator : MonoBehaviour
         missSequence.Join(noteTransform.DOScale(missScaleEndValue, missDropDuration).SetEase(Ease.InBack));
         missSequence.Join(noteTransform.DOMoveY(transform.position.y - missDropDistance, missDropDuration).SetEase(Ease.InCubic));
 
-        // Return to pool when animation completes
-        missSequence.OnComplete(() =>
+        // PERFORMANCE FIX: Use cached method reference instead of lambda
+        missSequence.OnComplete(OnMissAnimationComplete);
+    }
+    
+    // Cached callback for miss animation to avoid delegate allocation
+    private void OnMissAnimationComplete()
+    {
+        if (spawner != null)
         {
-            ReturnToPool();
-            if (spawner != null)
-            {
-                spawner.ProcessMissedNote(noteInfo);
-            }
-        });
+            spawner.ProcessMissedNote(noteInfo);
+        }
+        ReturnToPool();
     }
 
     /// <summary>
@@ -221,6 +223,9 @@ public class NoteAnimator : MonoBehaviour
     /// </summary>
     private void ReturnToPool()
     {
+        // CRITICAL: Kill ALL tweens before returning to pool to prevent accumulation
+        noteTransform.DOKill();
+        
         // Reset state before returning to pool
         isAnimatingHit = false;
         noteTransform.localScale = Vector3.one;

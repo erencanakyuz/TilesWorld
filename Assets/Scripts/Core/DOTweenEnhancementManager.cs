@@ -12,8 +12,8 @@ public class DOTweenEnhancementManager : MonoBehaviour
 {
     [Header("🎮 DOTween Configuration")]
     [SerializeField] private bool autoInitializeDOTween = true;
-    [SerializeField] private int maxSimultaneousTweens = 200;
-    [SerializeField] private int maxSequences = 50;
+    [SerializeField] private int maxSimultaneousTweens = 500;
+    [SerializeField] private int maxSequences = 150;
     [SerializeField] private LogBehaviour logBehaviour = LogBehaviour.Default;
 
     [Header("🎨 Enhanced Materials")]

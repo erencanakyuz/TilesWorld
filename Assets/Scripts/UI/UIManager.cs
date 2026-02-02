@@ -93,7 +93,8 @@ public class UIManager : MonoBehaviour
 
     void ProcessScene(Scene scene)
     {
-        EnsureEventSystem();
+        // DISABLED: MainScene already has EventSystem, don't create duplicate
+        // EnsureEventSystem();
 
         if (canvasLocator != null)
         {

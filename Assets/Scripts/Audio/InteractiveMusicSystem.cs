@@ -28,6 +28,12 @@ public class InteractiveMusicSystem : MonoBehaviour
     // Chord detection and harmony
     private List<PlayingNote> currentlyPlayingNotes;
     private Dictionary<int, float> laneLastPlayTime;
+    private readonly List<MusicalEvent> chordBuffer = new List<MusicalEvent>(16);
+    private readonly List<int> chordMidiBuffer = new List<int>(8);
+    private Queue<MusicalEvent> eventPool;
+    private Queue<MusicalNoteInfo> noteInfoPool;
+    [SerializeField] private int maxEventPoolSize = 64;
+    [SerializeField] private int maxNoteInfoPoolSize = 64;
 
     // Performance tracking
     private AudioManager audioManager;
@@ -65,6 +71,8 @@ public class InteractiveMusicSystem : MonoBehaviour
     {
         currentlyPlayingNotes = new List<PlayingNote>();
         laneLastPlayTime = new Dictionary<int, float>();
+        eventPool = new Queue<MusicalEvent>();
+        noteInfoPool = new Queue<MusicalNoteInfo>();
 
         // Initialize lane play times
         for (int i = 0; i < 6; i++)
@@ -108,23 +116,23 @@ public class InteractiveMusicSystem : MonoBehaviour
     void CheckForChordCreation(MusicalEvent newEvent)
     {
         // Look for notes played within chord detection window
-        var simultaneousNotes = new List<MusicalEvent>();
+        chordBuffer.Clear();
         float timeWindow = Time.time - CHORD_DETECTION_WINDOW;
 
         foreach (var recentEvent in recentMusicalEvents)
         {
             if (recentEvent.timestamp >= timeWindow)
             {
-                simultaneousNotes.Add(recentEvent);
+                chordBuffer.Add(recentEvent);
             }
         }
 
-        if (simultaneousNotes.Count >= 2) // At least 2 notes for a chord
+        if (chordBuffer.Count >= 2) // At least 2 notes for a chord
         {
-            ChordType detectedChord = AnalyzeChord(simultaneousNotes);
+            ChordType detectedChord = AnalyzeChord(chordBuffer);
             if (detectedChord != ChordType.None)
             {
-                HandleChordDetection(detectedChord, simultaneousNotes);
+                HandleChordDetection(detectedChord, chordBuffer);
             }
         }
     }
@@ -134,20 +142,20 @@ public class InteractiveMusicSystem : MonoBehaviour
         if (notes.Count < 2) return ChordType.None;
 
         // Simple chord detection - can be enhanced
-        var midiNotes = new List<int>();
+        chordMidiBuffer.Clear();
         foreach (var note in notes)
         {
-            midiNotes.Add(note.noteInfo.midiNote % 12); // Normalize to octave
+            chordMidiBuffer.Add(note.noteInfo.midiNote % 12); // Normalize to octave
         }
 
-        midiNotes.Sort();
+        chordMidiBuffer.Sort();
 
         // Basic triad detection
-        if (midiNotes.Count >= 3)
+        if (chordMidiBuffer.Count >= 3)
         {
-            int root = midiNotes[0];
-            int third = midiNotes[1];
-            int fifth = midiNotes[2];
+            int root = chordMidiBuffer[0];
+            int third = chordMidiBuffer[1];
+            int fifth = chordMidiBuffer[2];
 
             // Major triad pattern (4 semitones + 3 semitones)
             if ((third - root) % 12 == 4 && (fifth - third) % 12 == 3)
@@ -159,9 +167,9 @@ public class InteractiveMusicSystem : MonoBehaviour
         }
 
         // Simple interval detection
-        if (midiNotes.Count == 2)
+        if (chordMidiBuffer.Count == 2)
         {
-            int interval = (midiNotes[1] - midiNotes[0]) % 12;
+            int interval = (chordMidiBuffer[1] - chordMidiBuffer[0]) % 12;
             if (interval == 7) return ChordType.Perfect5th;
             if (interval == 4) return ChordType.Major3rd;
             if (interval == 3) return ChordType.Minor3rd;
@@ -210,13 +218,15 @@ public class InteractiveMusicSystem : MonoBehaviour
 
         while (recentMusicalEvents.Count > 0 && recentMusicalEvents.Peek().timestamp < cutoffTime)
         {
-            recentMusicalEvents.Dequeue();
+            var oldEvent = recentMusicalEvents.Dequeue();
+            RecycleMusicalEvent(oldEvent);
         }
 
         // Cap queue size for performance
         while (recentMusicalEvents.Count > 20)
         {
-            recentMusicalEvents.Dequeue();
+            var oldEvent = recentMusicalEvents.Dequeue();
+            RecycleMusicalEvent(oldEvent);
         }
     }
     #endregion
@@ -233,7 +243,7 @@ public class InteractiveMusicSystem : MonoBehaviour
         {
             case GameState.Playing:
                 // Clear recent events for new session
-                recentMusicalEvents.Clear();
+                ClearRecentEvents();
                 break;
             case GameState.GameOver:
                 break;
@@ -261,20 +271,22 @@ public class InteractiveMusicSystem : MonoBehaviour
     private void ProcessMusicalEvent(GameNoteInfo noteInfo, float velocity)
     {
         // Create musical event for analysis
-        var musicalEvent = new MusicalEvent
-        {
-            lane = noteInfo.line,
-            timestamp = Time.time,
-            velocity = velocity,
-            noteInfo = new MusicalNoteInfo
-            {
-                midiNote = noteInfo.pitch,
-                soundIndex = noteInfo.pitch,
-                noteName = $"Note{noteInfo.pitch}",
-                instrumentType = currentInstrument,
-                isValid = true
-            }
-        };
+        var musicalEvent = GetPooledMusicalEvent();
+        var noteDetails = GetPooledNoteInfo();
+        noteDetails.midiNote = noteInfo.pitch;
+        noteDetails.soundIndex = noteInfo.pitch;
+        noteDetails.noteName = $"Note{noteInfo.pitch}";
+        noteDetails.instrumentType = currentInstrument;
+        noteDetails.isValid = true;
+
+        musicalEvent.lane = noteInfo.line;
+        musicalEvent.timestamp = Time.time;
+        musicalEvent.velocity = velocity;
+        musicalEvent.noteInfo = noteDetails;
+
+        // Keep any optional fields clean
+        musicalEvent.detectedChord = ChordType.None;
+        musicalEvent.isPlayerTriggered = false;
 
         // Add to recent events for chord detection
         recentMusicalEvents.Enqueue(musicalEvent);
@@ -286,6 +298,64 @@ public class InteractiveMusicSystem : MonoBehaviour
         // Analyze musical patterns (chord detection only)
         CheckForChordCreation(musicalEvent);
         CleanupOldMusicalEvents();
+    }
+
+    private void ClearRecentEvents()
+    {
+        if (recentMusicalEvents == null) return;
+        while (recentMusicalEvents.Count > 0)
+        {
+            var ev = recentMusicalEvents.Dequeue();
+            RecycleMusicalEvent(ev);
+        }
+    }
+
+    private MusicalEvent GetPooledMusicalEvent()
+    {
+        if (eventPool != null && eventPool.Count > 0)
+        {
+            return eventPool.Dequeue();
+        }
+        return new MusicalEvent();
+    }
+
+    private MusicalNoteInfo GetPooledNoteInfo()
+    {
+        if (noteInfoPool != null && noteInfoPool.Count > 0)
+        {
+            return noteInfoPool.Dequeue();
+        }
+        return new MusicalNoteInfo();
+    }
+
+    private void RecycleMusicalEvent(MusicalEvent musicalEvent)
+    {
+        if (musicalEvent == null) return;
+
+        if (musicalEvent.activePitches != null)
+        {
+            musicalEvent.activePitches.Clear();
+        }
+
+        if (musicalEvent.noteInfo != null)
+        {
+            RecycleNoteInfo(musicalEvent.noteInfo);
+            musicalEvent.noteInfo = null;
+        }
+
+        if (eventPool != null && eventPool.Count < maxEventPoolSize)
+        {
+            eventPool.Enqueue(musicalEvent);
+        }
+    }
+
+    private void RecycleNoteInfo(MusicalNoteInfo noteInfo)
+    {
+        if (noteInfo == null) return;
+        if (noteInfoPool != null && noteInfoPool.Count < maxNoteInfoPoolSize)
+        {
+            noteInfoPool.Enqueue(noteInfo);
+        }
     }
 
 

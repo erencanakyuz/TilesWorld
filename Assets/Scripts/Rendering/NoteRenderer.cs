@@ -41,7 +41,9 @@ public class NoteRenderer : MonoBehaviour
 
     [Header("📊 Performance & Debug")]
     [SerializeField] private bool enableObjectPooling = true;
-    [SerializeField] private int poolSize = 50;
+    [SerializeField] private int poolSize = 150;
+    [SerializeField] private int poolGrowSize = 25;
+    [SerializeField] private int mobileMinPoolSize = 200;
 
     // Object pooling system (from MD analysis)
     private Queue<GameObject> notePool;
@@ -111,6 +113,10 @@ public class NoteRenderer : MonoBehaviour
 
         if (enableObjectPooling)
         {
+            if (Application.isMobilePlatform && mobileMinPoolSize > poolSize)
+            {
+                poolSize = mobileMinPoolSize;
+            }
             CreateNotePool();
             if (particlePrefab != null)
             {
@@ -242,13 +248,7 @@ public class NoteRenderer : MonoBehaviour
             if (notePool.Count == 0)
             {
                 if (showDebugLogs) Debug.LogWarning("Pool empty, expanding dynamically.");
-                // CRITICAL FIX: Ensure NoteAnimator exists on dynamically created notes
-                GameObject newNote = Instantiate(notePrefab, noteParent);
-                if (newNote.GetComponent<NoteAnimator>() == null)
-                {
-                    newNote.AddComponent<NoteAnimator>();
-                }
-                return newNote;
+                GrowNotePool(poolGrowSize);
             }
             return notePool.Dequeue();
         }
@@ -261,6 +261,22 @@ public class NoteRenderer : MonoBehaviour
                 newNote.AddComponent<NoteAnimator>();
             }
             return newNote;
+        }
+    }
+
+    void GrowNotePool(int count)
+    {
+        if (notePrefab == null || noteParent == null || count <= 0) return;
+
+        for (int i = 0; i < count; i++)
+        {
+            GameObject note = Instantiate(notePrefab, noteParent);
+            if (note.GetComponent<NoteAnimator>() == null)
+            {
+                note.AddComponent<NoteAnimator>();
+            }
+            note.SetActive(false);
+            notePool.Enqueue(note);
         }
     }
 
@@ -326,6 +342,8 @@ public class NoteRenderer : MonoBehaviour
     }
 
     public int GetActiveNoteCount() => activeNoteCount = activeNotesForDebug.Count;
+    public int GetNotePoolCount() => notePool != null ? notePool.Count : 0;
+    public int GetParticlePoolCount() => particlePool != null ? particlePool.Count : 0;
 
     public float GetNoteTravelTime()
     {

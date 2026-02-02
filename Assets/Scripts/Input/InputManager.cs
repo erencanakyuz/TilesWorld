@@ -71,6 +71,17 @@ public class InputManager : MonoBehaviour
         }
     }
 
+    void OnEnable()
+    {
+        EnhancedTouchSupport.Enable();
+
+        if (Application.isMobilePlatform)
+        {
+            // Reduce input latency on mobile devices
+            InputSystem.pollingFrequency = 120f;
+        }
+    }
+
     void Start()
     {
         // Setup lane positions after SerializeField values are loaded

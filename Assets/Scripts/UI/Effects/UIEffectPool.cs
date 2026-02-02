@@ -9,7 +9,8 @@ public class UIEffectPool : MonoBehaviour
     private Transform effectParent;
     private Queue<GameObject> hitEffectPool;
     private List<ActiveHitEffect> activeEffects;
-    private bool isInitialized = false;
+    [SerializeField] private int maxPoolSize = 64;
+    private int totalCreated = 0;
 
     public void Initialize(UIConfig config, Transform effectParent)
     {
@@ -24,7 +25,6 @@ public class UIEffectPool : MonoBehaviour
         activeEffects ??= new List<ActiveHitEffect>();
 
         InitializePool();
-        isInitialized = true;
     }
 
     private void ClearPool()
@@ -51,6 +51,7 @@ public class UIEffectPool : MonoBehaviour
             }
             hitEffectPool.Clear();
         }
+        totalCreated = 0;
     }
 
     public Transform DiscoverEffectParent(Canvas overlayCanvas, Canvas hudCanvas)
@@ -68,6 +69,14 @@ public class UIEffectPool : MonoBehaviour
     public void ShowEffect(HitAccuracy accuracy, Vector2 screenPosition)
     {
         if (config == null || effectParent == null) return;
+        
+        // PERFORMANCE: Limit active effects to prevent GC pressure from too many UI objects
+        const int maxActiveEffects = 24;
+        if (activeEffects.Count >= maxActiveEffects)
+        {
+            // Skip spawning new effects when at capacity - this prevents GC spikes
+            return;
+        }
 
         // CRITICAL FIX: Use accuracy-specific prefab
         GameObject effect = GetPooledEffect(accuracy);
@@ -115,6 +124,11 @@ public class UIEffectPool : MonoBehaviour
 
             if (activeEffect.elapsedTime >= config.effectDuration)
             {
+                var particleSystem = activeEffect.effectObject.GetComponent<ParticleSystem>();
+                if (particleSystem != null)
+                {
+                    particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                }
                 activeEffect.effectObject.SetActive(false);
                 hitEffectPool.Enqueue(activeEffect.effectObject);
                 activeEffects.RemoveAt(i);
@@ -140,8 +154,10 @@ public class UIEffectPool : MonoBehaviour
             for (int i = 0; i < 10; i++)
             {
                 GameObject effect = Instantiate(config.perfectHitEffect, effectParent);
+                PreparePooledEffect(effect);
                 effect.SetActive(false);
                 hitEffectPool.Enqueue(effect);
+                totalCreated++;
             }
         }
     }
@@ -166,17 +182,44 @@ public class UIEffectPool : MonoBehaviour
             var pooledObj = hitEffectPool.Dequeue();
             // CRITICAL FIX: Skip destroyed objects
             if (pooledObj != null)
+            {
+                PreparePooledEffect(pooledObj);
                 return pooledObj;
+            }
         }
 
         // Pool empty - instantiate correct prefab based on accuracy
         GameObject prefab = GetEffectPrefab(accuracy);
         if (prefab != null && effectParent != null)
         {
-            return Instantiate(prefab, effectParent);
+            if (totalCreated >= maxPoolSize)
+            {
+                return null;
+            }
+            var effect = Instantiate(prefab, effectParent);
+            PreparePooledEffect(effect);
+            totalCreated++;
+            return effect;
         }
 
         return null;
+    }
+
+    private void PreparePooledEffect(GameObject effect)
+    {
+        if (effect == null) return;
+
+        var autoDestroy = effect.GetComponent<ParticleAutoDestroy>();
+        if (autoDestroy != null)
+        {
+            Destroy(autoDestroy);
+        }
+
+        var particleSystem = effect.GetComponent<ParticleSystem>();
+        if (particleSystem != null)
+        {
+            particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
     }
 
     private class ActiveHitEffect
@@ -186,5 +229,14 @@ public class UIEffectPool : MonoBehaviour
         public Vector3 originalScale;
         public CanvasGroup canvasGroup;
     }
-}
 
+    public int GetPoolCount()
+    {
+        return hitEffectPool != null ? hitEffectPool.Count : 0;
+    }
+
+    public int GetActiveCount()
+    {
+        return activeEffects != null ? activeEffects.Count : 0;
+    }
+}

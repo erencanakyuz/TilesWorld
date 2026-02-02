@@ -72,8 +72,8 @@ public class Bootstrap : MonoBehaviour
         // 5. UI Yöneticisi (Genellikle diğer yöneticilere bağlıdır)
         InitializeUIManager();
 
-        // 6. UI Etkileşimi için EventSystem (UI'dan sonra, GameManager'dan önce)
-        InitializeEventSystem();
+        // 6. EventSystem - DISABLED: MainScene already has one, don't create duplicate
+        // InitializeEventSystem();
 
         // 7. Ana Oyun Yöneticisi (TÜM diğer sistemlerden sonra!)
         InitializeGameManager();
@@ -158,12 +158,13 @@ public class Bootstrap : MonoBehaviour
     }
 
     /// <summary>
-    /// EventSystem oluştur (UI tıklamaları için CRITICAL!)
+    /// EventSystem olustur (UI tiklamalari icin CRITICAL!)
     /// </summary>
     void InitializeEventSystem()
     {
-        // Eğer zaten var olan bir EventSystem instance'ı yoksa oluştur
-        if (EventSystem.current == null)
+        // FIX: Use FindAnyObjectByType for reliable check - EventSystem.current can be unreliable
+        var existingEventSystem = FindAnyObjectByType<EventSystem>();
+        if (existingEventSystem == null)
         {
             GameObject eventSystemObject = new GameObject("EventSystem");
             eventSystemObject.AddComponent<EventSystem>();
@@ -175,11 +176,11 @@ public class Bootstrap : MonoBehaviour
             eventSystemObject.AddComponent<StandaloneInputModule>();
 #endif
 
-            Debug.Log("🎮 EventSystem singleton created during bootstrap");
+            Debug.Log("EventSystem singleton created during bootstrap");
         }
         else
         {
-            Debug.Log("🎮 EventSystem already exists, skipping initialization");
+            Debug.Log("EventSystem already exists, skipping initialization");
         }
     }
 

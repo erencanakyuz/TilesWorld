@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
@@ -11,36 +11,37 @@ using UnityEngine.SceneManagement;
 /// </summary>
 public class GameplayManager : MonoBehaviour
 {
-    [Header("🎮 Gameplay Configuration")]
+    [Header("ğŸ® Gameplay Configuration")]
     [SerializeField] private float countdownDuration = 3f;
     [SerializeField] private bool enablePauseOnFocusLoss = true;
 
-    [Header("🎵 Song Management")]
+    [Header("ğŸµ Song Management")]
     [SerializeField] private SongData currentSong;
     [SerializeField] private float songStartDelay = 1f;
+    [SerializeField] private bool enableBackgroundMusic = false;
     [SerializeField] private bool useAudioTimeSync = true;
 
-    [Header("🎯 Gameplay Settings")]
+    [Header("ğŸ¯ Gameplay Settings")]
     [SerializeField] private float perfectTimingWindow = 50f;   // ms
     [SerializeField] private float goodTimingWindow = 100f;    // ms
     [SerializeField] private int maxCombo = 0;
     [SerializeField] private int currentCombo = 0;
 
-    [Header("📊 Game Statistics")]
+    [Header("ğŸ“Š Game Statistics")]
     [SerializeField] private int totalNotesHit = 0;
     [SerializeField] private int perfectHits = 0;
     [SerializeField] private int goodHits = 0;
     [SerializeField] private int missedNotes = 0;
     [SerializeField] private float accuracy = 0f;
 
-    [Header("⚙️ System References")]
+    [Header("âš™ï¸ System References")]
     [SerializeField] private GameNoteCreator noteCreator;
     [SerializeField] private NoteRenderer noteRenderer;
     [SerializeField] private InteractiveMusicSystem musicSystem;
     [SerializeField] private AudioManager audioManager;
     [SerializeField] private UIManager uiManager;
 
-    [Header("🔧 Debugging")]
+    [Header("ğŸ”§ Debugging")]
     [SerializeField] private bool showDebugLogs = false;
 
     // Game state management
@@ -108,12 +109,12 @@ public class GameplayManager : MonoBehaviour
 
     void SubscribeToEvents()
     {
-        //Debug.Log("🔗 SUBSCRIBING TO EVENTS...");
+        //Debug.Log("ğŸ”— SUBSCRIBING TO EVENTS...");
 
         // *** PREVENT DUPLICATE SUBSCRIPTION ***
         GameNoteCreator.OnNotesGenerated -= OnNotesSpawnRequest;
 
-        // GameNoteCreator events - True Dynamic System ile events kullanıyoruz!
+        // GameNoteCreator events - True Dynamic System ile events kullanÄ±yoruz!
         GameNoteCreator.OnNotesGenerated += OnNotesSpawnRequest; // CRITICAL!
         GameNoteCreator.OnGenerationComplete += HandleSongComplete;
 
@@ -129,7 +130,7 @@ public class GameplayManager : MonoBehaviour
         // GameManager events
         GameManager.OnGameStateChanged += HandleGameStateChange;
 
-        //Debug.Log("✅ Event subscriptions completed!");
+        //Debug.Log("âœ… Event subscriptions completed!");
     }
 
     private void OnNotesSpawnRequest(List<GameNoteInfo> notes, double dspTime)
@@ -150,9 +151,9 @@ public class GameplayManager : MonoBehaviour
     }
 
     /// <summary>
-    /// *** ORİJİNAL JAVA ALGORİTMASI RESTORE EDİLDİ! ***
+    /// *** ORÄ°JÄ°NAL JAVA ALGORÄ°TMASI RESTORE EDÄ°LDÄ°! ***
     /// Update - Main Game Loop (like original World.java)
-    /// CRITICAL: Sürekli noteCreator.GetNote() çağırması!
+    /// CRITICAL: SÃ¼rekli noteCreator.GetNote() Ã§aÄŸÄ±rmasÄ±!
     /// </summary>
     void Update()
     {
@@ -161,11 +162,11 @@ public class GameplayManager : MonoBehaviour
         double dspTime = AudioSettings.dspTime;
         float deltaTime = Time.deltaTime;
 
-        // *** ORİJİNAL JAVA: Ana zamanlama döngüsü ***
+        // *** ORÄ°JÄ°NAL JAVA: Ana zamanlama dÃ¶ngÃ¼sÃ¼ ***
         UpdateGameTiming(deltaTime);
 
-        // *** CRITICAL: Sürekli nota generation çağrısı! ***
-        // Bu oldgame.md'deki en önemli mekanik!
+        // *** CRITICAL: SÃ¼rekli nota generation Ã§aÄŸrÄ±sÄ±! ***
+        // Bu oldgame.md'deki en Ã¶nemli mekanik!
         UpdateNoteGeneration(deltaTime, dspTime);
     }
 
@@ -213,7 +214,7 @@ public class GameplayManager : MonoBehaviour
     {
         if (SongDatabase.Instance == null || !SongDatabase.Instance.IsLoaded())
         {
-            Debug.LogError("🎮 SongDatabase not available! Cannot start gameplay.");
+            Debug.LogError("ğŸ® SongDatabase not available! Cannot start gameplay.");
             return;
         }
 
@@ -221,7 +222,7 @@ public class GameplayManager : MonoBehaviour
         SongDatabaseInfo songInfo = SongDatabase.Instance.GetSongById(musicId);
         if (songInfo == null)
         {
-            Debug.LogError($"🎮 Song with ID {musicId} not found in database!");
+            Debug.LogError($"ğŸ® Song with ID {musicId} not found in database!");
             return;
         }
 
@@ -235,7 +236,7 @@ public class GameplayManager : MonoBehaviour
         currentSong.noteChartPath = $"Song_Note_Jsons/Individual/{songInfo.songKey}";
         currentSong.songKey = songInfo.songKey;
 
-        // Debug.Log($"🎮 Starting gameplay via SongDatabase: {currentSong.songName} by {currentSong.artist} (Tempo: {songInfo.tempo})");
+        // Debug.Log($"ğŸ® Starting gameplay via SongDatabase: {currentSong.songName} by {currentSong.artist} (Tempo: {songInfo.tempo})");
         _ = StartGameplaySequenceAsync();
     }
 
@@ -246,7 +247,7 @@ public class GameplayManager : MonoBehaviour
     {
         if (songData == null)
         {
-            Debug.LogError("🎮 Cannot start gameplay with null song!");
+            Debug.LogError("ğŸ® Cannot start gameplay with null song!");
             return;
         }
 
@@ -256,14 +257,14 @@ public class GameplayManager : MonoBehaviour
             var dbSong = SongDatabase.Instance.GetSongByKey(songData.songKey);
             if (dbSong != null)
             {
-                Debug.Log("🎵 Found song in database, using SongDatabase system...");
+                Debug.Log("ğŸµ Found song in database, using SongDatabase system...");
                 StartGameplay(dbSong.musicId);
                 return;
             }
         }
 
         // Fallback to old system if not found in database
-        Debug.LogWarning("🎵 Song not found in SongDatabase, using legacy system...");
+        Debug.LogWarning("ğŸµ Song not found in SongDatabase, using legacy system...");
 
         // Convert to internal SongData format using ScriptableObject
         currentSong = ScriptableObject.CreateInstance<SongData>();
@@ -283,7 +284,7 @@ public class GameplayManager : MonoBehaviour
     {
         if (song == null)
         {
-            Debug.LogError("🎮 Cannot start gameplay with null song!");
+            Debug.LogError("ğŸ® Cannot start gameplay with null song!");
             return;
         }
 
@@ -293,9 +294,22 @@ public class GameplayManager : MonoBehaviour
 
     private async Awaitable StartGameplaySequenceAsync()
     {
+        var selectedInstrument = GameManager.Instance != null ? GameManager.Instance.GetSelectedInstrument() : InstrumentType.Piano;
+
+        if (audioManager != null)
+        {
+            audioManager.ResetDropStats();
+            _ = audioManager.PrewarmInstrumentClipsAsync(selectedInstrument);
+        }
+
         PrepareGameplaySystems();
 
         await ShowCountdownAsync();
+
+        if (audioManager != null)
+        {
+            await audioManager.EnsureInstrumentReadyAsync(selectedInstrument);
+        }
 
         // Music loading now happens in the background.
         _ = StartMusicWithDelayAsync(songStartDelay);
@@ -305,15 +319,15 @@ public class GameplayManager : MonoBehaviour
     }
 
     /// <summary>
-    /// *** ORİJİNAL JAVA ALGORİTMASI RESTORE EDİLDİ! ***
-    /// PrepareGameplaySystems - oldgame.md'deki sırayla sistem hazırlığı
+    /// *** ORÄ°JÄ°NAL JAVA ALGORÄ°TMASI RESTORE EDÄ°LDÄ°! ***
+    /// PrepareGameplaySystems - oldgame.md'deki sÄ±rayla sistem hazÄ±rlÄ±ÄŸÄ±
     /// </summary>
     void PrepareGameplaySystems()
     {
-        if (showDebugLogs) Debug.Log("🎮 Preparing gameplay systems...");
+        if (showDebugLogs) Debug.Log("ğŸ® Preparing gameplay systems...");
 
-        // 🎼 MUSICAL INTEGRITY SYSTEM - Bootstrap tarafından oluşturuldu, sadece referansı al
-        // Bootstrap.cs artık bu sistemi garanti ediyor, manuel oluşturmaya gerek yok
+        // ğŸ¼ MUSICAL INTEGRITY SYSTEM - Bootstrap tarafÄ±ndan oluÅŸturuldu, sadece referansÄ± al
+        // Bootstrap.cs artÄ±k bu sistemi garanti ediyor, manuel oluÅŸturmaya gerek yok
 
         ResetGameplayStats();
 
@@ -351,12 +365,12 @@ public class GameplayManager : MonoBehaviour
             {
                 // Fallback - sadece tempo set et
                 noteRenderer.SetTempo(120); // Default tempo
-                if (showDebugLogs) Debug.Log($"⚠️ No song data available, using default tempo (120 BPM)");
+                if (showDebugLogs) Debug.Log($"âš ï¸ No song data available, using default tempo (120 BPM)");
             }
 
             float travelTimeMs = noteRenderer.GetNoteTravelTime() * 1000f;
             noteCreator.SetFirstDelay(travelTimeMs);
-            if (showDebugLogs) Debug.Log($"🎵 [TIMING CHECK] Note travel time set for perfect sync: {travelTimeMs:F0}ms");
+            if (showDebugLogs) Debug.Log($"ğŸµ [TIMING CHECK] Note travel time set for perfect sync: {travelTimeMs:F0}ms");
         }
 
         if (noteCreator != null && currentSong != null)
@@ -378,7 +392,7 @@ public class GameplayManager : MonoBehaviour
                         hitZoneManager.okayWindowMs = syncData.hitTimingWindows.okayMs;
                         if (showDebugLogs)
                         {
-                            Debug.Log($"🎯 Hit windows set by MusicalIntegritySystem: P={syncData.hitTimingWindows.perfectMs:F0}ms, G={syncData.hitTimingWindows.goodMs:F0}ms, O={syncData.hitTimingWindows.okayMs:F0}ms");
+                            Debug.Log($"ğŸ¯ Hit windows set by MusicalIntegritySystem: P={syncData.hitTimingWindows.perfectMs:F0}ms, G={syncData.hitTimingWindows.goodMs:F0}ms, O={syncData.hitTimingWindows.okayMs:F0}ms");
                         }
                     }
                 }
@@ -386,21 +400,22 @@ public class GameplayManager : MonoBehaviour
                 // TODO: When GameNoteCreator is refactored per RefactorParse.md,
                 // this should become: noteCreator.LoadAndPrepareSong(chartData, currentSong.bpm);
 
-                if (showDebugLogs) Debug.Log($"🎵 Song prepared with tempo: {currentSong.bpm} BPM");
+                if (showDebugLogs) Debug.Log($"ğŸµ Song prepared with tempo: {currentSong.bpm} BPM");
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"🚨 Song loading failed: {e.Message}");
+                Debug.LogError($"ğŸš¨ Song loading failed: {e.Message}");
             }
         }
         else
         {
-            Debug.LogError("🚨 GameNoteCreator or currentSong not ready!");
+            Debug.LogError("ğŸš¨ GameNoteCreator or currentSong not ready!");
         }
 
         if (musicSystem != null && GameManager.Instance != null)
         {
-            musicSystem.SetInstrument(GameManager.Instance.GetSelectedInstrument());
+            var selectedInstrument = GameManager.Instance.GetSelectedInstrument();
+            musicSystem.SetInstrument(selectedInstrument);
         }
 
         if (GameManager.Instance != null)
@@ -449,6 +464,13 @@ public class GameplayManager : MonoBehaviour
 
     private async Awaitable StartMusicWithDelayAsync(float delay)
     {
+        // TODO: Provide background music clips and enable this path when available.
+        if (!enableBackgroundMusic)
+        {
+            if (showDebugLogs) Debug.Log("Background music disabled. TODO: Assign song audio clips and enable background music.");
+            return;
+        }
+
         if (string.IsNullOrEmpty(currentSong.audioFilePath))
         {
             if (showDebugLogs) Debug.Log("No background music path provided.");
@@ -477,8 +499,8 @@ public class GameplayManager : MonoBehaviour
     }
 
     /// <summary>
-    /// *** ORİJİNAL JAVA ALGORİTMASI RESTORE EDİLDİ! ***
-    /// BeginActiveGameplay - Oyunun aktif başlatılması
+    /// *** ORÄ°JÄ°NAL JAVA ALGORÄ°TMASI RESTORE EDÄ°LDÄ°! ***
+    /// BeginActiveGameplay - Oyunun aktif baÅŸlatÄ±lmasÄ±
     /// </summary>
     void BeginActiveGameplay()
     {
@@ -502,7 +524,7 @@ public class GameplayManager : MonoBehaviour
             GameManager.Instance.ChangeGameState(GameState.Paused);
         }
 
-        //Debug.Log("⏸️ Gameplay paused");
+        //Debug.Log("â¸ï¸ Gameplay paused");
     }
 
     public void ResumeGameplay()
@@ -584,7 +606,7 @@ public class GameplayManager : MonoBehaviour
 
     void HandleSongComplete()
     {
-        //Debug.Log("🎵 Song generation complete!");
+        //Debug.Log("ğŸµ Song generation complete!");
         // Song will end when audio finishes or time runs out
     }
 
@@ -601,7 +623,7 @@ public class GameplayManager : MonoBehaviour
 
     void HandleMusicFinished()
     {
-        //Debug.Log("🎵 Background music finished");
+        //Debug.Log("ğŸµ Background music finished");
         EndGameplay();
     }
 
@@ -667,7 +689,7 @@ public class GameplayManager : MonoBehaviour
             songName = currentSong != null ? currentSong.songName : "Unknown"
         };
 
-        //Debug.Log($"🎮 Final Stats: {finalStats}");
+        //Debug.Log($"ğŸ® Final Stats: {finalStats}");
     }
 
     void ResetGameplayStats()

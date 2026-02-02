@@ -55,13 +55,21 @@ public class HitZoneManager : MonoBehaviour
     private HitZoneTrigger[] zones;
     private float noteTravelTime;
     private Dictionary<int, Renderer> hitZoneRenderers = new Dictionary<int, Renderer>();
+    private Dictionary<int, Material> hitZoneMaterials = new Dictionary<int, Material>();
     private Dictionary<HitAccuracy, Color> hitColors;
     private UIConfig uiConfig;
 
     // PARTICLE POOLING - Reduces GC spikes during heavy note density
     private Queue<GameObject> perfectParticlePool = new Queue<GameObject>();
     private Queue<GameObject> goodParticlePool = new Queue<GameObject>();
-    private const int PARTICLE_POOL_SIZE = 10;
+    private const int PARTICLE_POOL_SIZE = 30;
+    [SerializeField] private int maxParticlePoolSize = 64;
+    [SerializeField] private int maxActiveParticlesPerType = 24;
+    private int perfectParticleTotal = 0;
+    private int goodParticleTotal = 0;
+    private int activePerfectParticles = 0;
+    private int activeGoodParticles = 0;
+    private GameplayManager gameplayManager;
 
     void Awake()
     {
@@ -85,6 +93,17 @@ public class HitZoneManager : MonoBehaviour
 
         // Initialize particle pools
         InitializeParticlePools();
+
+        // Cache gameplay manager once to avoid per-hit searches
+        gameplayManager = FindFirstObjectByType<GameplayManager>();
+    }
+
+    void Start()
+    {
+        if (gameplayManager == null)
+        {
+            gameplayManager = FindFirstObjectByType<GameplayManager>();
+        }
     }
 
     private void InitializeParticlePools()
@@ -95,8 +114,10 @@ public class HitZoneManager : MonoBehaviour
             for (int i = 0; i < PARTICLE_POOL_SIZE; i++)
             {
                 var particle = Instantiate(perfectHitEffectPrefab);
+                PreparePooledParticle(particle);
                 particle.SetActive(false);
                 perfectParticlePool.Enqueue(particle);
+                perfectParticleTotal++;
             }
         }
 
@@ -106,8 +127,10 @@ public class HitZoneManager : MonoBehaviour
             for (int i = 0; i < PARTICLE_POOL_SIZE; i++)
             {
                 var particle = Instantiate(goodHitEffectPrefab);
+                PreparePooledParticle(particle);
                 particle.SetActive(false);
                 goodParticlePool.Enqueue(particle);
+                goodParticleTotal++;
             }
         }
     }
@@ -225,25 +248,29 @@ public class HitZoneManager : MonoBehaviour
                 hitZoneRenderers[zone.laneIndex] = renderer;
 
                 // Configure material
-                if (renderer.material != null)
+                var materialInstance = renderer.material;
+                if (materialInstance != null)
                 {
                     // Set initial color (bright white with high alpha)
-                    renderer.material.color = new Color(1f, 1f, 1f, 0.8f);
+                    materialInstance.color = new Color(1f, 1f, 1f, 0.8f);
 
                     // Set bright emission for glow effect
-                    if (renderer.material.HasProperty("_EmissionColor"))
+                    if (materialInstance.HasProperty("_EmissionColor"))
                     {
-                        renderer.material.SetColor("_EmissionColor", new Color(0.5f, 0.5f, 2f, 1f));
-                        renderer.material.EnableKeyword("_EMISSION");
+                        materialInstance.SetColor("_EmissionColor", new Color(0.5f, 0.5f, 2f, 1f));
+                        materialInstance.EnableKeyword("_EMISSION");
                     }
 
                     // Ensure proper transparency
-                    if (renderer.material.HasProperty("_Surface"))
+                    if (materialInstance.HasProperty("_Surface"))
                     {
-                        renderer.material.SetFloat("_Surface", 1); // Transparent
-                        renderer.material.SetFloat("_Blend", 0);   // Alpha blend
-                        renderer.material.renderQueue = 3000;
+                        materialInstance.SetFloat("_Surface", 1); // Transparent
+                        materialInstance.SetFloat("_Blend", 0);   // Alpha blend
+                        materialInstance.renderQueue = 3000;
                     }
+
+                    // Cache material instance to avoid per-hit allocations
+                    hitZoneMaterials[zone.laneIndex] = materialInstance;
                 }
 
                 // Ensure it renders on top
@@ -360,7 +387,7 @@ public class HitZoneManager : MonoBehaviour
         SpawnParticleEffect(noteObj.transform.position, acc);
 
         // 5. Flash hit zone with appropriate color
-        FlashHitZone(acc);
+        FlashHitZone(zone.laneIndex, acc);
 
         // 6. Update score using configurable point values
         int points = acc switch
@@ -372,12 +399,16 @@ public class HitZoneManager : MonoBehaviour
         GameManager.Instance?.UpdateScore(points);
         
         // Update stats only when hit occurs (performance optimization)
-        var gameplayManager = FindFirstObjectByType<GameplayManager>();
         gameplayManager?.UpdateStatsOnHit();
     }
 
     private void SpawnParticleEffect(Vector3 position, HitAccuracy accuracy)
     {
+        if (!CanSpawnParticle(accuracy))
+        {
+            return;
+        }
+
         // PERF FIX: Use pooled particles instead of Instantiate
         GameObject effect = GetPooledParticle(accuracy);
         
@@ -391,14 +422,35 @@ public class HitZoneManager : MonoBehaviour
             var particleSystem = effect.GetComponent<ParticleSystem>();
             if (particleSystem != null)
             {
-                _ = ReturnParticleAfterDelay(effect, accuracy, particleSystem.main.duration + 0.5f);
+                var pooled = effect.GetComponent<PooledHitParticle>();
+                if (pooled != null)
+                {
+                    pooled.Initialize(this, accuracy, effect);
+                }
+                particleSystem.Play(true);
             }
             else
             {
-                // Fallback: return after 2 seconds
-                _ = ReturnParticleAfterDelay(effect, accuracy, 2f);
+                var pooled = effect.GetComponentInChildren<PooledHitParticle>();
+                if (pooled != null)
+                {
+                    pooled.Initialize(this, accuracy, effect);
+                }
+                var childPs = effect.GetComponentInChildren<ParticleSystem>();
+                if (childPs != null)
+                {
+                    childPs.Play(true);
+                }
             }
+
+            if (accuracy == HitAccuracy.Perfect) activePerfectParticles++;
+            else activeGoodParticles++;
         }
+    }
+
+    public void SpawnHitEffect(Vector3 position, HitAccuracy accuracy)
+    {
+        SpawnParticleEffect(position, accuracy);
     }
 
     private GameObject GetPooledParticle(HitAccuracy accuracy)
@@ -410,27 +462,92 @@ public class HitZoneManager : MonoBehaviour
         while (pool.Count > 0)
         {
             var particle = pool.Dequeue();
-            if (particle != null) return particle;
+            if (particle != null)
+            {
+                PreparePooledParticle(particle);
+                return particle;
+            }
         }
         
-        // Pool empty - create new (fallback)
+        // Pool empty - create new (fallback) up to max cap
         if (prefab != null)
         {
-            return Instantiate(prefab);
+            if (accuracy == HitAccuracy.Perfect && perfectParticleTotal >= maxParticlePoolSize)
+            {
+                return null;
+            }
+            if (accuracy != HitAccuracy.Perfect && goodParticleTotal >= maxParticlePoolSize)
+            {
+                return null;
+            }
+
+            var particle = Instantiate(prefab);
+            PreparePooledParticle(particle);
+            if (accuracy == HitAccuracy.Perfect) perfectParticleTotal++;
+            else goodParticleTotal++;
+            return particle;
         }
         return null;
     }
 
-    private async Awaitable ReturnParticleAfterDelay(GameObject particle, HitAccuracy accuracy, float delay)
+    public void ReturnParticleToPool(GameObject particle, HitAccuracy accuracy)
     {
-        await Awaitable.WaitForSecondsAsync(delay);
-        
-        if (particle != null)
+        if (particle == null) return;
+        var particleSystem = particle.GetComponent<ParticleSystem>() ?? particle.GetComponentInChildren<ParticleSystem>();
+        if (particleSystem != null)
         {
-            particle.SetActive(false);
-            Queue<GameObject> pool = accuracy == HitAccuracy.Perfect ? perfectParticlePool : goodParticlePool;
-            pool.Enqueue(particle);
+            if (!particleSystem.isStopped)
+            {
+                particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+            particleSystem.Clear(true);
         }
+        particle.SetActive(false);
+        Queue<GameObject> pool = accuracy == HitAccuracy.Perfect ? perfectParticlePool : goodParticlePool;
+        pool.Enqueue(particle);
+
+        if (accuracy == HitAccuracy.Perfect)
+        {
+            activePerfectParticles = Mathf.Max(0, activePerfectParticles - 1);
+        }
+        else
+        {
+            activeGoodParticles = Mathf.Max(0, activeGoodParticles - 1);
+        }
+    }
+
+    private void PreparePooledParticle(GameObject particle)
+    {
+        if (particle == null) return;
+
+        var autoDestroy = particle.GetComponent<ParticleAutoDestroy>();
+        if (autoDestroy != null)
+        {
+            Destroy(autoDestroy);
+        }
+
+        var particleSystem = particle.GetComponent<ParticleSystem>() ?? particle.GetComponentInChildren<ParticleSystem>();
+        if (particleSystem != null)
+        {
+            var main = particleSystem.main;
+            main.loop = false;
+            main.stopAction = ParticleSystemStopAction.Callback;
+            particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+
+        var pooled = particleSystem != null ? particleSystem.GetComponent<PooledHitParticle>() : particle.GetComponent<PooledHitParticle>();
+        if (pooled == null)
+        {
+            if (particleSystem != null)
+            {
+                pooled = particleSystem.gameObject.AddComponent<PooledHitParticle>();
+            }
+            else
+            {
+                pooled = particle.AddComponent<PooledHitParticle>();
+            }
+        }
+        // Accuracy will be set on spawn since pools are per-accuracy
     }
 
     private void FlashHitZone(HitAccuracy accuracy)
@@ -439,19 +556,35 @@ public class HitZoneManager : MonoBehaviour
             (uiConfig != null ? uiConfig.textPrimaryColor : Color.white);
 
         // Flash all hit zones with the specified color
-        foreach (var renderer in hitZoneRenderers.Values)
+        foreach (var laneIndex in hitZoneRenderers.Keys)
         {
-            if (renderer == null) continue;
-
-            // Use DOTween for a smooth, punchy flash effect
-            renderer.material.DOKill(); // Kill previous tweens on this material
-            renderer.material.SetColor("_EmissionColor", flashColor * 2f); // Make it glow intensely
-            renderer.material.DOColor(uiConfig != null ? uiConfig.textPrimaryColor : Color.white, "_EmissionColor", 0.5f)
-                .SetEase(Ease.OutQuad);
+            FlashHitZone(laneIndex, accuracy);
         }
 
         // Log the hit zone flash event
         // Debug.Log($"💫 Hit zone {accuracy} flashed with {accuracy} color: {flashColor}");
+    }
+
+    private void FlashHitZone(int laneIndex, HitAccuracy accuracy)
+    {
+        if (!hitZoneMaterials.TryGetValue(laneIndex, out var material) || material == null) return;
+
+        Color flashColor = hitColors.ContainsKey(accuracy) ?
+            hitColors[accuracy] :
+            (uiConfig != null ? uiConfig.textPrimaryColor : Color.white);
+
+        // Use DOTween for a smooth, punchy flash effect
+        material.DOKill(); // Kill previous tweens on this material
+        if (material.HasProperty("_EmissionColor"))
+        {
+            material.SetColor("_EmissionColor", flashColor * 2f); // Make it glow intensely
+            material.DOColor(uiConfig != null ? uiConfig.textPrimaryColor : Color.white, "_EmissionColor", 0.5f)
+                .SetEase(Ease.OutQuad);
+        }
+        else
+        {
+            material.color = flashColor;
+        }
     }
 
     // Debug helper
@@ -483,6 +616,28 @@ public class HitZoneManager : MonoBehaviour
             HitAccuracy.Miss => missEffectPrefab,
             _ => null
         };
+    }
+
+    public void GetParticlePoolCounts(out int perfectPoolCount, out int goodPoolCount)
+    {
+        perfectPoolCount = perfectParticlePool != null ? perfectParticlePool.Count : 0;
+        goodPoolCount = goodParticlePool != null ? goodParticlePool.Count : 0;
+    }
+
+    public void GetParticleCounts(out int perfectPoolCount, out int goodPoolCount, out int perfectActiveCount, out int goodActiveCount)
+    {
+        GetParticlePoolCounts(out perfectPoolCount, out goodPoolCount);
+        perfectActiveCount = activePerfectParticles;
+        goodActiveCount = activeGoodParticles;
+    }
+
+    private bool CanSpawnParticle(HitAccuracy accuracy)
+    {
+        if (accuracy == HitAccuracy.Perfect)
+        {
+            return activePerfectParticles < maxActiveParticlesPerType;
+        }
+        return activeGoodParticles < maxActiveParticlesPerType;
     }
 }
 

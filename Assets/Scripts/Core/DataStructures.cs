@@ -377,7 +377,8 @@ public static class AudioConstants
 
         if (pitch < 0 || pitch >= SOUND_RESOURCE_IDXS[safeLane].Length)
         {
-            UnityEngine.Debug.LogWarning($"AudioConstants: Invalid pitch value! Lane: {lane}, Pitch: {pitch}. Using default 0.");
+            // PERFORMANCE: Removed Debug.LogWarning - was causing massive console spam during dense sections
+            // Invalid pitches are silently clamped to valid range
             pitch = UnityEngine.Mathf.Clamp(pitch, 0, SOUND_RESOURCE_IDXS[safeLane].Length - 1);
         }
 

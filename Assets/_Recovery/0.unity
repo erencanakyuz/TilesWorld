@@ -838,6 +838,7 @@ MonoBehaviour:
   enablePauseOnFocusLoss: 0
   currentSong: {fileID: 0}
   songStartDelay: 1
+  enableBackgroundMusic: 0
   useAudioTimeSync: 1
   perfectTimingWindow: 50
   goodTimingWindow: 100
@@ -894,6 +895,8 @@ MonoBehaviour:
   missEffectPrefab: {fileID: 2699943676106352735, guid: 2ee5b4190176ec446ac2fa92f7a64606, type: 3}
   autoFindPrefabs: 1
   audioManager: {fileID: 0}
+  maxParticlePoolSize: 64
+  maxActiveParticlesPerType: 24
 --- !u!1 &452870428
 GameObject:
   m_ObjectHideFlags: 0
@@ -3247,6 +3250,8 @@ MonoBehaviour:
   showDebugInfo: 0
   notesPlayedThisSession: 0
   chordsPlayedThisSession: 0
+  maxEventPoolSize: 64
+  maxNoteInfoPoolSize: 64
 --- !u!4 &1554464277
 Transform:
   m_ObjectHideFlags: 0
@@ -3437,6 +3442,13 @@ MonoBehaviour:
   autoStartSongTitle: Moonlight Sonata Op. 27, No. 2.
   autoStartDelay: 0.5
   autoEnablePerfectAutoPlay: 1
+  enableAutoHitPerfLogs: 1
+  autoHitLogEveryN: 30
+  autoHitSlowThresholdMs: 8
+  disableAutoHitAudio: 1
+  disableAutoHitParticles: 1
+  disableAutoHitIMS: 1
+  useGlobalNoteListForAutoHit: 1
   enableTestCases: 1
   enableLegitimateRapidTest: 1
   enableChordProgressionTest: 1
@@ -3449,6 +3461,7 @@ MonoBehaviour:
   gameNoteCreator: {fileID: 0}
   songDatabase: {fileID: 0}
   hitZoneManager: {fileID: 0}
+  autoHitCount: 0
 --- !u!1 &1655431782
 GameObject:
   m_ObjectHideFlags: 0

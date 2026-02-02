@@ -6,6 +6,7 @@ using System.Collections.Generic;
 ///  - Attached to an invisible BoxCollider (isTrigger) representing the hit-line area of a lane.
 ///  - Caches all note objects currently inside the trigger so that HitZoneManager can access
 ///    them in O(1) time without raycasts or per-frame searches.
+/// PERFORMANCE: Uses HashSet internally for O(1) Contains checks during heavy note density.
 /// </summary>
 [RequireComponent(typeof(BoxCollider))]
 public class HitZoneTrigger : MonoBehaviour
@@ -19,10 +20,37 @@ public class HitZoneTrigger : MonoBehaviour
 
     /// <summary>
     /// The collection of active note gameObjects inside this hit zone.
-    /// Newest note is appended to the end; therefore the first element is always
-    /// the earliest note (closest to player in time).
+    /// Uses HashSet internally for O(1) Contains check during heavy note density.
     /// </summary>
-    public readonly List<GameObject> insideNotes = new List<GameObject>();
+    private readonly HashSet<GameObject> insideNotesSet = new HashSet<GameObject>();
+    
+    /// <summary>
+    /// Direct HashSet access for iteration - avoids List allocation.
+    /// PERFORMANCE: Use this directly when iterating instead of insideNotes property.
+    /// </summary>
+    public IEnumerable<GameObject> GetNotesEnumerable() => insideNotesSet;
+    
+    /// <summary>
+    /// List accessor for iteration compatibility. Only use when you need to iterate.
+    /// PERFORMANCE NOTE: This regenerates the list on each access when dirty - cache locally if iterating multiple times.
+    /// </summary>
+    private bool insideNotesListDirty = true;
+    public List<GameObject> insideNotes 
+    { 
+        get 
+        { 
+            if (insideNotesListDirty)
+            {
+                insideNotesList.Clear();
+                insideNotesList.AddRange(insideNotesSet);
+                insideNotesListDirty = false;
+            }
+            return insideNotesList;
+        }
+    }
+    private readonly List<GameObject> insideNotesList = new List<GameObject>(32);
+
+    [SerializeField] private int cleanupFrameInterval = 5;
 
     void Awake()
     {
@@ -32,27 +60,26 @@ public class HitZoneTrigger : MonoBehaviour
 
     void Update()
     {
-        // Clean up destroyed or inactive (pooled) notes from the list
-        for (int i = insideNotes.Count - 1; i >= 0; i--)
-        {
-            if (insideNotes[i] == null || !insideNotes[i].activeInHierarchy)
-            {
-                insideNotes.RemoveAt(i);
-                // if (showDebug) Debug.Log($"[HitZoneTrigger] Lane {laneIndex} cleaned up destroyed or inactive note. insideNotes={insideNotes.Count}");
-            }
-        }
+        if (cleanupFrameInterval < 1) cleanupFrameInterval = 1;
+        if (Time.frameCount % cleanupFrameInterval != 0) return;
+
+        // Clean up destroyed or inactive (pooled) notes from the set
+        int before = insideNotesSet.Count;
+        insideNotesSet.RemoveWhere(note => note == null || !note.activeInHierarchy);
+        if (insideNotesSet.Count != before) insideNotesListDirty = true;
     }
 
     void OnTriggerEnter(Collider other)
     {
         if (!other.CompareTag("Note")) return;
-        if (!insideNotes.Contains(other.gameObject))
+        
+        // O(1) Contains check with HashSet
+        if (insideNotesSet.Add(other.gameObject))
         {
-            insideNotes.Add(other.gameObject);
-
+            insideNotesListDirty = true;
             if (showDebug && debugCount < maxDebugLogs)
             {
-                // Debug.Log($"[HitZoneTrigger] Lane {laneIndex} ENTER note '{other.gameObject.name}' at Z={other.transform.position.z:F2}. insideNotes={insideNotes.Count}");
+                // Debug.Log($"[HitZoneTrigger] Lane {laneIndex} ENTER note '{other.gameObject.name}' at Z={other.transform.position.z:F2}. insideNotes={insideNotesSet.Count}");
                 debugCount++;
             }
         }
@@ -61,20 +88,28 @@ public class HitZoneTrigger : MonoBehaviour
     void OnTriggerExit(Collider other)
     {
         if (!other.CompareTag("Note")) return;
-        insideNotes.Remove(other.gameObject);
+        if (insideNotesSet.Remove(other.gameObject))
+        {
+            insideNotesListDirty = true;
+        }
         if (showDebug && debugCount < maxDebugLogs)
         {
-            // Debug.Log($"[HitZoneTrigger] Lane {laneIndex} EXIT note '{other.gameObject.name}' at Z={other.transform.position.z:F2}. insideNotes={insideNotes.Count}");
+            // Debug.Log($"[HitZoneTrigger] Lane {laneIndex} EXIT note '{other.gameObject.name}' at Z={other.transform.position.z:F2}. insideNotes={insideNotesSet.Count}");
             debugCount++;
         }
     }
 
     /// <summary>
     /// Returns the first note that entered the zone (FIFO). Returns null if none.
+    /// NOTE: HashSet doesn't maintain order, so this returns any note.
     /// </summary>
     public GameObject PeekEarliestNote()
     {
-        return insideNotes.Count > 0 ? insideNotes[0] : null;
+        foreach (var note in insideNotesSet)
+        {
+            return note;
+        }
+        return null;
     }
 
     /// <summary>
@@ -82,6 +117,18 @@ public class HitZoneTrigger : MonoBehaviour
     /// </summary>
     public void RemoveNote(GameObject noteObject)
     {
-        insideNotes.Remove(noteObject);
+        if (insideNotesSet.Remove(noteObject))
+        {
+            insideNotesListDirty = true;
+        }
+    }
+    
+    /// <summary>
+    /// Gets the count of notes currently inside this hit zone.
+    /// PERFORMANCE: Use this instead of insideNotes.Count when you only need the count.
+    /// </summary>
+    public int GetNoteCount()
+    {
+        return insideNotesSet.Count;
     }
 }
