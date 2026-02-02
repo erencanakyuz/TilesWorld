@@ -23,11 +23,11 @@ public class InputManager : MonoBehaviour
 
     [Header("Swipe Settings")]
     [Tooltip("Minimum swipe velocity in pixels/second to register lane changes")]
-    [SerializeField] private float minSwipeVelocity = 300f;
+    [SerializeField] private float minSwipeVelocity = 0f;   // No velocity requirement - any movement works
     [Tooltip("Maximum time in seconds for a swipe gesture")]
-    [SerializeField] private float maxSwipeTime = 0.5f;
+    [SerializeField] private float maxSwipeTime = 5.0f;     // Long hold allowed
     [Tooltip("Maximum vertical deviation in pixels allowed during horizontal swipe")]
-    [SerializeField] private float maxVerticalDeviation = 150f;
+    [SerializeField] private float maxVerticalDeviation = 500f; // Very forgiving
 
     [Header("Latency Debug")]
     [Tooltip("Enable to measure and log input latency")]
@@ -214,22 +214,23 @@ public class InputManager : MonoBehaviour
 
             activeTouches[touchId] = touchData;
 
+            // Track active lanes for hold detection
             if (!currentlyActiveLanes.Contains(lane))
             {
                 currentlyActiveLanes.Add(lane);
-                
-                // Measure and log latency
-                float processingTime = Time.realtimeSinceStartup;
-                float latency = (processingTime - inputReceivedTime) * 1000f; // ms
-                
-                if (measureLatency)
-                {
-                    MeasureInputLatency(latency);
-                    Debug.Log($"[LATENCY] Lane {lane} clicked - Latency: {latency:F3}ms");
-                }
-                
-                OnLaneTapped?.Invoke(lane, screenPosition);
             }
+            
+            // CRITICAL: ALWAYS fire OnLaneTapped for every new touch!
+            // Don't skip based on lane active state - this was blocking rapid taps!
+            if (measureLatency)
+            {
+                float processingTime = Time.realtimeSinceStartup;
+                float latency = (processingTime - inputReceivedTime) * 1000f;
+                MeasureInputLatency(latency);
+                Debug.Log($"[LATENCY] Lane {lane} clicked - Latency: {latency:F3}ms");
+            }
+            
+            OnLaneTapped?.Invoke(lane, screenPosition);
         }
     }
 
@@ -238,63 +239,32 @@ public class InputManager : MonoBehaviour
         if (activeTouches.ContainsKey(touchId))
         {
             TouchData touchData = activeTouches[touchId];
-            Vector2 previousPosition = touchData.currentPosition;
             touchData.currentPosition = screenPosition;
 
-            // Check if moved to different lane
+            // Check if moved to different lane - NO CONSTRAINTS, just trigger!
             if (lane != touchData.lane && lane >= 0 && lane < laneCount)
             {
-                // SWIPE CONSTRAINTS: Validate swipe gesture
-                float swipeTime = Time.time - touchData.startTime;
-                float verticalDeviation = Mathf.Abs(screenPosition.y - touchData.startPosition.y);
-                float deltaX = Mathf.Abs(screenPosition.x - previousPosition.x);
-                float velocity = deltaX / Time.deltaTime;
+                int oldLane = touchData.lane;
+                int newLane = lane;
                 
-                // Check constraints
-                bool isValidSwipe = true;
+                // Trigger all lanes between old and new position
+                int step = (newLane > oldLane) ? 1 : -1;
                 
-                // 1. Time constraint - swipe must be within time limit
-                if (swipeTime > maxSwipeTime)
+                for (int swipeLane = oldLane + step; swipeLane != newLane + step; swipeLane += step)
                 {
-                    isValidSwipe = false;
-                }
-                
-                // 2. Vertical deviation - must be mostly horizontal
-                if (verticalDeviation > maxVerticalDeviation)
-                {
-                    isValidSwipe = false;
-                }
-                
-                // 3. Velocity threshold - must be fast enough
-                if (velocity < minSwipeVelocity)
-                {
-                    isValidSwipe = false;
-                }
-                
-                if (isValidSwipe)
-                {
-                    int oldLane = touchData.lane;
-                    int newLane = lane;
-                    
-                    // SWIPE ENHANCEMENT: Trigger all lanes between old and new position
-                    int step = (newLane > oldLane) ? 1 : -1;
-                    
-                    for (int swipeLane = oldLane + step; swipeLane != newLane + step; swipeLane += step)
+                    if (swipeLane >= 0 && swipeLane < laneCount)
                     {
-                        if (swipeLane >= 0 && swipeLane < laneCount)
-                        {
-                            OnLaneTapped?.Invoke(swipeLane, screenPosition);
-                        }
+                        OnLaneTapped?.Invoke(swipeLane, screenPosition);
                     }
-                    
-                    // Update touch data to new lane
-                    currentlyActiveLanes.Remove(oldLane);
-                    touchData.lane = newLane;
-                    
-                    if (!currentlyActiveLanes.Contains(newLane))
-                    {
-                        currentlyActiveLanes.Add(newLane);
-                    }
+                }
+                
+                // Update touch data to new lane
+                currentlyActiveLanes.Remove(oldLane);
+                touchData.lane = newLane;
+                
+                if (!currentlyActiveLanes.Contains(newLane))
+                {
+                    currentlyActiveLanes.Add(newLane);
                 }
             }
 
@@ -377,61 +347,30 @@ public class InputManager : MonoBehaviour
 
     void HandleMouseInput()
     {
-        // Handle mouse input for PC testing
+        // Handle mouse input for PC testing - behaves exactly like touch
         if (UnityEngine.InputSystem.Mouse.current == null) return;
         
         var mouse = UnityEngine.InputSystem.Mouse.current;
         Vector2 mousePosition = mouse.position.ReadValue();
+        int lane = ScreenPositionToLane(mousePosition);
         
-        // Mouse button pressed - start drag
+        // Use a fake touchId for mouse (negative to avoid collision with real touches)
+        const int MOUSE_TOUCH_ID = -999;
+        
+        // Mouse button pressed - same as TouchBegan
         if (mouse.leftButton.wasPressedThisFrame)
         {
-            float inputReceivedTime = Time.realtimeSinceStartup;
-            int lane = ScreenPositionToLane(mousePosition);
-            
-            if (lane >= 0 && lane < laneCount)
-            {
-                // Measure and log latency
-                float processingTime = Time.realtimeSinceStartup;
-                float latency = (processingTime - inputReceivedTime) * 1000f;
-                
-                if (measureLatency)
-                {
-                    MeasureInputLatency(latency);
-                    Debug.Log($"[LATENCY] Mouse Lane {lane} - Latency: {latency:F3}ms");
-                }
-                
-                OnLaneTapped?.Invoke(lane, mousePosition);
-                lastMouseLane = lane;
-                isMouseDragging = true;
-            }
+            HandleTouchBegan(MOUSE_TOUCH_ID, mousePosition, lane);
         }
-        // Mouse button held - check for lane changes (swipe simulation)
-        else if (mouse.leftButton.isPressed && isMouseDragging)
+        // Mouse button held and moving - same as TouchMoved
+        else if (mouse.leftButton.isPressed)
         {
-            int currentLane = ScreenPositionToLane(mousePosition);
-            
-            if (currentLane != lastMouseLane && currentLane >= 0 && currentLane < laneCount)
-            {
-                // Trigger all lanes between old and new (same as touch swipe)
-                int step = (currentLane > lastMouseLane) ? 1 : -1;
-                
-                for (int swipeLane = lastMouseLane + step; swipeLane != currentLane + step; swipeLane += step)
-                {
-                    if (swipeLane >= 0 && swipeLane < laneCount)
-                    {
-                        OnLaneTapped?.Invoke(swipeLane, mousePosition);
-                    }
-                }
-                
-                lastMouseLane = currentLane;
-            }
+            HandleTouchMoved(MOUSE_TOUCH_ID, mousePosition, lane);
         }
-        // Mouse button released - end drag
+        // Mouse button released - same as TouchEnded
         else if (mouse.leftButton.wasReleasedThisFrame)
         {
-            isMouseDragging = false;
-            lastMouseLane = -1;
+            HandleTouchEnded(MOUSE_TOUCH_ID, lane);
         }
     }
 
