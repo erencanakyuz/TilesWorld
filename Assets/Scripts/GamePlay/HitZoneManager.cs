@@ -283,20 +283,21 @@ public class HitZoneManager : MonoBehaviour
 
     void OnEnable()
     {
-        InputManager.OnLaneTapped += HandleLaneTap;
+        // Use timestamped events for DSP-accurate hit judgment
+        InputManager.OnLaneTappedTimestamped += HandleLaneTapTimestamped;
     }
 
     void OnDisable()
     {
-        InputManager.OnLaneTapped -= HandleLaneTap;
+        InputManager.OnLaneTappedTimestamped -= HandleLaneTapTimestamped;
     }
 
-    void HandleLaneTap(int lane, Vector2 screenPos)
+    void HandleLaneTapTimestamped(int lane, Vector2 screenPos, double inputTime)
     {
         // STABILITY: Add error handling for hit evaluation
         try
         {
-            EvaluateHit(lane, screenPos);
+            EvaluateHitWithTimestamp(lane, screenPos, inputTime);
         }
         catch (System.Exception e)
         {
@@ -304,11 +305,36 @@ public class HitZoneManager : MonoBehaviour
         }
     }
 
-    void EvaluateHit(int lane, Vector2 screenPos)
+    // Legacy handler for backward compatibility
+    void HandleLaneTap(int lane, Vector2 screenPos)
+    {
+        HandleLaneTapTimestamped(lane, screenPos, Time.realtimeSinceStartupAsDouble);
+    }
+
+    /// <summary>
+    /// DSP-accurate hit evaluation using input timestamp from RhythmTimingSystem.
+    /// </summary>
+    void EvaluateHitWithTimestamp(int lane, Vector2 screenPos, double inputTime)
     {
         if (lane < 0 || lane >= zones.Length) return;
         var zone = zones[lane];
         if (zone == null || zone.insideNotes.Count == 0) return;
+
+        // Convert input timestamp to DSP time for accurate comparison
+        double inputDspTime;
+        if (RhythmTimingSystem.Instance != null && RhythmTimingSystem.Instance.IsSongPlaying)
+        {
+            // Use RhythmTimingSystem for accurate DSP conversion
+            double rtNow = Time.realtimeSinceStartupAsDouble;
+            double dspNow = AudioSettings.dspTime;
+            double timeSinceInput = rtNow - inputTime;
+            inputDspTime = dspNow - timeSinceInput;
+        }
+        else
+        {
+            // Fallback to current DSP time
+            inputDspTime = AudioSettings.dspTime;
+        }
 
         GameObject bestCandidate = null;
         double bestTimeDiff = double.MaxValue;
@@ -320,7 +346,8 @@ public class HitZoneManager : MonoBehaviour
             var noteWrapper = noteObj.GetComponent<NoteWrapper>();
             if (noteWrapper == null) continue;
 
-            double timeDiff = System.Math.Abs(AudioSettings.dspTime - noteWrapper.dspHitTime);
+            // Use input DSP time instead of current DSP time
+            double timeDiff = System.Math.Abs(inputDspTime - noteWrapper.dspHitTime);
             if (timeDiff < bestTimeDiff)
             {
                 bestTimeDiff = timeDiff;
@@ -352,6 +379,12 @@ public class HitZoneManager : MonoBehaviour
         }
 
         ProcessSuccessfulHit(zone, bestCandidate, bestWrapper.gameNoteInfo, accuracy, screenPos);
+    }
+
+    // Legacy evaluation method for backward compatibility
+    void EvaluateHit(int lane, Vector2 screenPos)
+    {
+        EvaluateHitWithTimestamp(lane, screenPos, Time.realtimeSinceStartupAsDouble);
     }
 
     void ProcessSuccessfulHit(HitZoneTrigger zone, GameObject noteObj, GameNoteInfo noteInfo, HitAccuracy acc, Vector2 screenPos)

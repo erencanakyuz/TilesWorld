@@ -220,7 +220,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1c179073914f08542bd953922a4c75d7, type: 3}
   m_Name: 
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
 --- !u!4 &712101163
 Transform:
   m_ObjectHideFlags: 0
@@ -246,6 +246,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1838718566}
   - component: {fileID: 1838718565}
+  - component: {fileID: 1838718567}
   m_Layer: 0
   m_Name: InputManager
   m_TagString: Untagged
@@ -265,9 +266,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 59b632e8446812e49ae3485ca6962494, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  touchSensitivity: 1
-  holdTimeThreshold: 0.05
   laneCount: 6
+  hitZoneY: 0.45
+  holdTimeThreshold: 0.05
+  holdTickInterval: 0.05
+  deadzoneMm: 2
+  fallbackDpi: 300
+  measureLatency: 0
+  logTouchEvents: 1
 --- !u!4 &1838718566
 Transform:
   m_ObjectHideFlags: 0
@@ -283,6 +289,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1838718567
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1838718564}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d1e096b5579959458c9a5b910f11c2e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RhythmTimingSystem
+  userOffsetSeconds: 0
+  logTimingInfo: 1
 --- !u!1 &1918465023
 GameObject:
   m_ObjectHideFlags: 0
@@ -359,6 +379,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mainMixer: {fileID: 0}
   audioSourcePoolSize: 20
+  mobileMinAudioSources: 128
+  poolGrowSize: 16
+  maxAudioSources: 256
+  allowVoiceStealing: 1
+  allowPoolGrowth: 0
+  notePriority: 64
+  musicPriority: 128
   instruments:
   - instrumentType: 0
     noteClips:
@@ -510,18 +537,10 @@ MonoBehaviour:
   enableNoteFadeOut: 1
   noteFadeDuration: 1
   showDebugLogs: 1
+  showMissingClipWarnings: 1
   enableLatencyMonitoring: 1
   averageLatency: 0
-  enableMachineGunPrevention: 1
-  minNoteIntervalMs: 50
-  velocityPriorityThreshold: 0.7
-  enableVolumeRamping: 1
-  enableNoteCollisionDetection: 1
-  allowVelocityOverride: 1
-  enableVoiceStealing: 1
-  maxPolyphony: 128
-  voiceStealingVolumeThreshold: 0.3
-  prioritizeRecentNotes: 1
+  skipPlayIfClipNotLoaded: 1
 --- !u!4 &2079580564
 Transform:
   m_ObjectHideFlags: 0
