@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.EventSystems;
 
 public class Bootstrap : MonoBehaviour
 {
@@ -72,8 +71,7 @@ public class Bootstrap : MonoBehaviour
         // 5. UI Yöneticisi (Genellikle diğer yöneticilere bağlıdır)
         InitializeUIManager();
 
-        // 6. EventSystem - DISABLED: MainScene already has one, don't create duplicate
-        // InitializeEventSystem();
+        // 6. EventSystem - MainScene has one, no code creation needed
 
         // 7. Ana Oyun Yöneticisi (TÜM diğer sistemlerden sonra!)
         InitializeGameManager();
@@ -157,32 +155,6 @@ public class Bootstrap : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// EventSystem olustur (UI tiklamalari icin CRITICAL!)
-    /// </summary>
-    void InitializeEventSystem()
-    {
-        // FIX: Use FindAnyObjectByType for reliable check - EventSystem.current can be unreliable
-        var existingEventSystem = FindAnyObjectByType<EventSystem>();
-        if (existingEventSystem == null)
-        {
-            GameObject eventSystemObject = new GameObject("EventSystem");
-            eventSystemObject.AddComponent<EventSystem>();
-#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-            // New Input System – required for mobile UI interaction
-            eventSystemObject.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
-#else
-            // Legacy Input Module (mouse/keyboard)
-            eventSystemObject.AddComponent<StandaloneInputModule>();
-#endif
-
-            Debug.Log("EventSystem singleton created during bootstrap");
-        }
-        else
-        {
-            Debug.Log("EventSystem already exists, skipping initialization");
-        }
-    }
 
     /// <summary>
     /// DOTweenEnhancementManager singleton'unu başlatır (EN BAŞTA OLMALI!)

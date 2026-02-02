@@ -65,8 +65,6 @@ public class SongPlaybackTester : MonoBehaviour
     [SerializeField] private bool disableAutoHitAudio = false;     // ENABLED for Android test
     [SerializeField] private bool disableAutoHitParticles = false;  // ENABLED for Android test
     [SerializeField] private bool disableAutoHitIMS = false;        // ENABLED for Android test
-    [Tooltip("Auto-play: HitZoneTrigger yerine aktif noteleri global listeden tarar.")]
-    [SerializeField] private bool useGlobalNoteListForAutoHit = true;
     [Header("ğŸ§ª Inspector Test Controls")]
     [Tooltip("Test case'leri aktif olsun mu?")]
     [SerializeField] private bool enableTestCases = true;
@@ -855,49 +853,6 @@ void SetupAutoPlayUI()
                 StopCoroutine(autoPlayCoroutine);
                 autoPlayCoroutine = null;
             }
-        }
-    }
-
-    private IEnumerator AutoStartGameplayRoutine()
-    {
-        Debug.Log("AutoStart: coroutine started.");
-        float delayEnd = Time.realtimeSinceStartup + autoStartDelay;
-        while (Time.realtimeSinceStartup < delayEnd)
-        {
-            yield return null;
-        }
-        Debug.Log("AutoStart: delay complete.");
-
-        GameplayManager gameplayManager = null;
-        float waitStart = Time.realtimeSinceStartup;
-        const float maxWaitSeconds = 5f;
-        while (Time.realtimeSinceStartup - waitStart < maxWaitSeconds)
-        {
-            if (songDatabase == null) songDatabase = SongDatabase.Instance;
-            if (gameplayManager == null) gameplayManager = FindFirstObjectByType<GameplayManager>();
-            if (songDatabase != null && gameplayManager != null) break;
-            yield return null;
-        }
-
-        if (songDatabase == null || gameplayManager == null)
-        {
-            Debug.LogWarning("AutoStart failed: SongDatabase or GameplayManager not found.");
-            yield break;
-        }
-
-        var song = songDatabase.GetSongByTitle(autoStartSongTitle);
-        if (song == null)
-        {
-            Debug.LogWarning($"AutoStart failed: Song '{autoStartSongTitle}' not found in database.");
-            yield break;
-        }
-
-        Debug.Log($"AutoStart: Starting gameplay for \"{autoStartSongTitle}\".");
-        gameplayManager.StartGameplay(song.musicId);
-
-        if (autoEnablePerfectAutoPlay)
-        {
-            SetPerfectAutoPlay(true);
         }
     }
 

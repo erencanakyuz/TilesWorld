@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Audio;
 using System.Collections.Generic;
 
@@ -31,16 +31,14 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private bool enableNoteFadeOut = false; // Disabled for natural piano sound and better performance
     [SerializeField] private float noteFadeDuration = 0.0f; // Disabled - let notes play naturally
 
-    [Header("ğŸ”§ Debugging")]
+    [Header("Debugging")]
     [SerializeField] private bool showDebugLogs = true;
+    [SerializeField] private bool showMissingClipWarnings = true;
 
-    [Header("ğŸ“Š Performance Monitoring")]
+    [Header("Performance Monitoring")]
     [SerializeField] private bool enableLatencyMonitoring = true;
     [SerializeField] private float averageLatency = 0f;
-    [Header("Audio Prewarm")]
-    [SerializeField] private bool enablePrewarm = true;
-    [SerializeField] private int prewarmClipsPerFrame = 6;
-    [SerializeField] private int maxPrewarmWaitFrames = 300;
+
     [Header("Audio Load Safety")]
     [SerializeField] private bool skipPlayIfClipNotLoaded = true;
 
@@ -52,13 +50,17 @@ public class AudioManager : MonoBehaviour
     private Queue<AudioSource> audioSourcePool;
     private List<AudioSource> activeAudioSources;
     private List<FadingAudioSource> fadingAudioSources; // For managing fades in Update()
-    private HashSet<InstrumentType> prewarmedInstruments;
     private Dictionary<InstrumentType, InstrumentAudioData> instrumentLookup;
+    private HashSet<InstrumentType> prewarmedInstruments;
     private bool isPrewarming;
     private int droppedNotesNoClip;
     private int droppedNotesNotLoaded;
     private int droppedNotesNoVoice;
     private int stolenVoices;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    private readonly HashSet<int> missingClipWarnings = new HashSet<int>();
+    private readonly HashSet<int> notLoadedWarnings = new HashSet<int>();
+#endif
 
 
     // Current playing music
@@ -236,7 +238,9 @@ public class AudioManager : MonoBehaviour
             instrumentData.noteClips == null || instrumentData.noteClips.Length == 0)
         {
             if (showDebugLogs) Debug.LogWarning($"AudioManager: Instrument '{instrument}' is not configured or has no audio clips. Aborting PlayNote.");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             droppedNotesNoClip++;
+#endif
             return;
         }
 
@@ -266,7 +270,9 @@ public class AudioManager : MonoBehaviour
         AudioSource audioSource = GetAvailableAudioSource(volume, finalPitch, instrument);
         if (audioSource == null)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             droppedNotesNoVoice++;
+#endif
             return;
         }
 
@@ -280,7 +286,9 @@ public class AudioManager : MonoBehaviour
             // Return the source to the pool if we abort early, since it won't be used
             activeAudioSources.Remove(audioSource);
             audioSourcePool.Enqueue(audioSource);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             droppedNotesNoClip++;
+#endif
             return;
         }
 
@@ -293,7 +301,9 @@ public class AudioManager : MonoBehaviour
             }
             activeAudioSources.Remove(audioSource);
             audioSourcePool.Enqueue(audioSource);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             droppedNotesNotLoaded++;
+#endif
             return;
         }
 
@@ -409,8 +419,6 @@ public class AudioManager : MonoBehaviour
 
     public async Awaitable PrewarmInstrumentClipsAsync(InstrumentType instrument)
     {
-        if (!enablePrewarm) return;
-
         if (prewarmedInstruments == null)
         {
             prewarmedInstruments = new HashSet<InstrumentType>();
@@ -444,6 +452,8 @@ public class AudioManager : MonoBehaviour
             }
 
             int counter = 0;
+            int clipsPerFrame = 6;
+            int maxWaitFrames = 300;
             for (int i = 0; i < instrumentData.noteClips.Length; i++)
             {
                 var clip = instrumentData.noteClips[i];
@@ -457,7 +467,7 @@ public class AudioManager : MonoBehaviour
                 if (clip.loadState == AudioDataLoadState.Loading)
                 {
                     int waitFrames = 0;
-                    while (clip.loadState == AudioDataLoadState.Loading && waitFrames < maxPrewarmWaitFrames)
+                    while (clip.loadState == AudioDataLoadState.Loading && waitFrames < maxWaitFrames)
                     {
                         waitFrames++;
                         await Awaitable.NextFrameAsync();
@@ -465,7 +475,7 @@ public class AudioManager : MonoBehaviour
                 }
 
                 counter++;
-                if (counter >= Mathf.Max(1, prewarmClipsPerFrame))
+                if (counter >= clipsPerFrame)
                 {
                     counter = 0;
                     await Awaitable.NextFrameAsync();
@@ -506,18 +516,27 @@ public class AudioManager : MonoBehaviour
     public int GetPooledSourceCount() => audioSourcePool != null ? audioSourcePool.Count : 0;
     public void GetDropStats(out int noClip, out int notLoaded, out int noVoice, out int stolen)
     {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         noClip = droppedNotesNoClip;
         notLoaded = droppedNotesNotLoaded;
         noVoice = droppedNotesNoVoice;
         stolen = stolenVoices;
+#else
+        noClip = 0;
+        notLoaded = 0;
+        noVoice = 0;
+        stolen = 0;
+#endif
     }
 
     public void ResetDropStats()
     {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         droppedNotesNoClip = 0;
         droppedNotesNotLoaded = 0;
         droppedNotesNoVoice = 0;
         stolenVoices = 0;
+#endif
     }
 
     #endregion
@@ -619,7 +638,9 @@ public class AudioManager : MonoBehaviour
             var stolenSource = StealOldestActiveSource();
             if (stolenSource != null)
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 stolenVoices++;
+#endif
                 activeAudioSources.Add(stolenSource);
                 return stolenSource;
             }
@@ -727,7 +748,17 @@ public class AudioManager : MonoBehaviour
         // PERFORMANCE FIX: Don't call LoadAudioFromAssets during gameplay!
         // This was causing 1+ second freezes due to synchronous Resources.Load calls.
         // If the clip is not preloaded, the note will simply be silent.
-        return null;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (showMissingClipWarnings)
+        {
+            int warnKey = ((int)instrument << 16) ^ pitch;
+            if (missingClipWarnings.Add(warnKey))
+            {
+                Debug.LogWarning($"Audio clip not preloaded: {instrument} pitch {pitch}");
+            }
+        }
+#endif
+        return null;return null;
     }
 
     /// <summary>
