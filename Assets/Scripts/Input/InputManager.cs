@@ -21,6 +21,12 @@ public class InputManager : MonoBehaviour
 
     [Header("Hold Note Settings")]
     [SerializeField] private float holdTimeThreshold = 0.1f;
+    [Tooltip("Minimum time between OnLaneHeld ticks (seconds).")]
+    [SerializeField] private float holdTickInterval = 0.05f;
+
+    [Header("Swipe / Lane Change")]
+    [Tooltip("Minimum horizontal movement in pixels to register a lane change.")]
+    [SerializeField] private float swipeDeadzonePixels = 16f;
 
     [Header("Debug")]
     [SerializeField] private bool measureLatency = false;
@@ -34,12 +40,16 @@ public class InputManager : MonoBehaviour
 
     // Touch tracking - maps fingerId to lane
     private Dictionary<int, int> fingerToLane = new Dictionary<int, int>();
+    private Dictionary<int, Vector2> fingerLastLaneChangePos = new Dictionary<int, Vector2>();
+    private Dictionary<int, float> fingerLastHoldDispatchTime = new Dictionary<int, float>();
     private HashSet<int> activeLanes = new HashSet<int>();
 
     // Mouse tracking (simulates touch)
     private const int MOUSE_FINGER_ID = -999;
     private bool isMouseDown = false;
     private int lastMouseLane = -1;
+    private float mouseHoldStartTime = 0f;
+    private float lastMouseHoldDispatchTime = 0f;
 
     // Camera for screen-to-world conversion
     private Camera mainCamera;
@@ -99,6 +109,8 @@ public class InputManager : MonoBehaviour
             Instance = null;
         }
         fingerToLane?.Clear();
+        fingerLastLaneChangePos?.Clear();
+        fingerLastHoldDispatchTime?.Clear();
         activeLanes?.Clear();
     }
 
@@ -111,11 +123,10 @@ public class InputManager : MonoBehaviour
             if (mainCamera == null) return;
         }
 
-        // Process all input sources
+        // Process all input sources in one pass
         ProcessEnhancedTouches();
         ProcessKeyboardInput();
         ProcessMouseInput();
-        ProcessHoldNotes();
     }
 
     #endregion
@@ -157,10 +168,11 @@ public class InputManager : MonoBehaviour
 
                 case TouchPhase.Moved:
                     OnFingerMoved(fingerId, screenPos, lane);
+                    TryDispatchHold(fingerId, touch.time, touch.startTime);
                     break;
 
                 case TouchPhase.Stationary:
-                    // Hold is processed separately in ProcessHoldNotes
+                    TryDispatchHold(fingerId, touch.time, touch.startTime);
                     break;
 
                 case TouchPhase.Ended:
@@ -187,6 +199,7 @@ public class InputManager : MonoBehaviour
 
         // Track this finger's lane
         fingerToLane[fingerId] = lane;
+        fingerLastLaneChangePos[fingerId] = screenPos;
         activeLanes.Add(lane);
 
         // ALWAYS fire tap event - this is critical for rhythm games
@@ -226,6 +239,14 @@ public class InputManager : MonoBehaviour
         // If lane changed, trigger all lanes between old and new
         if (currentLane != previousLane)
         {
+            if (fingerLastLaneChangePos.TryGetValue(fingerId, out Vector2 lastChangePos))
+            {
+                if (Mathf.Abs(screenPos.x - lastChangePos.x) < swipeDeadzonePixels)
+                {
+                    return;
+                }
+            }
+
             int step = (currentLane > previousLane) ? 1 : -1;
             
             // Fire OnLaneTapped for each lane we swipe through
@@ -245,6 +266,39 @@ public class InputManager : MonoBehaviour
             // Update finger's current lane
             fingerToLane[fingerId] = currentLane;
             activeLanes.Add(currentLane);
+            fingerLastLaneChangePos[fingerId] = screenPos;
+
+            if (!IsLaneStillActive(previousLane, fingerId))
+            {
+                activeLanes.Remove(previousLane);
+                OnLaneReleased?.Invoke(previousLane);
+            }
+        }
+    }
+
+    bool IsLaneStillActive(int lane, int exceptFingerId)
+    {
+        foreach (var kvp in fingerToLane)
+        {
+            if (kvp.Key == exceptFingerId) continue;
+            if (kvp.Value == lane) return true;
+        }
+        return false;
+    }
+
+    void TryDispatchHold(int fingerId, double touchTime, double touchStartTime)
+    {
+        if (!fingerToLane.TryGetValue(fingerId, out int heldLane)) return;
+
+        float holdTime = (float)(touchTime - touchStartTime);
+        if (holdTime <= holdTimeThreshold) return;
+
+        float now = Time.unscaledTime;
+        if (!fingerLastHoldDispatchTime.TryGetValue(fingerId, out float lastDispatch) ||
+            (now - lastDispatch) >= holdTickInterval)
+        {
+            fingerLastHoldDispatchTime[fingerId] = now;
+            OnLaneHeld?.Invoke(heldLane, holdTime);
         }
     }
 
@@ -256,6 +310,8 @@ public class InputManager : MonoBehaviour
         if (fingerToLane.TryGetValue(fingerId, out int trackedLane))
         {
             fingerToLane.Remove(fingerId);
+            fingerLastLaneChangePos.Remove(fingerId);
+            fingerLastHoldDispatchTime.Remove(fingerId);
             
             // Check if any other finger is still on this lane
             bool laneStillActive = false;
@@ -283,39 +339,7 @@ public class InputManager : MonoBehaviour
 
     #endregion
 
-    #region Hold Note Processing
 
-    void ProcessHoldNotes()
-    {
-        foreach (var kvp in fingerToLane)
-        {
-            int fingerId = kvp.Key;
-            int lane = kvp.Value;
-
-            // Find the touch to get hold duration
-            foreach (var touch in Touch.activeTouches)
-            {
-                if (touch.finger.index == fingerId)
-                {
-                    float holdTime = (float)(touch.time - touch.startTime);
-                    if (holdTime > holdTimeThreshold)
-                    {
-                        OnLaneHeld?.Invoke(lane, holdTime);
-                    }
-                    break;
-                }
-            }
-        }
-
-        // Also check mouse hold
-        if (isMouseDown && lastMouseLane >= 0)
-        {
-            // Mouse hold time would need separate tracking - simplified for now
-            OnLaneHeld?.Invoke(lastMouseLane, Time.deltaTime);
-        }
-    }
-
-    #endregion
 
     #region Mouse Input (PC Testing)
 
@@ -335,12 +359,15 @@ public class InputManager : MonoBehaviour
         {
             isMouseDown = true;
             lastMouseLane = lane;
+            mouseHoldStartTime = Time.unscaledTime;
+            lastMouseHoldDispatchTime = 0f;
             OnFingerDown(MOUSE_FINGER_ID, mousePos, lane);
         }
         // Mouse held and moved - same as finger moved
         else if (mouse.leftButton.isPressed && isMouseDown)
         {
             OnFingerMoved(MOUSE_FINGER_ID, mousePos, lane);
+            HandleMouseHold();
         }
         // Mouse up - same as finger up
         else if (mouse.leftButton.wasReleasedThisFrame)
@@ -352,6 +379,20 @@ public class InputManager : MonoBehaviour
     }
 
     #endregion
+
+    void HandleMouseHold()
+    {
+        if (!isMouseDown || lastMouseLane < 0) return;
+
+        float holdTime = Time.unscaledTime - mouseHoldStartTime;
+        if (holdTime < holdTimeThreshold) return;
+
+        if (Time.unscaledTime - lastMouseHoldDispatchTime >= holdTickInterval)
+        {
+            lastMouseHoldDispatchTime = Time.unscaledTime;
+            OnLaneHeld?.Invoke(lastMouseLane, holdTime);
+        }
+    }
 
     #region Keyboard Input
 
@@ -483,16 +524,4 @@ public class InputManager : MonoBehaviour
     }
 
     #endregion
-}
-
-[System.Serializable]
-public class TouchData
-{
-    public int touchId;
-    public Vector2 startPosition;
-    public Vector2 currentPosition;
-    public float startTime;
-    public float inputTime;
-    public int lane;
-    public bool isActive;
 }
