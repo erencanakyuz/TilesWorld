@@ -56,7 +56,15 @@ public class MobileFinder : MonoBehaviour
             cachedUIElements.TryGetValue("settings_button", out var cachedSettings);
             PauseButton = cachedPause as Button;
             SettingsButton = cachedSettings as Button;
-            return;
+            // If cached references are missing or destroyed, re-scan the scene.
+            if (PauseButton != null && SettingsButton != null)
+            {
+                return;
+            }
+
+            cachedUIElements.Remove("buttons_searched");
+            cachedUIElements.Remove("pause_button");
+            cachedUIElements.Remove("settings_button");
         }
 
         var allButtons = new List<Button>();
@@ -64,7 +72,7 @@ public class MobileFinder : MonoBehaviour
         {
             if (canvas != null)
             {
-                allButtons.AddRange(canvas.GetComponentsInChildren<Button>());
+                allButtons.AddRange(canvas.GetComponentsInChildren<Button>(true));
             }
         }
 
@@ -100,7 +108,7 @@ public class MobileFinder : MonoBehaviour
             {
                 if (canvas == null) continue;
 
-                Transform[] canvasChildren = canvas.GetComponentsInChildren<Transform>();
+                Transform[] canvasChildren = canvas.GetComponentsInChildren<Transform>(true);
                 var found = System.Array.Find(canvasChildren, t =>
                     t.name.ToLower().Contains("mobile") && t.name.ToLower().Contains("control"));
 

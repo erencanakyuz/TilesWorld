@@ -298,6 +298,11 @@ public class AudioManager : MonoBehaviour
         PlayerPrefs.SetFloat("MasterVolume", masterVolume);
     }
 
+    public float GetMasterVolume()
+    {
+        return masterVolume;
+    }
+
     public void SetMusicVolume(float volume)
     {
         musicVolume = Mathf.Clamp01(volume);

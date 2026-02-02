@@ -11,6 +11,8 @@ public class CountdownController : MonoBehaviour
     private Canvas mainCanvas;
     private GameObject countdownUI;
     private TextMeshProUGUI countdownText;
+    private TextMeshProUGUI readyText;
+    private bool usingExistingTexts = false;
 
     public void Initialize(Canvas hudCanvas, Canvas mainCanvas)
     {
@@ -31,12 +33,23 @@ public class CountdownController : MonoBehaviour
                 countdownText.text = number.ToString();
                 countdownText.color = config != null ? config.textPrimaryColor : Color.white;
                 countdownText.fontSize = 120;
+
+                if (readyText != null)
+                {
+                    readyText.text = "Get Ready";
+                    readyText.gameObject.SetActive(true);
+                }
             }
             else
             {
                 countdownText.text = "GO!";
                 countdownText.color = config != null ? config.successColor : Color.green;
                 countdownText.fontSize = 100;
+
+                if (readyText != null)
+                {
+                    readyText.gameObject.SetActive(false);
+                }
                 
                 // CRITICAL FIX: Auto-hide after showing GO! for robustness
                 _ = AutoHideAfterDelayAsync(1f);
@@ -45,7 +58,11 @@ public class CountdownController : MonoBehaviour
             _ = CountdownPulseEffectAsync();
         }
 
-        if (countdownUI != null)
+        if (usingExistingTexts)
+        {
+            countdownText.gameObject.SetActive(true);
+        }
+        else if (countdownUI != null)
         {
             countdownUI.SetActive(true);
         }
@@ -53,6 +70,13 @@ public class CountdownController : MonoBehaviour
 
     public void HideCountdown()
     {
+        if (usingExistingTexts)
+        {
+            if (countdownText != null) countdownText.gameObject.SetActive(false);
+            if (readyText != null) readyText.gameObject.SetActive(false);
+            return;
+        }
+
         if (countdownUI != null)
         {
             countdownUI.SetActive(false);
@@ -68,6 +92,14 @@ public class CountdownController : MonoBehaviour
     private void CreateCountdownUIIfNeeded()
     {
         if (countdownUI != null) return;
+
+        if (TryBindExistingCountdownTexts())
+        {
+            usingExistingTexts = true;
+            if (countdownText != null) countdownText.gameObject.SetActive(false);
+            if (readyText != null) readyText.gameObject.SetActive(false);
+            return;
+        }
 
         Transform parentCanvas = hudCanvas != null ? hudCanvas.transform : mainCanvas?.transform;
         if (parentCanvas == null) return;
@@ -103,6 +135,50 @@ public class CountdownController : MonoBehaviour
         textRect.offsetMax = Vector2.zero;
 
         countdownUI.SetActive(false);
+    }
+
+    private bool TryBindExistingCountdownTexts()
+    {
+        TextMeshProUGUI foundCountdown = null;
+        TextMeshProUGUI foundReady = null;
+
+        Canvas[] canvases = new[] { hudCanvas, mainCanvas };
+        foreach (var canvas in canvases)
+        {
+            if (canvas == null) continue;
+            var texts = canvas.GetComponentsInChildren<TextMeshProUGUI>(true);
+            foreach (var text in texts)
+            {
+                if (text == null) continue;
+                if (foundCountdown == null && text.name == "CountdownText")
+                {
+                    foundCountdown = text;
+                }
+                else if (foundReady == null && text.name == "ReadyText")
+                {
+                    foundReady = text;
+                }
+
+                if (foundCountdown != null && foundReady != null)
+                {
+                    break;
+                }
+            }
+
+            if (foundCountdown != null && foundReady != null)
+            {
+                break;
+            }
+        }
+
+        if (foundCountdown != null)
+        {
+            countdownText = foundCountdown;
+            readyText = foundReady;
+            return true;
+        }
+
+        return false;
     }
 
     private async Awaitable CountdownPulseEffectAsync()

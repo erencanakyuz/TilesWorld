@@ -70,6 +70,7 @@ public class GameManager : MonoBehaviour
     // Game State Management
     public GameState CurrentGameState { get; private set; } = GameState.MainMenu;
     public bool IsGamePaused { get; private set; } = false;
+    private GameState previousStateBeforeSettings = GameState.MainMenu;
 
     public float perfectTimingWindow = 50f; // ms
     public float goodTimingWindow = 100f;   // ms
@@ -307,8 +308,7 @@ public class GameManager : MonoBehaviour
 
     void HandleSettingsButtonPressed()
     {
-        // TODO: Settings panel functionality will be added later
-        // For now, just open a simple settings overlay
+        OpenSettings();
     }
 
     void HandleResumeButtonPressed()
@@ -467,6 +467,41 @@ public class GameManager : MonoBehaviour
     {
         // Reload the current scene to restart the game
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    public void OpenSettings()
+    {
+        if (CurrentGameState == GameState.Settings) return;
+
+        if (CurrentGameState == GameState.Playing)
+        {
+            previousStateBeforeSettings = GameState.Paused;
+            PauseGame();
+        }
+        else
+        {
+            previousStateBeforeSettings = CurrentGameState;
+        }
+
+        ChangeGameState(GameState.Settings);
+    }
+
+    public void CloseSettings()
+    {
+        if (CurrentGameState != GameState.Settings) return;
+
+        switch (previousStateBeforeSettings)
+        {
+            case GameState.Paused:
+                IsGamePaused = true;
+                Time.timeScale = 0f;
+                break;
+            default:
+                Time.timeScale = 1f;
+                break;
+        }
+
+        ChangeGameState(previousStateBeforeSettings);
     }
 }
 

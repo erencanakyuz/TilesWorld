@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 
 public class UIManager : MonoBehaviour
 {
@@ -91,6 +93,8 @@ public class UIManager : MonoBehaviour
 
     void ProcessScene(Scene scene)
     {
+        EnsureEventSystem();
+
         if (canvasLocator != null)
         {
             canvasLocator.Initialize(config);
@@ -138,14 +142,48 @@ public class UIManager : MonoBehaviour
             if (mobileFinder.PauseButton != null)
             {
                 mobileFinder.PauseButton.onClick.RemoveAllListeners();
-                mobileFinder.PauseButton.onClick.AddListener(() => OnPausePressed?.Invoke());
+                mobileFinder.PauseButton.onClick.AddListener(() => 
+                {
+                    // Try event first, fallback to direct call
+                    if (OnPausePressed != null)
+                    {
+                        OnPausePressed.Invoke();
+                    }
+                    else if (GameManager.Instance != null)
+                    {
+                        Debug.Log("[UIManager] Pause button - fallback to direct GameManager call");
+                        GameManager.Instance.ChangeGameState(GameState.Paused);
+                    }
+                });
             }
             if (mobileFinder.SettingsButton != null)
             {
                 mobileFinder.SettingsButton.onClick.RemoveAllListeners();
-                mobileFinder.SettingsButton.onClick.AddListener(() => OnSettingsPressed?.Invoke());
+                mobileFinder.SettingsButton.onClick.AddListener(() => 
+                {
+                    // Try event first, fallback to direct call
+                    if (OnSettingsPressed != null)
+                    {
+                        OnSettingsPressed.Invoke();
+                    }
+                    else if (GameManager.Instance != null)
+                    {
+                        Debug.Log("[UIManager] Settings button - fallback to direct GameManager call");
+                        GameManager.Instance.ChangeGameState(GameState.Settings);
+                    }
+                });
             }
         }
+    }
+
+    void EnsureEventSystem()
+    {
+        var existing = FindFirstObjectByType<EventSystem>(FindObjectsInactive.Include);
+        if (existing != null) return;
+
+        GameObject eventSystemGO = new GameObject("EventSystem");
+        eventSystemGO.AddComponent<EventSystem>();
+        eventSystemGO.AddComponent<InputSystemUIInputModule>();
     }
 
     void HandleGameStateChange(GameState newState)

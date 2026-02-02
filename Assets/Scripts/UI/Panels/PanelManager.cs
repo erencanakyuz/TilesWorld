@@ -44,7 +44,8 @@ public class PanelManager : MonoBehaviour
             { GameState.SongSelection, config != null ? config.songSelectionPanelPrefab : null },
             { GameState.Playing, config != null ? config.gameplayPanelPrefab : null },
             { GameState.Paused, config != null ? config.pausePanelPrefab : null },
-            { GameState.GameOver, config != null ? config.gameOverPanelPrefab : null }
+            { GameState.GameOver, config != null ? config.gameOverPanelPrefab : null },
+            { GameState.Settings, config != null ? config.settingsPanelPrefab : null }
         };
     }
 
@@ -75,7 +76,7 @@ public void ShowPanelForState(GameState state)
                 {
                     PanelButtonWirer.WireMainMenuPanel(currentPanelInstance, 
                         () => GameManager.Instance?.ChangeGameState(GameState.SongSelection),
-                        () => Debug.Log("[PanelManager] Settings panel not implemented yet"),
+                        () => GameManager.Instance?.OpenSettings(),
                         () => Application.Quit());
                 }
                 break;
@@ -83,6 +84,18 @@ public void ShowPanelForState(GameState state)
                 if (currentPanelInstance != null)
                 {
                     PanelButtonWirer.WirePausePanel(currentPanelInstance, OnResumePressed, OnRestartPressed, OnMainMenuPressed);
+                }
+                break;
+            case GameState.Settings:
+                EnsureGraphicRaycaster(parentCanvas);
+                if (currentPanelInstance != null)
+                {
+                    var controller = currentPanelInstance.GetComponent<SettingsPanelController>();
+                    if (controller == null)
+                    {
+                        controller = currentPanelInstance.AddComponent<SettingsPanelController>();
+                    }
+                    controller.Initialize(GameManager.Instance, AudioManager.Instance, InputManager.Instance);
                 }
                 break;
             case GameState.GameOver:
@@ -111,6 +124,7 @@ public void ShowPanelForState(GameState state)
         switch (state)
         {
             case GameState.Paused:
+            case GameState.Settings:
                 return canvasLocator?.OverlayCanvas != null ? canvasLocator.OverlayCanvas.transform : canvasLocator?.MainCanvas?.transform;
             case GameState.MainMenu:
             case GameState.SongSelection:

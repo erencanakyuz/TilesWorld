@@ -539,19 +539,23 @@ void SetupAutoPlayUI()
     IEnumerator PerfectAutoPlayLoop()
     {
         Debug.Log("🎯 Perfect Auto-Play başlatıldı!");
+        
+        // OPTIMIZATION: Cache list to avoid GC allocations every frame
+        var notesToHit = new System.Collections.Generic.List<(int lane, GameObject noteObj, NoteWrapper wrapper)>(32);
+        
+        // Cache perfect window value
+        float perfectWindow = hitZoneManager != null ? hitZoneManager.perfectWindowMs * 1.5f : 120f;
 
         while (isPerfectAutoPlayEnabled)
         {
-            // Tüm hit zone'ları kontrol et
+            notesToHit.Clear();
+            double currentTime = AudioSettings.dspTime;
+            
+            // Collect all notes to hit (without modifying during iteration)
             for (int laneIndex = 0; laneIndex < hitZones.Length; laneIndex++)
             {
                 var hitZone = hitZones[laneIndex];
                 if (hitZone == null || hitZone.insideNotes.Count == 0) continue;
-
-                // Bu lane'deki en yakın notayı bul
-                GameObject closestNote = null;
-                NoteWrapper closestWrapper = null;
-                double smallestTimeDiff = double.MaxValue;
 
                 foreach (var noteObj in hitZone.insideNotes)
                 {
@@ -559,39 +563,26 @@ void SetupAutoPlayUI()
                     var noteWrapper = noteObj.GetComponent<NoteWrapper>();
                     if (noteWrapper == null) continue;
 
-                    double timeDiff = System.Math.Abs(AudioSettings.dspTime - noteWrapper.dspHitTime);
-
-                    if (timeDiff < smallestTimeDiff)
-                    {
-                        smallestTimeDiff = timeDiff;
-                        closestNote = noteObj;
-                        closestWrapper = noteWrapper;
-                    }
-                }
-
-                // ENHANCED: Tüm perfect timing'deki notaları çal (sadece en yakını değil)
-                double currentTime = AudioSettings.dspTime;
-                float perfectWindow = hitZoneManager != null ? hitZoneManager.perfectWindowMs * 1.5f : 120f; // Biraz daha geniş window
-                
-                foreach (var noteObj in hitZone.insideNotes.ToList()) // ToList() to avoid modification during iteration
-                {
-                    if (noteObj == null) continue;
-                    var noteWrapper = noteObj.GetComponent<NoteWrapper>();
-                    if (noteWrapper == null) continue;
-
                     double timeDiffMs = System.Math.Abs(currentTime - noteWrapper.dspHitTime) * 1000.0;
 
-                    // Perfect timing window içindeyse otomatik çal
                     if (timeDiffMs <= perfectWindow)
                     {
-                        // Perfect hit simülasyonu
-                        Debug.Log($"🎯 AUTO-PLAY: Found perfect note in lane {laneIndex}, pitch {noteWrapper.gameNoteInfo?.pitch}, timeDiff: {timeDiffMs:F1}ms");
-                        AutoHitNote(laneIndex, noteObj, noteWrapper);
+                        notesToHit.Add((laneIndex, noteObj, noteWrapper));
                     }
                 }
             }
+            
+            // Now hit all collected notes
+            foreach (var (lane, noteObj, wrapper) in notesToHit)
+            {
+                if (noteObj != null && wrapper != null)
+                {
+                    AutoHitNote(lane, noteObj, wrapper);
+                }
+            }
 
-            yield return new WaitForSeconds(0.01f); // 10ms'de bir kontrol et (yüksek hassasiyet)
+            // OPTIMIZATION: Increased poll interval from 10ms to 20ms - still plenty accurate for gameplay
+            yield return new WaitForSeconds(0.02f);
         }
 
         Debug.Log("🎯 Perfect Auto-Play durduruldu!");
@@ -635,7 +626,7 @@ void SetupAutoPlayUI()
         // Score güncelle
         GameManager.Instance?.UpdateScore(300); // Perfect hit = 300 puan
 
-        Debug.Log($"🎯 AUTO-HIT: Lane {laneIndex} - Perfect hit! dspTime: {AudioSettings.dspTime:F3}");
+        // Debug.Log($"AUTO-HIT: Lane {laneIndex} - Perfect hit! dspTime: {AudioSettings.dspTime:F3}");
     }
 
     void SpawnAutoPerfectEffect(Vector3 position)
@@ -647,7 +638,7 @@ void SetupAutoPlayUI()
             if (perfectEffectPrefab != null)
             {
                 GameObject effect = Instantiate(perfectEffectPrefab, position, Quaternion.identity);
-                Debug.Log($"✨ Auto-play perfect particle spawned at {position}");
+                // Debug.Log($"Auto-play perfect particle spawned at {position}");
             }
             else
             {

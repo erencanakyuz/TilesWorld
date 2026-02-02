@@ -102,7 +102,7 @@
             "artist": "Brahms",
             "tempo": 140,
             "difficulty": 2,
-            "songKey": "hungarian_danse_no._5_brahms"
+            "songKey": "hungarian_danse_no_5_brahms"
         },
         {
             "musicId": 14,
@@ -150,7 +150,7 @@
             "artist": "Erik Satie",
             "tempo": 88,
             "difficulty": 0,
-            "songKey": "gymnopedie_no._1_erik_satie"
+            "songKey": "gymnopedie_no_1_erik_satie"
         },
         {
             "musicId": 20,
@@ -174,7 +174,7 @@
             "artist": "Beethoven",
             "tempo": 176,
             "difficulty": 4,
-            "songKey": "moonlight_sonata_op._27,_no._2._beethoven"
+            "songKey": "moonlight_sonata_op_27_no_2_beethoven"
         }
     ]
 }
