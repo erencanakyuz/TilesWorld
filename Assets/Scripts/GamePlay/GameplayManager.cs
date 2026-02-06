@@ -235,6 +235,7 @@ public class GameplayManager : MonoBehaviour
         currentSong.audioFilePath = $"Audio/{songInfo.songKey}";
         currentSong.noteChartPath = $"Song_Note_Jsons/Individual/{songInfo.songKey}";
         currentSong.songKey = songInfo.songKey;
+        currentSong.difficulty = songInfo.difficulty;
 
         // Debug.Log($"ğŸ® Starting gameplay via SongDatabase: {currentSong.songName} by {currentSong.artist} (Tempo: {songInfo.tempo})");
         _ = StartGameplaySequenceAsync();
@@ -275,6 +276,7 @@ public class GameplayManager : MonoBehaviour
         currentSong.audioFilePath = songData.audioFilePath;
         currentSong.noteChartPath = songData.chartFilePath;
         currentSong.songKey = songData.songKey;
+        currentSong.difficulty = songData.difficulty;
 
         _ = StartGameplaySequenceAsync();
     }
@@ -601,15 +603,17 @@ public class GameplayManager : MonoBehaviour
         // Calculate final stats
         CalculateFinalStats();
 
-        // Update game state
-        if (GameManager.Instance != null)
+        // Feed stats through gamification pipeline
+        if (GameManager.Instance != null && lastFinalStats != null)
+        {
+            GameManager.Instance.EndGameSessionWithStats(lastFinalStats);
+        }
+        else if (GameManager.Instance != null)
         {
             GameManager.Instance.EndGameSession();
         }
 
         OnGameplayEnded?.Invoke();
-
-        //Debug.Log($"Game ended! Final score: Accuracy {accuracy:F1}%, Max combo: {maxCombo}");
     }
     #endregion
 
@@ -699,10 +703,63 @@ public class GameplayManager : MonoBehaviour
             missedNotes = missedNotes,
             maxCombo = maxCombo,
             accuracy = accuracy,
-            songName = currentSong != null ? currentSong.songName : "Unknown"
+            totalScore = GameManager.Instance?.GetCurrentSession()?.currentScore ?? 0,
+            songName = currentSong != null ? currentSong.songName : "Unknown",
+            songKey = currentSong != null ? currentSong.songKey : "",
+            artist = currentSong != null ? currentSong.artist : "",
+            difficulty = currentSong != null ? currentSong.difficulty : DifficultyLevel.Easy,
+            songDuration = currentSong != null ? currentSong.duration : 0f
         };
 
-        //Debug.Log($"ğŸ® Final Stats: {finalStats}");
+        lastFinalStats = finalStats;
+    }
+
+    // Cached final stats for gamification integration
+    private GameplayStats lastFinalStats;
+
+    /// <summary>
+    /// Returns the last calculated final stats (available after EndGameplay)
+    /// </summary>
+    public GameplayStats GetFinalStats() => lastFinalStats;
+
+    /// <summary>
+    /// Register a successful hit. Called by HitZoneManager when a note is hit.
+    /// </summary>
+    public void RegisterHit(HitAccuracy accuracy)
+    {
+        totalNotesHit++;
+
+        switch (accuracy)
+        {
+            case HitAccuracy.Perfect:
+                perfectHits++;
+                currentCombo++;
+                break;
+            case HitAccuracy.Good:
+                goodHits++;
+                currentCombo++;
+                break;
+            case HitAccuracy.Okay:
+                // Okay hits count as hits but don't increase combo
+                currentCombo++;
+                break;
+        }
+
+        if (currentCombo > maxCombo)
+            maxCombo = currentCombo;
+
+        UpdateStatsOnHit();
+    }
+
+    /// <summary>
+    /// Register a missed note. Called by NoteRenderer when a note passes without being hit.
+    /// </summary>
+    public void RegisterMiss()
+    {
+        missedNotes++;
+        currentCombo = 0;
+
+        UpdateStatsOnHit();
     }
 
     void ResetGameplayStats()

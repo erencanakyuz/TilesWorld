@@ -41,6 +41,13 @@ public class UIConfig : ScriptableObject
     public GameObject gameOverPanelPrefab;
     public GameObject settingsPanelPrefab;
 
+    [Header("Gamification Panel Prefabs")]
+    public GameObject worldTourPanelPrefab;
+    public GameObject artistBattlePanelPrefab;
+    public GameObject dailyChallengePanelPrefab;
+    public GameObject profilePanelPrefab;
+    public GameObject songResultPanelPrefab;
+
     [Header("Audio Feedback UI")]
     public GameObject perfectHitEffect;
     public GameObject goodHitEffect;

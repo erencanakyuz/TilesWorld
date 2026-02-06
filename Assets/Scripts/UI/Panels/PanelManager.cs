@@ -45,7 +45,12 @@ public class PanelManager : MonoBehaviour
             { GameState.Playing, config != null ? config.gameplayPanelPrefab : null },
             { GameState.Paused, config != null ? config.pausePanelPrefab : null },
             { GameState.GameOver, config != null ? config.gameOverPanelPrefab : null },
-            { GameState.Settings, config != null ? config.settingsPanelPrefab : null }
+            { GameState.Settings, config != null ? config.settingsPanelPrefab : null },
+            { GameState.WorldTour, config != null ? config.worldTourPanelPrefab : null },
+            { GameState.ArtistBattle, config != null ? config.artistBattlePanelPrefab : null },
+            { GameState.DailyChallenge, config != null ? config.dailyChallengePanelPrefab : null },
+            { GameState.Profile, config != null ? config.profilePanelPrefab : null },
+            { GameState.SongResult, config != null ? config.songResultPanelPrefab : null }
         };
     }
 

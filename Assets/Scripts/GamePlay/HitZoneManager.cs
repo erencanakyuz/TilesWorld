@@ -431,8 +431,8 @@ public class HitZoneManager : MonoBehaviour
         };
         GameManager.Instance?.UpdateScore(points);
         
-        // Update stats only when hit occurs (performance optimization)
-        gameplayManager?.UpdateStatsOnHit();
+        // 7. Register hit with GameplayManager for stats tracking
+        gameplayManager?.RegisterHit(acc);
     }
 
     private void SpawnParticleEffect(Vector3 position, HitAccuracy accuracy)

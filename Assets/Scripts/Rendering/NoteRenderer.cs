@@ -59,6 +59,7 @@ public class NoteRenderer : MonoBehaviour
     // Tempo synchronization
     private int currentTempo = 120;
     private float originalSpeedMultiplier;
+    private GameplayManager cachedGameplayManager;
 
     void Awake()
     {
@@ -70,6 +71,7 @@ public class NoteRenderer : MonoBehaviour
         SetupLanes();
         SetupCamera();
         CheckSceneLighting();
+        cachedGameplayManager = FindFirstObjectByType<GameplayManager>();
     }
 
     // DEĞİŞİKLİK: Update() metodu ve ilgili yardımcıları (UpdateActiveNotes, UpdateNoteTextures vs.) TAMAMEN SİLİNDİ.
@@ -300,13 +302,11 @@ public class NoteRenderer : MonoBehaviour
     // DEĞİŞİKLİK: Bu metodun adı daha anlamlı hale getirildi. Artık NoteAnimator tarafından çağrılıyor.
     public void ProcessMissedNote(GameNoteInfo noteInfo)
     {
-        // Kaçırılan notanın oyun mantığı üzerindeki etkileri burada işlenir.
-        // Örneğin: Kombo sıfırlama, can azaltma vs.
-        if (GameManager.Instance != null)
-        {
-            // Bu kısım gelecekte skorlama mantığına bağlanabilir. Şimdilik debug için loglayalım.
-            // GameManager.Instance.UpdateCombo(0);
-        }
+        // Register miss with GameplayManager for stats tracking
+        if (cachedGameplayManager == null)
+            cachedGameplayManager = FindFirstObjectByType<GameplayManager>();
+        cachedGameplayManager?.RegisterMiss();
+
         if (showDebugLogs)
         {
             // Debug.Log($"NOTE MISSED: Lane {noteInfo.line}, Pitch {noteInfo.pitch}");

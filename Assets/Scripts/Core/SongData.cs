@@ -30,4 +30,5 @@ public class GameplaySongData
     public string audioFilePath;
     public string chartFilePath;
     public string songKey; // CRITICAL: For JSON loading!
+    public DifficultyLevel difficulty; // For gamification reward calculation
 }

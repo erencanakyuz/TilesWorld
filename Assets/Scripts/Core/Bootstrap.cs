@@ -73,7 +73,10 @@ public class Bootstrap : MonoBehaviour
 
         // 6. EventSystem - MainScene has one, no code creation needed
 
-        // 7. Ana Oyun Yöneticisi (TÜM diğer sistemlerden sonra!)
+        // 7. Gamification Systems (UI'dan sonra, GameManager'dan önce)
+        InitializeGamificationManager();
+
+        // 8. Ana Oyun Yöneticisi (TÜM diğer sistemlerden sonra!)
         InitializeGameManager();
 
         Debug.Log("🚀 Core systems initialized during bootstrap in a controlled order.");
@@ -223,6 +226,29 @@ public class Bootstrap : MonoBehaviour
         else
         {
             Debug.Log("🎮 GameManager already exists, skipping initialization");
+        }
+    }
+
+    /// <summary>
+    /// GamificationManager ve tüm alt sistemlerini başlatır
+    /// </summary>
+    void InitializeGamificationManager()
+    {
+        if (GamificationManager.Instance == null)
+        {
+            GameObject gamificationObject = new GameObject("GamificationManager");
+            gamificationObject.AddComponent<GamificationManager>();
+
+            // Add UI components to the same object
+            gamificationObject.AddComponent<NotificationUI>();
+            gamificationObject.AddComponent<SongResultUI>();
+            gamificationObject.AddComponent<GamificationHUD>();
+
+            Debug.Log("🎮 GamificationManager singleton created during bootstrap");
+        }
+        else
+        {
+            Debug.Log("🎮 GamificationManager already exists, skipping initialization");
         }
     }
 

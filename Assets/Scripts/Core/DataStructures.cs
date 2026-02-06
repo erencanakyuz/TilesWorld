@@ -140,7 +140,12 @@ public enum GameState
     Playing,
     Paused,
     GameOver,
-    Settings
+    Settings,
+    WorldTour,
+    ArtistBattle,
+    DailyChallenge,
+    Profile,
+    SongResult
 }
 
 public enum ChordType
@@ -315,6 +320,10 @@ public class GameplayStats
     public float accuracy;
     public int totalScore;
     public string songName;       // Song name for this stats
+    public string songKey;        // Song key for progression tracking
+    public string artist;         // Artist name for daily challenges
+    public DifficultyLevel difficulty; // Difficulty for reward calculation
+    public float songDuration;    // Duration of the song
 
     public override string ToString()
     {

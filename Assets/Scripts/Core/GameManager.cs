@@ -149,6 +149,11 @@ public class GameManager : MonoBehaviour
             case GameState.Paused:
             case GameState.GameOver:
             case GameState.Settings:
+            case GameState.WorldTour:
+            case GameState.ArtistBattle:
+            case GameState.DailyChallenge:
+            case GameState.Profile:
+            case GameState.SongResult:
                 Application.targetFrameRate = 30;
                 break;
 
@@ -277,8 +282,32 @@ public class GameManager : MonoBehaviour
 
             UpdatePlayerDataInMemory();
             ChangeGameState(GameState.GameOver);
-
         }
+    }
+
+    /// <summary>
+    /// Enhanced EndGameSession that feeds stats into the gamification pipeline.
+    /// Called by GameplayManager.EndGameplay() with final stats.
+    /// </summary>
+    public SongResultPackage EndGameSessionWithStats(GameplayStats stats)
+    {
+        // First do the normal end session flow
+        EndGameSession();
+
+        // Then process through gamification
+        SongResultPackage resultPackage = null;
+        if (GamificationManager.Instance != null && stats != null)
+        {
+            resultPackage = GamificationManager.Instance.ProcessSongEnd(stats, stats.difficulty);
+
+            // Transition to SongResult state so UI shows the result screen
+            if (resultPackage != null)
+            {
+                ChangeGameState(GameState.SongResult);
+            }
+        }
+
+        return resultPackage;
     }
 
     public void UpdateScore(int points)

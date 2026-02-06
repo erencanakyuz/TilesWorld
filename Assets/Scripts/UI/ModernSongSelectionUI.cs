@@ -277,7 +277,8 @@ void CreateCardElements(Transform parent, SongCard card)
             bpm = songData.bpm,
             audioFilePath = $"Music/{songData.songKey}",
             chartFilePath = $"Song_Note_Jsons/Individual/{songData.songKey}",
-            songKey = songData.songKey
+            songKey = songData.songKey,
+            difficulty = songData.difficulty
         };
 
         // Start gameplay
