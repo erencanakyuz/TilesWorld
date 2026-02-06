@@ -22,18 +22,18 @@ public class PanelManager : MonoBehaviour
         this.config = config;
         this.canvasLocator = canvasLocator;
         
-        // Clear any stale panel reference from previous scene
-        // (panel was destroyed with the scene but reference might still exist)
+        // Clear stale panel reference (panel was destroyed with scene but ref lingers)
         if (currentPanelInstance != null && currentPanelInstance.Equals(null))
         {
             currentPanelInstance = null;
         }
         
-        // Destroy any lingering panel
-        HideCurrentPanel();
+        // NOTE: Do NOT call HideCurrentPanel() here!
+        // GameManager.Start() may have already created a valid panel (e.g. MainMenu).
+        // Destroying it here causes the user to see an empty screen with no buttons.
         
         SetupPanelDictionary();
-        Debug.Log("[PanelManager] Initialized with fresh state");
+        Debug.Log("[PanelManager] Initialized (keeping active panel if any)");
     }
 
     private void SetupPanelDictionary()

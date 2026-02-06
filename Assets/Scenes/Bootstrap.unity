@@ -273,7 +273,7 @@ MonoBehaviour:
   deadzoneMm: 2
   fallbackDpi: 300
   measureLatency: 0
-  logTouchEvents: 1
+  logTouchEvents: 0
 --- !u!4 &1838718566
 Transform:
   m_ObjectHideFlags: 0

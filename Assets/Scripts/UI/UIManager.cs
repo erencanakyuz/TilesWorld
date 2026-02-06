@@ -74,10 +74,17 @@ public class UIManager : MonoBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
+    // Track whether ProcessScene has already run (via OnSceneLoaded)
+    // to prevent UIManager.Start() from re-initializing and destroying active panels
+    private bool hasProcessedScene = false;
+
     void Start()
     {
-        // Try to find and process MainScene (or any non-Bootstrap scene)
-        InitializeSubManagersForCurrentScene();
+        // Only process if OnSceneLoaded hasn't already done it
+        if (!hasProcessedScene)
+        {
+            InitializeSubManagersForCurrentScene();
+        }
     }
     
     void InitializeSubManagersForCurrentScene()
@@ -105,6 +112,7 @@ public class UIManager : MonoBehaviour
     {
         if (scene.name == "Bootstrap") return;
         ProcessScene(scene);
+        hasProcessedScene = true;
     }
 
     void ProcessScene(Scene scene)
@@ -189,6 +197,20 @@ public class UIManager : MonoBehaviour
                         GameManager.Instance.ChangeGameState(GameState.Settings);
                     }
                 });
+            }
+        }
+
+        // SAFETY NET: If GameManager already has an active state (e.g., MainMenu was set
+        // before ProcessScene ran), ensure the correct panel is showing.
+        // This handles the Bootstrap flow where GameManager.Start() fires state change
+        // before UIManager.ProcessScene has set up the canvas references.
+        if (GameManager.Instance != null && panelManager != null)
+        {
+            GameState currentState = GameManager.Instance.CurrentGameState;
+            if (panelManager.CurrentPanel == null)
+            {
+                Debug.Log($"[UIManager] Re-showing panel for current state: {currentState}");
+                HandleGameStateChange(currentState);
             }
         }
     }
