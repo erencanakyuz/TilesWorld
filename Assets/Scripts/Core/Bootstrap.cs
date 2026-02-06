@@ -76,6 +76,9 @@ public class Bootstrap : MonoBehaviour
         // 7. Gamification Systems (UI'dan sonra, GameManager'dan önce)
         InitializeGamificationManager();
 
+        // 7b. Gamification UI Toolkit (UXML/USS based runtime UI)
+        GamificationUIBootstrap.Initialize();
+
         // 8. Ana Oyun Yöneticisi (TÜM diğer sistemlerden sonra!)
         InitializeGameManager();
 
@@ -239,10 +242,9 @@ public class Bootstrap : MonoBehaviour
             GameObject gamificationObject = new GameObject("GamificationManager");
             gamificationObject.AddComponent<GamificationManager>();
 
-            // Add UI components to the same object
-            gamificationObject.AddComponent<NotificationUI>();
-            gamificationObject.AddComponent<SongResultUI>();
-            gamificationObject.AddComponent<GamificationHUD>();
+            // NOTE: Old UGUI components (NotificationUI, SongResultUI, GamificationHUD)
+            // are replaced by UI Toolkit versions. Do NOT add them here.
+            // UI Toolkit versions are initialized in GamificationUIBootstrap.Initialize().
 
             Debug.Log("🎮 GamificationManager singleton created during bootstrap");
         }

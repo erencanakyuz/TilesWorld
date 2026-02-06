@@ -1,0 +1,29 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements"
+         xmlns:uie="UnityEditor.UIElements"
+         noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd"
+         editor-extension-mode="False">
+    
+    <Style src="GamificationTheme.uss" />
+    
+    <ui:VisualElement name="hud-root" class="hud-bar">
+        <!-- Level Badge -->
+        <ui:Label name="hud-level" text="LV.1" class="hud-level-badge" />
+        
+        <!-- XP Bar -->
+        <ui:VisualElement name="hud-xp-container" class="hud-xp-container">
+            <ui:VisualElement class="hud-xp-bar-bg">
+                <ui:VisualElement name="hud-xp-fill" class="hud-xp-bar-fill" />
+                <ui:Label name="hud-xp-text" text="0/500" class="hud-xp-text" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        
+        <!-- Currency -->
+        <ui:Label name="hud-currency" text="0" class="hud-currency" />
+        
+        <!-- Rank -->
+        <ui:Label name="hud-rank" text="Novice" class="hud-rank" />
+        
+        <!-- Streak -->
+        <ui:Label name="hud-streak" text="" class="hud-streak" />
+    </ui:VisualElement>
+</ui:UXML>

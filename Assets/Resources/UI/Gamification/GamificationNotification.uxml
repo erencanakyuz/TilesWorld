@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements"
+         xmlns:uie="UnityEditor.UIElements"
+         noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd"
+         editor-extension-mode="False">
+    
+    <Style src="GamificationTheme.uss" />
+    
+    <!-- Notification popups anchor at top-center of screen -->
+    <ui:VisualElement name="notification-root" class="notification-container" picking-mode="Ignore">
+        <!-- Notifications are instantiated here dynamically -->
+    </ui:VisualElement>
+</ui:UXML>
