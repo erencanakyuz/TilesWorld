@@ -69,9 +69,13 @@ public void ShowPanelForState(GameState state)
             currentPanelInstance = Object.Instantiate(prefab, parentCanvas);
             Debug.Log($"[PanelManager] Created panel: {currentPanelInstance.name}");
         }
-        else
+        else if (!hasPrefab)
         {
-            Debug.LogWarning($"[PanelManager] Could not show panel for {state}!");
+            // SongResult, WorldTour, etc. may be handled by UI Toolkit — not a real error
+            if (state != GameState.SongResult && state != GameState.Playing && state != GameState.Loading)
+            {
+                Debug.LogWarning($"[PanelManager] No prefab assigned for state: {state}");
+            }
         }
 
         switch (state)

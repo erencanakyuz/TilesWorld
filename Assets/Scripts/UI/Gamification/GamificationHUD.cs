@@ -3,10 +3,10 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// GamificationHUD - XP bar, Level, Currency gösterimi
-/// Ana HUD'a ek olarak gamification bilgilerini gösterir.
-/// HUDCanvas üzerine eklenir.
+/// [DEPRECATED] GamificationHUD - Replaced by GamificationHUD_UIToolkit.
+/// Do NOT add this component to any GameObject. Use the UI Toolkit version instead.
 /// </summary>
+[System.Obsolete("Use GamificationHUD_UIToolkit instead. This UGUI version is deprecated.")]
 public class GamificationHUD : MonoBehaviour
 {
     [Header("UI References (Auto-discovered)")]

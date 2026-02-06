@@ -31,6 +31,10 @@ public class GamificationHUD_UIToolkit : MonoBehaviour
             return;
         }
 
+        // CRITICAL: Let clicks pass through to UGUI canvases underneath
+        root.pickingMode = PickingMode.Ignore;
+        SetAllChildrenPickingIgnore(root);
+
         // Query elements by name (like CSS selectors)
         levelLabel = root.Q<Label>("hud-level");
         xpFill = root.Q("hud-xp-fill");
@@ -45,7 +49,23 @@ public class GamificationHUD_UIToolkit : MonoBehaviour
         PlayerProgressionSystem.OnCurrencyChanged += OnCurrencyChanged;
         GameManager.OnGameStateChanged += OnGameStateChanged;
 
+        // Start hidden — OnGameStateChanged will show when appropriate
+        root.style.display = DisplayStyle.None;
+
         UpdateDisplay();
+    }
+
+    /// <summary>
+    /// Recursively set pickingMode=Ignore on all children so this UIToolkit layer
+    /// never blocks raycasts to UGUI canvases underneath.
+    /// </summary>
+    private void SetAllChildrenPickingIgnore(VisualElement element)
+    {
+        foreach (var child in element.Children())
+        {
+            child.pickingMode = PickingMode.Ignore;
+            SetAllChildrenPickingIgnore(child);
+        }
     }
 
     void OnDisable()

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -188,21 +189,41 @@ public class GameManager : MonoBehaviour
     #endregion
 
     #region Scene Management
+    /// <summary>
+    /// Loads a scene additively (preserves Bootstrap and all singletons).
+    /// Unloads the current MainScene first if loaded.
+    /// </summary>
     public void LoadScene(string sceneName)
     {
-        SceneManager.LoadScene(sceneName);
+        Scene mainScene = SceneManager.GetSceneByName("MainScene");
+        if (mainScene.isLoaded)
+        {
+            SceneManager.UnloadSceneAsync(mainScene).completed += (_) =>
+            {
+                SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
+            };
+        }
+        else
+        {
+            SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
+        }
     }
 
     public async void LoadSceneAsync(string sceneName)
     {
+        Scene mainScene = SceneManager.GetSceneByName("MainScene");
+        if (mainScene.isLoaded)
+        {
+            var unload = SceneManager.UnloadSceneAsync(mainScene);
+            while (!unload.isDone)
+                await System.Threading.Tasks.Task.Yield();
+        }
 
-        var operation = SceneManager.LoadSceneAsync(sceneName);
-
+        var operation = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
         while (!operation.isDone)
         {
             await System.Threading.Tasks.Task.Yield();
         }
-
     }
     #endregion
 
@@ -288,24 +309,34 @@ public class GameManager : MonoBehaviour
     /// <summary>
     /// Enhanced EndGameSession that feeds stats into the gamification pipeline.
     /// Called by GameplayManager.EndGameplay() with final stats.
+    /// Goes directly to SongResult (skips GameOver to prevent panel flicker).
     /// </summary>
     public SongResultPackage EndGameSessionWithStats(GameplayStats stats)
     {
-        // First do the normal end session flow
-        EndGameSession();
+        // Finalize session data WITHOUT triggering GameOver state
+        if (currentSession != null)
+        {
+            currentSession.endTime = Time.time;
+            currentSession.duration = currentSession.endTime - currentSession.startTime;
 
-        // Then process through gamification
+            if (currentSession.currentScore > currentPlayer.totalScore)
+                currentPlayer.totalScore = currentSession.currentScore;
+
+            if (currentSession.currentCombo > currentPlayer.highestCombo)
+                currentPlayer.highestCombo = currentSession.currentCombo;
+
+            UpdatePlayerDataInMemory();
+        }
+
+        // Process through gamification
         SongResultPackage resultPackage = null;
         if (GamificationManager.Instance != null && stats != null)
         {
             resultPackage = GamificationManager.Instance.ProcessSongEnd(stats, stats.difficulty);
-
-            // Transition to SongResult state so UI shows the result screen
-            if (resultPackage != null)
-            {
-                ChangeGameState(GameState.SongResult);
-            }
         }
+
+        // Go directly to SongResult (NOT GameOver then SongResult which causes panel flicker)
+        ChangeGameState(GameState.SongResult);
 
         return resultPackage;
     }
@@ -345,18 +376,111 @@ public class GameManager : MonoBehaviour
         ResumeGame();
     }
 
+    // Last played song info for restart functionality
+    private string lastPlayedSongKey = "";
+    private int lastPlayedMusicId = -1;
+
+    public string LastPlayedSongKey => lastPlayedSongKey;
+    public int LastPlayedMusicId => lastPlayedMusicId;
+
     void HandleRestartButtonPressed()
     {
+        // Save what song was playing for restart
+        if (currentSession?.songData != null)
+        {
+            lastPlayedSongKey = currentSession.songData.songKey;
+        }
+
         // Clean up before reload
         CleanupBeforeSceneChange();
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        
+        // Reload MainScene
+        Scene mainScene = SceneManager.GetSceneByName("MainScene");
+        if (mainScene.isLoaded)
+        {
+            SceneManager.UnloadSceneAsync(mainScene).completed += (_) =>
+            {
+                SceneManager.LoadSceneAsync("MainScene", LoadSceneMode.Additive).completed += (__) =>
+                {
+                    // Auto-start the same song after scene reload
+                    TryAutoStartLastSong();
+                };
+            };
+        }
+        else
+        {
+            SceneManager.LoadSceneAsync("MainScene", LoadSceneMode.Additive).completed += (_) =>
+            {
+                TryAutoStartLastSong();
+            };
+        }
     }
 
     void HandleMainMenuButtonPressed()
     {
+        lastPlayedSongKey = ""; // Clear — don't auto-start
+
         // Clean up before reload
         CleanupBeforeSceneChange();
-        SceneManager.LoadScene("MainScene");
+        
+        // Reload MainScene and go to MainMenu state
+        Scene mainScene = SceneManager.GetSceneByName("MainScene");
+        if (mainScene.isLoaded)
+        {
+            SceneManager.UnloadSceneAsync(mainScene).completed += (_) =>
+            {
+                SceneManager.LoadSceneAsync("MainScene", LoadSceneMode.Additive).completed += (__) =>
+                {
+                    ChangeGameState(GameState.MainMenu);
+                };
+            };
+        }
+        else
+        {
+            SceneManager.LoadSceneAsync("MainScene", LoadSceneMode.Additive).completed += (_) =>
+            {
+                ChangeGameState(GameState.MainMenu);
+            };
+        }
+    }
+
+    private void TryAutoStartLastSong()
+    {
+        if (string.IsNullOrEmpty(lastPlayedSongKey)) return;
+
+        // Find the song in database and auto-start
+        if (SongDatabase.Instance != null && SongDatabase.Instance.IsLoaded())
+        {
+            var songInfo = SongDatabase.Instance.GetSongByKey(lastPlayedSongKey);
+            if (songInfo != null)
+            {
+                // Give the scene one frame to initialize GameplayManager
+                StartCoroutine(AutoStartSongNextFrame(songInfo.musicId));
+                return;
+            }
+        }
+
+        // Fallback: go to song selection if song can't be found
+        ChangeGameState(GameState.SongSelection);
+    }
+
+    private System.Collections.IEnumerator AutoStartSongNextFrame(int musicId)
+    {
+        // Wait for the newly loaded scene's GameplayManager to initialize
+        yield return null;
+        yield return null; // Two frames to ensure Start() has run
+
+        var gameplayManager = FindAnyObjectByType<GameplayManager>();
+        if (gameplayManager != null)
+        {
+            gameplayManager.StartGameplay(musicId);
+        }
+        else
+        {
+            ChangeGameState(GameState.SongSelection);
+        }
+
+        lastPlayedSongKey = ""; // Clear after use
     }
 
     void CleanupBeforeSceneChange()
@@ -414,7 +538,7 @@ public class GameManager : MonoBehaviour
 #if !UNITY_EDITOR
         if (!hasFocus && CurrentGameState == GameState.Playing)
         {
-            ChangeGameState(GameState.Paused);
+            PauseGame();
         }
 #endif
     }
@@ -492,11 +616,7 @@ public class GameManager : MonoBehaviour
         Debug.Log("========================");
     }
 
-    public void RestartGame()
-    {
-        // Reload the current scene to restart the game
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-    }
+    // RestartGame removed — use HandleRestartButtonPressed via UIManager.OnRestartPressed
 
     public void OpenSettings()
     {

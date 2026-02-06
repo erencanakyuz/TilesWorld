@@ -59,8 +59,9 @@ public class UIManager : MonoBehaviour
         GameManager.OnScoreChanged += onScoreChanged;
         GameManager.OnComboChanged += onComboChanged;
         
-        // Initialize sub-managers immediately for current scene (before any Start() calls)
-        InitializeSubManagersForCurrentScene();
+        // NOTE: Do NOT call InitializeSubManagersForCurrentScene() here.
+        // During Bootstrap, MainScene is not loaded yet, so CanvasLocator would
+        // find 0 canvases and create orphan fallbacks. Let Start() or OnSceneLoaded handle it.
     }
 
     void OnEnable()
@@ -75,14 +76,29 @@ public class UIManager : MonoBehaviour
 
     void Start()
     {
-        // Initialize immediately for current scene
+        // Try to find and process MainScene (or any non-Bootstrap scene)
         InitializeSubManagersForCurrentScene();
     }
     
     void InitializeSubManagersForCurrentScene()
     {
-        Scene activeScene = SceneManager.GetActiveScene();
-        ProcessScene(activeScene);
+        // In additive loading, GetActiveScene() may return Bootstrap which has no canvases.
+        // Look for MainScene first, then fall back to active scene.
+        Scene targetScene = SceneManager.GetSceneByName("MainScene");
+        if (targetScene.isLoaded)
+        {
+            ProcessScene(targetScene);
+        }
+        else
+        {
+            // Fallback — might be running outside Bootstrap flow
+            Scene activeScene = SceneManager.GetActiveScene();
+            if (activeScene.name != "Bootstrap")
+            {
+                ProcessScene(activeScene);
+            }
+            // If only Bootstrap is loaded, OnSceneLoaded will handle MainScene when it arrives
+        }
     }
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)

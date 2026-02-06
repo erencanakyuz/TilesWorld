@@ -5,10 +5,10 @@ using System.Collections.Generic;
 using DG.Tweening;
 
 /// <summary>
-/// NotificationUI - Oyun içi bildirim popup sistemi
-/// Başarım, seviye atlama, ödül gibi bildirimleri ekranda gösterir.
-/// Kuyruk sistemi ile bildirimleri sırayla gösterir.
+/// [DEPRECATED] NotificationUI - Replaced by NotificationUI_UIToolkit.
+/// Do NOT add this component to any GameObject. Use the UI Toolkit version instead.
 /// </summary>
+[System.Obsolete("Use NotificationUI_UIToolkit instead. This UGUI version is deprecated.")]
 public class NotificationUI : MonoBehaviour
 {
     public static NotificationUI Instance { get; private set; }

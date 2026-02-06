@@ -38,6 +38,9 @@ public class SongResultUI_UIToolkit : MonoBehaviour
             return;
         }
 
+        // CRITICAL: Let clicks pass through to UGUI canvases underneath
+        root.pickingMode = PickingMode.Ignore;
+
         resultRoot = root.Q("result-root");
 
         CacheElements();
@@ -49,6 +52,7 @@ public class SongResultUI_UIToolkit : MonoBehaviour
         // Start hidden and non-interactive
         if (resultRoot != null)
         {
+            resultRoot.style.display = DisplayStyle.None;
             resultRoot.RemoveFromClassList("visible");
             resultRoot.pickingMode = PickingMode.Ignore;
         }
@@ -112,9 +116,14 @@ public class SongResultUI_UIToolkit : MonoBehaviour
 
         PopulateData(result);
 
-        // Enable picking so buttons work, then animate in with USS transition
+        // Make visible, enable picking on the overlay and buttons
+        resultRoot.style.display = DisplayStyle.Flex;
         resultRoot.pickingMode = PickingMode.Position;
         resultRoot.AddToClassList("visible");
+
+        // Ensure buttons are clickable
+        if (btnRetry != null) btnRetry.pickingMode = PickingMode.Position;
+        if (btnContinue != null) btnContinue.pickingMode = PickingMode.Position;
     }
 
     public void HideResult()
@@ -122,11 +131,14 @@ public class SongResultUI_UIToolkit : MonoBehaviour
         if (resultRoot == null) return;
         resultRoot.RemoveFromClassList("visible");
 
-        // Disable picking after transition completes so it doesn't block game input
+        // After transition, hide completely and disable picking
         resultRoot.schedule.Execute(() =>
         {
             if (resultRoot != null && !resultRoot.ClassListContains("visible"))
+            {
+                resultRoot.style.display = DisplayStyle.None;
                 resultRoot.pickingMode = PickingMode.Ignore;
+            }
         }).ExecuteLater(600); // After 0.5s transition
     }
 

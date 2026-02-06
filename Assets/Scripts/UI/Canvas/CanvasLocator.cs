@@ -20,6 +20,10 @@ public class CanvasLocator : MonoBehaviour
 
     public bool DiscoverCanvases()
     {
+        // Destroy old fallback canvases before re-discovering
+        // so they don't shadow real scene canvases
+        DestroyFallbackCanvases();
+
         bool canvasSuccess = FindCanvases();
 
         if (!canvasSuccess)
@@ -36,6 +40,26 @@ public class CanvasLocator : MonoBehaviour
         return canvasSuccess;
     }
 
+    private void DestroyFallbackCanvases()
+    {
+        // Only destroy canvases that WE created as fallbacks
+        if (MainCanvas != null && MainCanvas.name == "FallbackMainCanvas")
+        {
+            Destroy(MainCanvas.gameObject);
+            MainCanvas = null;
+        }
+        if (HUDCanvas != null && HUDCanvas.name == "FallbackHUDCanvas")
+        {
+            Destroy(HUDCanvas.gameObject);
+            HUDCanvas = null;
+        }
+        if (OverlayCanvas != null && OverlayCanvas.name == "FallbackOverlayCanvas")
+        {
+            Destroy(OverlayCanvas.gameObject);
+            OverlayCanvas = null;
+        }
+    }
+
     private bool FindCanvases()
     {
         // CRITICAL: Include inactive objects - HUDCanvas starts as inactive!
@@ -43,17 +67,28 @@ public class CanvasLocator : MonoBehaviour
         
         Debug.Log($"[CanvasLocator] Found {allCanvases.Length} canvases in scene");
 
+        // Filter out our own fallback canvases — prefer real scene canvases
+        bool IsFallback(Canvas c) => c.name.StartsWith("Fallback");
+
+        // Try to find real (non-fallback) canvases first
         MainCanvas = System.Array.Find(allCanvases, c =>
+            !IsFallback(c) && (
             c.name.ToLower().Contains("main") ||
             c.name.ToLower() == "canvas" ||
-            c.sortingOrder == 0) ?? (allCanvases.Length > 0 ? allCanvases[0] : null);
+            c.sortingOrder == 0));
+        // Fallback: any non-fallback canvas, then any canvas at all
+        if (MainCanvas == null)
+            MainCanvas = System.Array.Find(allCanvases, c => !IsFallback(c))
+                      ?? (allCanvases.Length > 0 ? allCanvases[0] : null);
 
         HUDCanvas = System.Array.Find(allCanvases, c =>
-            c.name.ToLower().Contains("hud"));
+            !IsFallback(c) && c.name.ToLower().Contains("hud"))
+            ?? System.Array.Find(allCanvases, c => c.name.ToLower().Contains("hud"));
 
         OverlayCanvas = System.Array.Find(allCanvases, c =>
-            c.name.ToLower().Contains("overlay") ||
-            c.sortingOrder > 10);
+            !IsFallback(c) && (c.name.ToLower().Contains("overlay") || c.sortingOrder > 10))
+            ?? System.Array.Find(allCanvases, c =>
+                c.name.ToLower().Contains("overlay") || c.sortingOrder > 10);
 
         Debug.Log($"[CanvasLocator] Main={MainCanvas?.name ?? "NULL"}, HUD={HUDCanvas?.name ?? "NULL"}, Overlay={OverlayCanvas?.name ?? "NULL"}");
 

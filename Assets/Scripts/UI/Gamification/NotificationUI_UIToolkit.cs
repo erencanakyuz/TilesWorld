@@ -35,6 +35,9 @@ public class NotificationUI_UIToolkit : MonoBehaviour
             return;
         }
 
+        // CRITICAL: Let clicks pass through to UGUI canvases underneath
+        root.pickingMode = PickingMode.Ignore;
+
         notificationRoot = root.Q("notification-root");
 
         // Pick up template from bootstrap helper if not assigned in inspector

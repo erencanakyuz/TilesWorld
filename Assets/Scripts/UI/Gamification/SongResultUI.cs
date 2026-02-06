@@ -4,10 +4,10 @@ using TMPro;
 using DG.Tweening;
 
 /// <summary>
-/// SongResultUI - Şarkı sonuç ekranı
-/// XP breakdown, yıldızlar, ödüller, combo istatistikleri gösterir.
-/// GameOver paneli yerine veya yanında gösterilir.
+/// [DEPRECATED] SongResultUI - Replaced by SongResultUI_UIToolkit.
+/// Do NOT add this component to any GameObject. Use the UI Toolkit version instead.
 /// </summary>
+[System.Obsolete("Use SongResultUI_UIToolkit instead. This UGUI version is deprecated.")]
 public class SongResultUI : MonoBehaviour
 {
     [Header("References")]

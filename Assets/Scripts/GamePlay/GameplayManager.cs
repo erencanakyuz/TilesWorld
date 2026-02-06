@@ -31,6 +31,7 @@ public class GameplayManager : MonoBehaviour
     [SerializeField] private int totalNotesHit = 0;
     [SerializeField] private int perfectHits = 0;
     [SerializeField] private int goodHits = 0;
+    [SerializeField] private int okayHits = 0;
     [SerializeField] private int missedNotes = 0;
     [SerializeField] private float accuracy = 0f;
 
@@ -100,21 +101,23 @@ public class GameplayManager : MonoBehaviour
         // Subscribe to game events for coordinated gameplay
         SubscribeToEvents();
 
-        // Set initial game state
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.ChangeGameState(GameState.SongSelection);
-        }
+        // NOTE: Do NOT call ChangeGameState here.
+        // GameManager.InitializeGameManager() already sets the initial state (MainMenu).
+        // The user navigates to SongSelection via the MainMenu "Start" button.
+        // Forcing SongSelection here hijacks the state and skips the MainMenu.
     }
 
     void SubscribeToEvents()
     {
         //Debug.Log("ğŸ”— SUBSCRIBING TO EVENTS...");
 
-        // *** PREVENT DUPLICATE SUBSCRIPTION ***
+        // *** PREVENT DUPLICATE SUBSCRIPTION — unsubscribe all first ***
         GameNoteCreator.OnNotesGenerated -= OnNotesSpawnRequest;
+        GameNoteCreator.OnGenerationComplete -= HandleSongComplete;
+        InteractiveMusicSystem.OnChordDetected -= HandleChordDetected;
+        GameManager.OnGameStateChanged -= HandleGameStateChange;
 
-        // GameNoteCreator events - True Dynamic System ile events kullanÄ±yoruz!
+        // GameNoteCreator events
         GameNoteCreator.OnNotesGenerated += OnNotesSpawnRequest; // CRITICAL!
         GameNoteCreator.OnGenerationComplete += HandleSongComplete;
 
@@ -124,6 +127,7 @@ public class GameplayManager : MonoBehaviour
         // AudioManager events
         if (audioManager != null)
         {
+            audioManager.OnMusicFinished -= HandleMusicFinished;
             audioManager.OnMusicFinished += HandleMusicFinished;
         }
 
@@ -667,11 +671,11 @@ public class GameplayManager : MonoBehaviour
 
     void UpdateGameStats()
     {
-        // Calculate accuracy
-        int totalNotes = perfectHits + goodHits + missedNotes;
+        // Weighted accuracy: Perfect=100%, Good=75%, Okay=50%, Miss=0%
+        int totalNotes = perfectHits + goodHits + okayHits + missedNotes;
         if (totalNotes > 0)
         {
-            accuracy = ((float)(perfectHits + goodHits) / totalNotes) * 100f;
+            accuracy = ((perfectHits * 1.0f + goodHits * 0.75f + okayHits * 0.5f) / totalNotes) * 100f;
         }
 
         // Update game manager
@@ -700,6 +704,7 @@ public class GameplayManager : MonoBehaviour
             totalNotesHit = totalNotesHit,
             perfectHits = perfectHits,
             goodHits = goodHits,
+            okayHits = okayHits,
             missedNotes = missedNotes,
             maxCombo = maxCombo,
             accuracy = accuracy,
@@ -740,7 +745,7 @@ public class GameplayManager : MonoBehaviour
                 currentCombo++;
                 break;
             case HitAccuracy.Okay:
-                // Okay hits count as hits but don't increase combo
+                okayHits++;
                 currentCombo++;
                 break;
         }
@@ -767,6 +772,7 @@ public class GameplayManager : MonoBehaviour
         totalNotesHit = 0;
         perfectHits = 0;
         goodHits = 0;
+        okayHits = 0;
         missedNotes = 0;
         currentCombo = 0;
         maxCombo = 0;
@@ -803,6 +809,7 @@ public class GameplayManager : MonoBehaviour
             totalNotesHit = totalNotesHit,
             perfectHits = perfectHits,
             goodHits = goodHits,
+            okayHits = okayHits,
             missedNotes = missedNotes,
             maxCombo = maxCombo,
             accuracy = accuracy,
