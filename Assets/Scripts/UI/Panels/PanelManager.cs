@@ -62,21 +62,32 @@ public void ShowPanelForState(GameState state)
         GameObject prefab = null;
         bool hasPrefab = statePanelPrefabs != null && statePanelPrefabs.TryGetValue(state, out prefab) && prefab != null;
         
-        Debug.Log($"[PanelManager] ShowPanelForState({state}): canvas={parentCanvas?.name ?? "NULL"}, prefab={prefab?.name ?? "NULL"}, hasPrefab={hasPrefab}");
+        // NOTE: Use hasPrefab guard before accessing prefab.name — Unity "fake-null"
+        // serialized fields pass C#'s ?. null-check but throw on member access.
+        string prefabName = hasPrefab ? prefab.name : "NULL";
+        Debug.Log($"[PanelManager] ShowPanelForState({state}): canvas={parentCanvas?.name ?? "NULL"}, prefab={prefabName}, hasPrefab={hasPrefab}");
         
         if (parentCanvas != null && hasPrefab)
         {
             currentPanelInstance = Object.Instantiate(prefab, parentCanvas);
             Debug.Log($"[PanelManager] Created panel: {currentPanelInstance.name}");
         }
-        else if (!hasPrefab)
+        else if (!hasPrefab && parentCanvas != null)
         {
-            // SongResult, WorldTour, etc. may be handled by UI Toolkit — not a real error
-            if (state != GameState.SongResult && state != GameState.Playing && state != GameState.Loading)
+            // Try RuntimePanelFactory for gamification panels
+            currentPanelInstance = RuntimePanelFactory.CreatePanel(state, parentCanvas);
+            if (currentPanelInstance != null)
             {
-                Debug.LogWarning($"[PanelManager] No prefab assigned for state: {state}");
+                Debug.Log($"[PanelManager] Created runtime panel: {currentPanelInstance.name}");
+            }
+            else if (state != GameState.SongResult && state != GameState.Playing && state != GameState.Loading)
+            {
+                Debug.LogWarning($"[PanelManager] No prefab or runtime factory for state: {state}");
             }
         }
+
+        // Ensure raycaster exists on parent canvas for click handling
+        if (parentCanvas != null) EnsureGraphicRaycaster(parentCanvas);
 
         switch (state)
         {
@@ -87,6 +98,13 @@ public void ShowPanelForState(GameState state)
                         () => GameManager.Instance?.ChangeGameState(GameState.SongSelection),
                         () => GameManager.Instance?.OpenSettings(),
                         () => Application.Quit());
+
+                    // Add gamification navigation buttons to MainMenu
+                    PanelButtonWirer.AddGamificationButtons(currentPanelInstance,
+                        () => GameManager.Instance?.ChangeGameState(GameState.Profile),
+                        () => GameManager.Instance?.ChangeGameState(GameState.WorldTour),
+                        () => GameManager.Instance?.ChangeGameState(GameState.ArtistBattle),
+                        () => GameManager.Instance?.ChangeGameState(GameState.DailyChallenge));
                 }
                 break;
             case GameState.Paused:
@@ -96,7 +114,6 @@ public void ShowPanelForState(GameState state)
                 }
                 break;
             case GameState.Settings:
-                EnsureGraphicRaycaster(parentCanvas);
                 if (currentPanelInstance != null)
                 {
                     var controller = currentPanelInstance.GetComponent<SettingsPanelController>();
@@ -108,12 +125,56 @@ public void ShowPanelForState(GameState state)
                 }
                 break;
             case GameState.GameOver:
-                EnsureGraphicRaycaster(parentCanvas);
                 if (currentPanelInstance != null)
                 {
                     PanelButtonWirer.WireGameOverPanel(currentPanelInstance, OnRestartPressed, OnMainMenuPressed);
                 }
                 break;
+            case GameState.Profile:
+                if (currentPanelInstance != null)
+                {
+                    var profileCtrl = currentPanelInstance.AddComponent<ProfilePanelController>();
+                    WireBackButton(currentPanelInstance);
+                }
+                break;
+            case GameState.WorldTour:
+                if (currentPanelInstance != null)
+                {
+                    var tourCtrl = currentPanelInstance.AddComponent<WorldTourPanelController>();
+                    WireBackButton(currentPanelInstance);
+                }
+                break;
+            case GameState.ArtistBattle:
+                if (currentPanelInstance != null)
+                {
+                    var battleCtrl = currentPanelInstance.AddComponent<ArtistBattlePanelController>();
+                    WireBackButton(currentPanelInstance);
+                }
+                break;
+            case GameState.DailyChallenge:
+                if (currentPanelInstance != null)
+                {
+                    var dailyCtrl = currentPanelInstance.AddComponent<DailyChallengePanelController>();
+                    WireBackButton(currentPanelInstance);
+                }
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Finds and wires any BackButton in a panel to go back to MainMenu.
+    /// </summary>
+    private void WireBackButton(GameObject panel)
+    {
+        var buttons = panel.GetComponentsInChildren<Button>(true);
+        foreach (var btn in buttons)
+        {
+            if (btn.name.ToLower().Contains("back") || btn.name.ToLower().Contains("return"))
+            {
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(() => GameManager.Instance?.ChangeGameState(GameState.MainMenu));
+                Debug.Log($"[PanelManager] Back button wired: {btn.name}");
+            }
         }
     }
 
@@ -138,6 +199,10 @@ public void ShowPanelForState(GameState state)
             case GameState.MainMenu:
             case GameState.SongSelection:
             case GameState.GameOver:
+            case GameState.Profile:
+            case GameState.WorldTour:
+            case GameState.ArtistBattle:
+            case GameState.DailyChallenge:
             default:
                 return canvasLocator?.MainCanvas != null ? canvasLocator.MainCanvas.transform : null;
         }
