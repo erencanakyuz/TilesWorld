@@ -175,6 +175,14 @@
             "tempo": 176,
             "difficulty": 4,
             "songKey": "moonlight_sonata_op_27_no_2_beethoven"
+        },
+        {
+            "musicId": 23,
+            "title": "Ode to Joy",
+            "artist": "Beethoven",
+            "tempo": 120,
+            "difficulty": 0,
+            "songKey": "ode_to_joy_beethoven"
         }
     ]
 }
