@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Threading;
 using TMPro;
 
 public class HUDController : MonoBehaviour
@@ -23,6 +24,14 @@ public class HUDController : MonoBehaviour
     private int currentCombo;
     private int currentMultiplier = 1;
     private float currentHealth = 1f;
+
+    // PERF FIX: Cancel previous async animations to prevent accumulation
+    private CancellationTokenSource scoreAnimCts;
+    private CancellationTokenSource comboAnimCts;
+    private Vector3 scoreBaseScale = Vector3.one;
+    private Vector3 comboBaseScale = Vector3.one;
+    private bool hasScoreBaseScale;
+    private bool hasComboBaseScale;
 
     public void Initialize(UIConfig config, Canvas hudCanvas)
     {
@@ -68,7 +77,25 @@ public class HUDController : MonoBehaviour
                 stringBuilder.Append(currentScore.ToString("N0"));
                 scoreText.text = stringBuilder.ToString();
 
-                _ = ScaleTextEffectAsync(scoreText.transform);
+                // PERF FIX: Cancel previous animation before starting new one
+                // This prevents hundreds of concurrent Awaitables from accumulating
+                scoreAnimCts?.Cancel();
+                scoreAnimCts?.Dispose();
+                scoreAnimCts = new CancellationTokenSource();
+
+                // Cache the base scale on first use (before any animation mutates it)
+                if (!hasScoreBaseScale)
+                {
+                    scoreBaseScale = scoreText.transform.localScale;
+                    hasScoreBaseScale = true;
+                }
+                else
+                {
+                    // Reset to known-good base scale to prevent cascading
+                    scoreText.transform.localScale = scoreBaseScale;
+                }
+
+                _ = ScaleTextEffectAsync(scoreText.transform, scoreBaseScale, scoreAnimCts.Token);
             }
         }
     }
@@ -83,7 +110,11 @@ public class HUDController : MonoBehaviour
 
             if (combo > 0 && combo % 10 == 0)
             {
-                _ = ComboMilestoneEffectAsync();
+                // PERF FIX: Cancel previous combo animation
+                comboAnimCts?.Cancel();
+                comboAnimCts?.Dispose();
+                comboAnimCts = new CancellationTokenSource();
+                _ = ComboMilestoneEffectAsync(comboAnimCts.Token);
             }
         }
 
@@ -202,44 +233,79 @@ public class HUDController : MonoBehaviour
         }
     }
 
-    private async Awaitable ScaleTextEffectAsync(Transform textTransform)
+    private async Awaitable ScaleTextEffectAsync(Transform textTransform, Vector3 baseScale, CancellationToken token)
     {
-        Vector3 originalScale = textTransform.localScale;
-        Vector3 targetScale = originalScale * 1.2f;
+        // PERF FIX: Use provided baseScale instead of reading current (prevents cascading)
+        Vector3 targetScale = baseScale * 1.2f;
 
         float elapsed = 0f;
         float duration = 0.1f;
         while (elapsed < duration)
         {
+            if (token.IsCancellationRequested)
+            {
+                textTransform.localScale = baseScale;
+                return;
+            }
             elapsed += Time.deltaTime;
-            textTransform.localScale = Vector3.Lerp(originalScale, targetScale, elapsed / duration);
+            textTransform.localScale = Vector3.Lerp(baseScale, targetScale, elapsed / duration);
             await Awaitable.NextFrameAsync();
         }
 
         elapsed = 0f;
         while (elapsed < duration)
         {
+            if (token.IsCancellationRequested)
+            {
+                textTransform.localScale = baseScale;
+                return;
+            }
             elapsed += Time.deltaTime;
-            textTransform.localScale = Vector3.Lerp(targetScale, originalScale, elapsed / duration);
+            textTransform.localScale = Vector3.Lerp(targetScale, baseScale, elapsed / duration);
             await Awaitable.NextFrameAsync();
         }
 
-        textTransform.localScale = originalScale;
+        textTransform.localScale = baseScale;
     }
 
-    private async Awaitable ComboMilestoneEffectAsync()
+    private async Awaitable ComboMilestoneEffectAsync(CancellationToken token)
     {
         if (comboText != null && config != null)
         {
+            // Cache base scale for combo text
+            if (!hasComboBaseScale)
+            {
+                comboBaseScale = comboText.transform.localScale;
+                hasComboBaseScale = true;
+            }
+
             Color originalColor = comboText.color;
 
             for (int i = 0; i < 3; i++)
             {
+                if (token.IsCancellationRequested)
+                {
+                    comboText.color = originalColor;
+                    return;
+                }
                 comboText.color = config.primaryColor;
                 await Awaitable.WaitForSecondsAsync(0.1f);
+                if (token.IsCancellationRequested)
+                {
+                    comboText.color = originalColor;
+                    return;
+                }
                 comboText.color = originalColor;
                 await Awaitable.WaitForSecondsAsync(0.1f);
             }
         }
+    }
+
+    void OnDestroy()
+    {
+        scoreAnimCts?.Cancel();
+        scoreAnimCts?.Dispose();
+        comboAnimCts?.Cancel();
+        comboAnimCts?.Dispose();
     }
 }
