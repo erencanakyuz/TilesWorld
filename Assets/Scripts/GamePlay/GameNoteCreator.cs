@@ -301,7 +301,7 @@ public class GameNoteCreator : MonoBehaviour
                         {
                             if (int.TryParse(parts[0], out int pitch) &&
                                 int.TryParse(parts[1], out int duration) &&
-                                pitch > 0) // "_" = -1 veya parse hatası, geçerli nota değil
+                                pitch >= 0) // "_" parse edilemez; 0..20 araligi gecerli chart pitch degeridir
                             {
                                 sliceMap[sliceIndex].Add((lane, pitch, duration));
                             }

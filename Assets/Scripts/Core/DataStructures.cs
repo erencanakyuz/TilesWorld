@@ -401,7 +401,7 @@ public static class AudioConstants
     /// </summary>
     /// <param name="instrument">The instrument being played, which may have a pitch offset.</param>
     /// <param name="line">The original line (0-5) of the note from the chart.</param>
-    /// <param name="pitch">The pitch value (1-18) of the note from the chart.</param>
+    /// <param name="pitch">The pitch value (0-20) of the note from the chart.</param>
     /// <param name="maxIndex">The maximum valid index for the given instrument's audio clips, to prevent errors.</param>
     /// <returns>The final, clamped audio clip index to be played.</returns>
     public static int GetFinalSoundIndex(InstrumentType instrument, int line, int pitch, int maxIndex)
