@@ -10,6 +10,9 @@ public class GamificationManager : MonoBehaviour
 {
     public static GamificationManager Instance { get; private set; }
 
+    /// <summary>Last processed song result (available for late subscribers)</summary>
+    public SongResultPackage LastSongResult { get; private set; }
+
     #region Events
     /// <summary>Şarkı sonucu işlendikten sonra tetiklenir (UI gösteriminde kullanılır)</summary>
     public static event Action<SongResultPackage> OnSongResultProcessed;
@@ -163,7 +166,8 @@ public class GamificationManager : MonoBehaviour
         activeTourCityId = "";
         activeTourConcertIndex = -1;
 
-        // Fire event for UI to display
+        // Store and fire event for UI to display
+        LastSongResult = package;
         OnSongResultProcessed?.Invoke(package);
 
         return package;

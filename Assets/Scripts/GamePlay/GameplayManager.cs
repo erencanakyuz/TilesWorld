@@ -57,6 +57,11 @@ public class GameplayManager : MonoBehaviour
     private float currentGameTime = 0f;
     private float songDuration = 0f;
 
+    // Song completion detection
+    private bool allNotesSpawned = false;
+    private float endGracePeriodTimer = -1f;
+    private const float END_GRACE_PERIOD = 3f; // seconds after last note to auto-end
+
     // Events for system coordination
     public static System.Action OnGameplayStarted;
     public static System.Action OnGameplayEnded;
@@ -188,10 +193,42 @@ public class GameplayManager : MonoBehaviour
 
         OnGameTimeUpdated?.Invoke(currentGameTime);
 
-        // Check for song end
+        // Check for song end — time-based trigger
         if (currentGameTime >= songDuration && songDuration > 0)
         {
+            Debug.Log($"[GameplayManager] Song duration reached ({currentGameTime:F1}s >= {songDuration:F1}s). Ending gameplay.");
             EndGameplay();
+            return;
+        }
+
+        // Fallback: all notes spawned + no active notes left = song is done
+        if (allNotesSpawned && noteRenderer != null)
+        {
+            int activeNotes = noteRenderer.GetActiveNoteCount();
+            if (activeNotes <= 0)
+            {
+                if (endGracePeriodTimer < 0f)
+                {
+                    // Start grace period (wait a few seconds for any stragglers)
+                    endGracePeriodTimer = END_GRACE_PERIOD;
+                    Debug.Log($"[GameplayManager] All notes done. Grace period: {END_GRACE_PERIOD}s");
+                }
+                else
+                {
+                    endGracePeriodTimer -= deltaTime;
+                    if (endGracePeriodTimer <= 0f)
+                    {
+                        Debug.Log("[GameplayManager] Grace period ended. Ending gameplay.");
+                        EndGameplay();
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                // Notes still active, reset grace period
+                endGracePeriodTimer = -1f;
+            }
         }
 
         // Stats are now updated only when hits/misses occur, not every frame
@@ -512,7 +549,22 @@ public class GameplayManager : MonoBehaviour
     {
         isGameActive = true;
         gameStartTime = Time.time;
-        
+        allNotesSpawned = false;
+        endGracePeriodTimer = -1f;
+
+        // CRITICAL: Set songDuration so the time-based end trigger works
+        if (currentSong != null && currentSong.duration > 0)
+        {
+            songDuration = currentSong.duration;
+            Debug.Log($"[GameplayManager] Song duration set: {songDuration:F1}s");
+        }
+        else
+        {
+            // Fallback: will rely on note completion detection
+            songDuration = 0f;
+            Debug.LogWarning("[GameplayManager] No song duration available, will use note-completion fallback.");
+        }
+
         // Start DSP timing system for accurate rhythm judgment
         if (RhythmTimingSystem.Instance != null)
         {
@@ -627,8 +679,8 @@ public class GameplayManager : MonoBehaviour
 
     void HandleSongComplete()
     {
-        //Debug.Log("ğŸµ Song generation complete!");
-        // Song will end when audio finishes or time runs out
+        allNotesSpawned = true;
+        Debug.Log("[GameplayManager] All notes spawned. Waiting for active notes to finish...");
     }
 
     void HandleChordDetected(ChordType chordType)
@@ -699,8 +751,11 @@ public class GameplayManager : MonoBehaviour
     {
         UpdateGameStats();
 
+        int totalNotes = totalNotesHit + missedNotes;
+
         var finalStats = new GameplayStats
         {
+            totalNotes = totalNotes,
             totalNotesHit = totalNotesHit,
             perfectHits = perfectHits,
             goodHits = goodHits,
@@ -716,6 +771,7 @@ public class GameplayManager : MonoBehaviour
             songDuration = currentSong != null ? currentSong.duration : 0f
         };
 
+        Debug.Log($"[GameplayManager] Final stats: {totalNotes} total notes, {accuracy:F1}% accuracy, {maxCombo} max combo, score={finalStats.totalScore}");
         lastFinalStats = finalStats;
     }
 
@@ -778,6 +834,8 @@ public class GameplayManager : MonoBehaviour
         maxCombo = 0;
         accuracy = 0f;
         currentGameTime = 0f;
+        allNotesSpawned = false;
+        endGracePeriodTimer = -1f;
     }
     #endregion
 

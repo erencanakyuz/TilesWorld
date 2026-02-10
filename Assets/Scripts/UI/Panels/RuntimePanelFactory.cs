@@ -35,6 +35,7 @@ public static class RuntimePanelFactory
             case GameState.WorldTour:     return CreateWorldTourPanel(parent);
             case GameState.ArtistBattle:  return CreateArtistBattlePanel(parent);
             case GameState.DailyChallenge:return CreateDailyChallengePanel(parent);
+            case GameState.SongResult:    return CreateSongResultPanel(parent);
             default: return null;
         }
     }
@@ -508,5 +509,198 @@ public static class RuntimePanelFactory
         hlg.childForceExpandWidth = true;
         hlg.childForceExpandHeight = true;
         return go.transform;
+    }
+
+    // ============================================================
+    //  SONG RESULT PANEL (3-star animated result screen)
+    // ============================================================
+    private static GameObject CreateSongResultPanel(Transform parent)
+    {
+        var panel = CreateBasePanel("SongResultPanel", parent);
+        var content = GetContentArea(panel);
+
+        // Add a named wrapper so controller can find it
+        var resultContent = new GameObject("ResultContent", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        resultContent.transform.SetParent(content, false);
+        var rcRT = resultContent.GetComponent<RectTransform>();
+        rcRT.anchorMin = Vector2.zero;
+        rcRT.anchorMax = Vector2.one;
+        rcRT.offsetMin = Vector2.zero;
+        rcRT.offsetMax = Vector2.zero;
+
+        var rcVLG = resultContent.GetComponent<VerticalLayoutGroup>();
+        rcVLG.spacing = 6;
+        rcVLG.padding = new RectOffset(20, 20, 10, 10);
+        rcVLG.childAlignment = TextAnchor.UpperCenter;
+        rcVLG.childForceExpandWidth = true;
+        rcVLG.childForceExpandHeight = false;
+        rcVLG.childControlWidth = true;
+        rcVLG.childControlHeight = true;
+
+        resultContent.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        var rc = resultContent.transform;
+
+        // --- "SONUC" Title ---
+        CreateLabel(rc, "result-header", "SONUC", 28, PRIMARY, TextAlignmentOptions.Center, true);
+
+        // --- Song Title & Artist ---
+        CreateLabel(rc, "result-song-title", "...", 22, TEXT_PRIMARY, TextAlignmentOptions.Center, true);
+        CreateLabel(rc, "result-artist", "", 16, TEXT_DIM, TextAlignmentOptions.Center);
+
+        // --- Grade Badge ---
+        var gradeCard = CreateCard(rc, 70f);
+        CreateLabel(gradeCard.transform, "result-grade", "?", 52, WARNING, TextAlignmentOptions.Center, true);
+
+        // --- 3 Stars Row ---
+        var starsRow = new GameObject("StarsRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+        starsRow.transform.SetParent(rc, false);
+        starsRow.GetComponent<LayoutElement>().preferredHeight = 80;
+        starsRow.GetComponent<LayoutElement>().flexibleWidth = 1;
+        var starsHLG = starsRow.GetComponent<HorizontalLayoutGroup>();
+        starsHLG.spacing = 24;
+        starsHLG.childAlignment = TextAnchor.MiddleCenter;
+        starsHLG.childForceExpandWidth = false;
+        starsHLG.childForceExpandHeight = false;
+        starsHLG.childControlWidth = false;
+        starsHLG.childControlHeight = false;
+
+        for (int i = 0; i < 3; i++)
+        {
+            // Star container with glow
+            var starGo = new GameObject($"Star_{i}", typeof(RectTransform), typeof(Image));
+            starGo.transform.SetParent(starsRow.transform, false);
+            var starRT = starGo.GetComponent<RectTransform>();
+            starRT.sizeDelta = new Vector2(60, 60);
+            var starImg = starGo.GetComponent<Image>();
+            starImg.color = new Color(0.3f, 0.3f, 0.4f, 0.5f);
+            // Use a rounded rect or just color — no sprite needed
+            starImg.type = Image.Type.Simple;
+
+            // Glow child (larger, behind visually but rendered after due to hierarchy)
+            var glowGo = new GameObject("Glow", typeof(RectTransform), typeof(Image));
+            glowGo.transform.SetParent(starGo.transform, false);
+            glowGo.transform.SetAsFirstSibling(); // Behind the star
+            var glowRT = glowGo.GetComponent<RectTransform>();
+            glowRT.sizeDelta = new Vector2(80, 80);
+            glowRT.anchorMin = new Vector2(0.5f, 0.5f);
+            glowRT.anchorMax = new Vector2(0.5f, 0.5f);
+            glowRT.anchoredPosition = Vector2.zero;
+            var glowImg = glowGo.GetComponent<Image>();
+            glowImg.color = new Color(1f, 0.85f, 0.1f, 0f);
+
+            // Star text overlay (the actual star symbol using a supported character)
+            var starText = new GameObject("StarText", typeof(RectTransform));
+            starText.transform.SetParent(starGo.transform, false);
+            var stRT = starText.GetComponent<RectTransform>();
+            stRT.anchorMin = Vector2.zero;
+            stRT.anchorMax = Vector2.one;
+            stRT.offsetMin = Vector2.zero;
+            stRT.offsetMax = Vector2.zero;
+            var tmp = starText.AddComponent<TextMeshProUGUI>();
+            tmp.text = "*";
+            tmp.fontSize = 40;
+            tmp.color = Color.white;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontStyle = FontStyles.Bold;
+        }
+
+        // --- Accuracy ---
+        var accuracyCard = CreateCard(rc, 50f);
+        var accuracyRow = new GameObject("AccuracyRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+        accuracyRow.transform.SetParent(accuracyCard.transform, false);
+        accuracyRow.GetComponent<LayoutElement>().preferredHeight = 40;
+        accuracyRow.GetComponent<LayoutElement>().flexibleWidth = 1;
+        var aHLG = accuracyRow.GetComponent<HorizontalLayoutGroup>();
+        aHLG.childAlignment = TextAnchor.MiddleCenter;
+        aHLG.spacing = 8;
+        aHLG.childForceExpandWidth = true;
+        aHLG.childForceExpandHeight = false;
+        CreateLabel(accuracyRow.transform, "", "Dogruluk:", 18, TEXT_DIM, TextAlignmentOptions.Right, true);
+        CreateLabel(accuracyRow.transform, "result-accuracy", "%0.0", 26, SUCCESS, TextAlignmentOptions.Left, true);
+
+        // --- Score & Combo Row ---
+        var scoreRow = CreateHorizontalGroup(rc, 45f);
+        CreateStatPair(scoreRow, "Skor", "result-score", "0");
+        CreateStatPair(scoreRow, "Maks Kombo", "result-combo", "0");
+
+        // --- Hit Breakdown Card ---
+        var hitsCard = CreateCard(rc, 130f);
+        CreateLabel(hitsCard.transform, "", "ISABET DETAYLARI", 15, PRIMARY, TextAlignmentOptions.Center, true);
+
+        var hitGrid = new GameObject("HitGrid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(LayoutElement));
+        hitGrid.transform.SetParent(hitsCard.transform, false);
+        hitGrid.GetComponent<LayoutElement>().preferredHeight = 90;
+        hitGrid.GetComponent<LayoutElement>().flexibleWidth = 1;
+        var grid = hitGrid.GetComponent<GridLayoutGroup>();
+        grid.cellSize = new Vector2(130, 38);
+        grid.spacing = new Vector2(8, 4);
+        grid.childAlignment = TextAnchor.MiddleCenter;
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = 2;
+
+        CreateHitStatCell(hitGrid.transform, "Perfect", "result-perfect", "0", SUCCESS);
+        CreateHitStatCell(hitGrid.transform, "Good", "result-good", "0", PRIMARY);
+        CreateHitStatCell(hitGrid.transform, "Okay", "result-okay", "0", WARNING);
+        CreateHitStatCell(hitGrid.transform, "Miss", "result-miss", "0", new Color(1f, 0.3f, 0.3f));
+
+        // --- XP & Currency Row ---
+        var rewardCard = CreateCard(rc, 60f);
+        var rewardRow = CreateHorizontalGroup(rewardCard.transform, 50f);
+        CreateStatPair(rewardRow, "XP", "result-xp", "+0 XP");
+        CreateStatPair(rewardRow, "Altin", "result-currency", "+0");
+
+        // --- Level Info ---
+        CreateLabel(rc, "result-level", "Seviye 1", 16, TEXT_DIM, TextAlignmentOptions.Center);
+
+        // --- Action Buttons ---
+        var btnRow = CreateHorizontalGroup(rc, 55f);
+        CreateButton(btnRow, "RetryButton", "Tekrar Oyna", ACCENT, () =>
+        {
+            var uiMgr = UIManager.Instance;
+            if (uiMgr != null) uiMgr.OnRestartPressed?.Invoke();
+        });
+        CreateButton(btnRow, "ContinueButton", "Ana Menu", BTN_PRIMARY, () =>
+        {
+            var uiMgr = UIManager.Instance;
+            if (uiMgr != null) uiMgr.OnMainMenuPressed?.Invoke();
+        });
+
+        return panel;
+    }
+
+    // Helper: stat pair (label + value stacked)
+    private static void CreateStatPair(Transform parent, string label, string valueName, string defaultValue)
+    {
+        var col = new GameObject(valueName + "_col", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
+        col.transform.SetParent(parent, false);
+        col.GetComponent<LayoutElement>().flexibleWidth = 1;
+        var vlg = col.GetComponent<VerticalLayoutGroup>();
+        vlg.childAlignment = TextAnchor.MiddleCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+        vlg.childControlWidth = true;
+        vlg.childControlHeight = true;
+        vlg.spacing = 2;
+
+        CreateLabel(col.transform, "", label, 13, TEXT_MUTED, TextAlignmentOptions.Center);
+        CreateLabel(col.transform, valueName, defaultValue, 20, TEXT_PRIMARY, TextAlignmentOptions.Center, true);
+    }
+
+    // Helper: hit stat cell (colored value + label)
+    private static void CreateHitStatCell(Transform parent, string label, string valueName, string defaultValue, Color color)
+    {
+        var cell = new GameObject(valueName + "_cell", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+        cell.transform.SetParent(parent, false);
+        var hlg = cell.GetComponent<HorizontalLayoutGroup>();
+        hlg.childAlignment = TextAnchor.MiddleCenter;
+        hlg.spacing = 6;
+        hlg.childForceExpandWidth = false;
+        hlg.childForceExpandHeight = false;
+        hlg.childControlWidth = true;
+        hlg.childControlHeight = true;
+
+        CreateLabel(cell.transform, "", label + ":", 14, TEXT_DIM, TextAlignmentOptions.Right);
+        CreateLabel(cell.transform, valueName, defaultValue, 16, color, TextAlignmentOptions.Left, true);
     }
 }

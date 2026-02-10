@@ -47,7 +47,8 @@ public class SongResultUI_UIToolkit : MonoBehaviour
         BindButtons();
 
         // Subscribe to result event
-        GamificationManager.OnSongResultProcessed += ShowResult;
+        // DISABLED: UGUI SongResultPanelController now handles this with animated 3-star display
+        // GamificationManager.OnSongResultProcessed += ShowResult;
 
         // Start hidden and non-interactive
         if (resultRoot != null)

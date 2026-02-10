@@ -80,7 +80,7 @@ public void ShowPanelForState(GameState state)
             {
                 Debug.Log($"[PanelManager] Created runtime panel: {currentPanelInstance.name}");
             }
-            else if (state != GameState.SongResult && state != GameState.Playing && state != GameState.Loading)
+            else if (state != GameState.Playing && state != GameState.Loading)
             {
                 Debug.LogWarning($"[PanelManager] No prefab or runtime factory for state: {state}");
             }
@@ -158,6 +158,13 @@ public void ShowPanelForState(GameState state)
                     WireBackButton(currentPanelInstance);
                 }
                 break;
+            case GameState.SongResult:
+                if (currentPanelInstance != null)
+                {
+                    currentPanelInstance.AddComponent<SongResultPanelController>();
+                    // Buttons are wired inside the controller via DOTween animation callbacks
+                }
+                break;
         }
     }
 
@@ -195,6 +202,7 @@ public void ShowPanelForState(GameState state)
         {
             case GameState.Paused:
             case GameState.Settings:
+            case GameState.SongResult:
                 return canvasLocator?.OverlayCanvas != null ? canvasLocator.OverlayCanvas.transform : canvasLocator?.MainCanvas?.transform;
             case GameState.MainMenu:
             case GameState.SongSelection:

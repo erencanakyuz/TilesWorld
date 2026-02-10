@@ -652,6 +652,33 @@ public class GameManager : MonoBehaviour
 
         ChangeGameState(previousStateBeforeSettings);
     }
+
+    /// <summary>
+    /// DEBUG: Simulates a song result with mock data for testing the result screen.
+    /// </summary>
+    [ContextMenu("DEBUG: Test Song Result Screen")]
+    public void DebugTestSongResult()
+    {
+        var stats = new GameplayStats
+        {
+            songName = "Moonlight Sonata",
+            artist = "Beethoven",
+            totalNotes = 120,
+            totalNotesHit = 108,
+            perfectHits = 72,
+            goodHits = 24,
+            okayHits = 12,
+            missedNotes = 12,
+            maxCombo = 45,
+            accuracy = 82.5f,
+            totalScore = 18500,
+            difficulty = DifficultyLevel.Medium,
+            songDuration = 90f,
+            songKey = "moonlight_sonata"
+        };
+
+        EndGameSessionWithStats(stats);
+    }
 }
 
 // Game-specific Data Structures (enums moved to DataStructures.cs)
