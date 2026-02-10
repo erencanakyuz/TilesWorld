@@ -180,7 +180,7 @@
             "musicId": 23,
             "title": "Ode to Joy",
             "artist": "Beethoven",
-            "tempo": 120,
+            "tempo": 200,
             "difficulty": 0,
             "songKey": "ode_to_joy_beethoven"
         }
