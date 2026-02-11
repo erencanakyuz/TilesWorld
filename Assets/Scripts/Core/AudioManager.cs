@@ -57,6 +57,15 @@ public class AudioManager : MonoBehaviour
     private int droppedNotesNotLoaded;
     private int droppedNotesNoVoice;
     private int stolenVoices;
+
+    // Duplicate clip prevention - track last play time per clip index
+    private const float DUPLICATE_PREVENTION_WINDOW = 0.04f; // 40ms window
+    private Dictionary<int, float> lastClipPlayTime = new Dictionary<int, float>(64);
+    private int droppedNotesDuplicate;
+
+    // Simultaneous note volume scaling - prevent clipping
+    private const int VOLUME_SCALE_THRESHOLD = 4; // Start scaling only when 4+ notes active
+    private const float MIN_VOLUME_SCALE = 0.55f; // Never go below 55% volume
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     private readonly HashSet<int> missingClipWarnings = new HashSet<int>();
     private readonly HashSet<int> notLoadedWarnings = new HashSet<int>();
@@ -238,6 +247,7 @@ public class AudioManager : MonoBehaviour
             instrumentData.noteClips == null || instrumentData.noteClips.Length == 0)
         {
             if (showDebugLogs) Debug.LogWarning($"AudioManager: Instrument '{instrument}' is not configured or has no audio clips. Aborting PlayNote.");
+            NoteDebugLogger.Instance?.LogDropped(instrument.ToString(), line, pitch, "NoInstrumentData");
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             droppedNotesNoClip++;
 #endif
@@ -267,9 +277,22 @@ public class AudioManager : MonoBehaviour
             finalPitch = Mathf.Clamp(pitch, 0, maxIndex);
         }
 
+        // --- DUPLICATE CLIP PREVENTION ---
+        // Prevent the same clip from playing twice within 40ms (phase interference)
+        float now = Time.unscaledTime;
+        if (lastClipPlayTime.TryGetValue(finalPitch, out float lastTime) &&
+            (now - lastTime) < DUPLICATE_PREVENTION_WINDOW)
+        {
+            NoteDebugLogger.Instance?.LogDropped(instrument.ToString(), line, pitch, $"Duplicate_finalPitch={finalPitch}_gap={((now-lastTime)*1000f):F0}ms");
+            droppedNotesDuplicate++;
+            return;
+        }
+        lastClipPlayTime[finalPitch] = now;
+
         AudioSource audioSource = GetAvailableAudioSource(volume, finalPitch, instrument);
         if (audioSource == null)
         {
+            NoteDebugLogger.Instance?.LogDropped(instrument.ToString(), line, pitch, "NoAudioSource");
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             droppedNotesNoVoice++;
 #endif
@@ -283,6 +306,7 @@ public class AudioManager : MonoBehaviour
         if (clip == null)
         {
             if (showDebugLogs) Debug.LogWarning($"ğŸµ Audio clip not found for {instrument} pitch {finalPitch}");
+            NoteDebugLogger.Instance?.LogDropped(instrument.ToString(), line, pitch, $"NullClip_finalPitch={finalPitch}");
             // Return the source to the pool if we abort early, since it won't be used
             activeAudioSources.Remove(audioSource);
             audioSourcePool.Enqueue(audioSource);
@@ -308,8 +332,32 @@ public class AudioManager : MonoBehaviour
         }
 
         audioSource.clip = clip;
-        audioSource.volume = volume * sfxVolume * masterVolume;
+
+        // Simultaneous volume scaling: reduce volume when many notes play at once
+        float baseVolume = volume * sfxVolume * masterVolume;
+        int activePlaying = 0;
+        for (int i = 0; i < activeAudioSources.Count; i++)
+        {
+            if (activeAudioSources[i] != null && activeAudioSources[i].isPlaying)
+                activePlaying++;
+        }
+        float volumeScale = activePlaying >= VOLUME_SCALE_THRESHOLD
+            ? Mathf.Max(MIN_VOLUME_SCALE, 1f / Mathf.Sqrt(activePlaying))
+            : 1f;
+        audioSource.volume = baseVolume * volumeScale;
         audioSource.Play();
+
+        // Debug log every played note to CSV file
+        NoteDebugLogger.Instance?.LogNote(
+            instrument.ToString(),
+            line,
+            pitch,
+            finalPitch,
+            maxIndex,
+            clip.name,
+            audioSource.volume,
+            useJavaMapping,
+            "PLAYED");
 
 
         if (enableNoteFadeOut)

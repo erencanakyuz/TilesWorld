@@ -62,6 +62,7 @@ public class Bootstrap : MonoBehaviour
 
         // 3. Çekirdek Servisler (Veri'den sonra)
         InitializeAudioManager();
+        InitializeNoteDebugLogger();
         InitializeInputManager();
 
         // 4. Müzik ve Oynanış Mantığı Sistemleri (Çekirdek servislerden sonra)
@@ -251,6 +252,16 @@ public class Bootstrap : MonoBehaviour
         else
         {
             Debug.Log("🎮 GamificationManager already exists, skipping initialization");
+        }
+    }
+
+    void InitializeNoteDebugLogger()
+    {
+        if (NoteDebugLogger.Instance == null)
+        {
+            GameObject loggerObj = new GameObject("NoteDebugLogger");
+            loggerObj.AddComponent<NoteDebugLogger>();
+            Debug.Log("[Bootstrap] NoteDebugLogger created - logs to project root");
         }
     }
 
