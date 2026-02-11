@@ -12,7 +12,7 @@ public class NoteDebugLogger : MonoBehaviour
     public static NoteDebugLogger Instance { get; private set; }
 
     [Header("Note Debug Logger")]
-    [SerializeField] private bool enableLogging = true;
+    [SerializeField] private bool enableLogging = false; // Enable via Inspector when debugging
 
     private StreamWriter writer;
     private int noteCounter;
