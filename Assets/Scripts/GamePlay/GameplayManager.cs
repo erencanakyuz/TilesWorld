@@ -194,9 +194,11 @@ public class GameplayManager : MonoBehaviour
         OnGameTimeUpdated?.Invoke(currentGameTime);
 
         // Check for song end — time-based trigger
-        if (currentGameTime >= songDuration && songDuration > 0)
+        // IMPORTANT: Only end by time if all notes have been spawned already.
+        // songDuration is an estimate and can be shorter than the actual chart.
+        if (allNotesSpawned && currentGameTime >= songDuration && songDuration > 0)
         {
-            Debug.Log($"[GameplayManager] Song duration reached ({currentGameTime:F1}s >= {songDuration:F1}s). Ending gameplay.");
+            Debug.Log($"[GameplayManager] Song duration reached AND all notes spawned ({currentGameTime:F1}s >= {songDuration:F1}s). Ending gameplay.");
             EndGameplay();
             return;
         }
