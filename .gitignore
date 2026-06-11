@@ -86,3 +86,11 @@ crashlytics-build.properties
 
 #manuel
 /OldJavaGame/
+
+# Public repository snapshot
+# Keep the latest branch focused on the README preview only.
+/*
+!/README.md
+!/.gitignore
+!/README-assets/
+!/README-assets/**
